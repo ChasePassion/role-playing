@@ -1,26 +1,140 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+    /* Core colors */
+    --background: #ffffff;
+    --foreground: #171717;
+
+    /* Sidebar colors */
+    --sidebar-bg: #fafafa;
+    --sidebar-hover: #eaeaea;
+    --sidebar-selected: #dddddd;
+
+    /* Chat colors */
+    --divider: #d5d5d5;
+    --input-border: #dedede;
+    --placeholder: #8f8f8f;
+    --text-primary: #161616;
+    --user-bubble: #0068ff;
+    --send-button: #924ff7;
+
+    /* Liquid glass */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: rgba(0, 0, 0, 0.1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-sidebar-bg: var(--sidebar-bg);
+    --color-sidebar-hover: var(--sidebar-hover);
+    --color-sidebar-selected: var(--sidebar-selected);
+    --color-divider: var(--divider);
+    --color-input-border: var(--input-border);
+    --color-placeholder: var(--placeholder);
+    --color-text-primary: var(--text-primary);
+    --color-user-bubble: var(--user-bubble);
+    --color-send-button: var(--send-button);
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Liquid glass card effect */
+.liquid-glass {
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.9) 0%,
+            rgba(255, 255, 255, 0.6) 50%,
+            rgba(255, 255, 255, 0.8) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        0 2px 8px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+}
+
+.liquid-glass:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.12),
+        0 4px 12px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Chat bubbles */
+.bubble-user {
+    background-color: var(--user-bubble);
+    color: #ffffff;
+    border-radius: 18px 18px 4px 18px;
+}
+
+.bubble-assistant {
+    background-color: #ffffff;
+    color: var(--text-primary);
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Send button */
+.send-button {
+    background-color: var(--send-button);
+    color: #ffffff;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.send-button:hover {
+    background-color: #7b3fd6;
+    transform: scale(1.05);
+}
+
+.send-button:active {
+    transform: scale(0.95);
+}
+
+/* Input container */
+.input-container {
+    background-color: #ffffff;
+    border: 1px solid var(--input-border);
+    border-radius: 24px;
+    transition: all 0.2s ease;
+}
+
+.input-container:focus-within {
+    border-color: var(--send-button);
+    box-shadow: 0 0 0 3px rgba(146, 79, 247, 0.1);
+}
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3);
 }

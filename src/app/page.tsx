@@ -1,103 +1,252 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Sidebar, { Character, SidebarToggleIcon } from "@/components/Sidebar";
+import CharacterCard from "@/components/CharacterCard";
+import ChatHeader from "@/components/ChatHeader";
+import ChatMessage, { Message } from "@/components/ChatMessage";
+import ChatInput from "@/components/ChatInput";
+import { sendChatMessage, manageMemories } from "@/lib/api";
+
+// Generate unique IDs for messages
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 9);
+}
+
+// Generate chat ID for a conversation session
+function generateChatId(): string {
+  return `chat_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatId, setChatId] = useState<string>("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // Sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // isOverlay determines if sidebar overlays (true) or pushes (false) content
+  const [isOverlay, setIsOverlay] = useState(false);
+
+  // User ID - in production this would come from auth
+  const userId = "user_default";
+
+  // Load characters on mount
+  useEffect(() => {
+    fetch("/characters.json")
+      .then((res) => res.json())
+      .then((data) => setCharacters(data.characters))
+      .catch((err) => console.error("Failed to load characters:", err));
+  }, []);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Only close sidebar when it's OPEN and window becomes < 800px
+  useEffect(() => {
+    const handleResize = () => {
+      if (isSidebarOpen && window.innerWidth < 800) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isSidebarOpen]);
+
+  // Toggle sidebar with mode detection
+  const handleToggleSidebar = () => {
+    if (isSidebarOpen) {
+      // Closing sidebar
+      setIsSidebarOpen(false);
+    } else {
+      // Opening sidebar - check window size to determine mode
+      const shouldOverlay = window.innerWidth < 800;
+      setIsOverlay(shouldOverlay);
+      setIsSidebarOpen(true);
+    }
+  };
+
+  const handleSelectCharacter = (character: Character) => {
+    setSelectedCharacter(character);
+    setMessages([]);
+    setChatId(generateChatId());
+    // Auto close on overlay mode
+    if (isOverlay) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const handleSendMessage = async (content: string) => {
+    if (!selectedCharacter || isLoading) return;
+
+    // Add user message
+    const userMessage: Message = {
+      id: generateId(),
+      role: "user",
+      content,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    // Create assistant message placeholder
+    const assistantMessageId = generateId();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+
+    // Build history for API
+    const history = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    let fullResponse = "";
+
+    // Send to API with streaming
+    await sendChatMessage(
+      {
+        user_id: userId,
+        chat_id: chatId,
+        message: content,
+        history,
+      },
+      // On chunk
+      (chunk) => {
+        fullResponse += chunk;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId ? { ...m, content: fullResponse } : m
+          )
+        );
+      },
+      // On done
+      async (finalContent) => {
+        // Update with final content
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId ? { ...m, content: finalContent } : m
+          )
+        );
+        setIsLoading(false);
+
+        // Manage memories in background
+        try {
+          await manageMemories({
+            user_id: userId,
+            chat_id: chatId,
+            user_text: content,
+            assistant_text: finalContent,
+          });
+        } catch (err) {
+          console.error("Failed to manage memories:", err);
+        }
+      },
+      // On error
+      (error) => {
+        console.error("Chat error:", error);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: "抱歉，发生了错误，请稍后重试。" }
+              : m
+          )
+        );
+        setIsLoading(false);
+      }
+    );
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden relative">
+      {/* Overlay background - only show when sidebar is open in overlay mode */}
+      {isSidebarOpen && isOverlay && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Wrapper */}
+      <div
+        className={`
+          flex-shrink-0 transition-all duration-300 ease-in-out h-full overflow-hidden
+          ${isOverlay ? "fixed left-0 top-0 z-50" : "relative"}
+          ${isSidebarOpen ? "w-64" : "w-0"}
+        `}
+      >
+        <Sidebar
+          characters={characters}
+          selectedCharacterId={selectedCharacter?.id || null}
+          onSelectCharacter={handleSelectCharacter}
+          onToggle={handleToggleSidebar}
+        />
+      </div>
+
+      {/* Main content */}
+      <main className="flex-1 flex flex-col bg-white overflow-hidden relative">
+        {/* Toggle Button - Show when sidebar is closed */}
+        {!isSidebarOpen && (
+          <button
+            onClick={handleToggleSidebar}
+            className="absolute top-4 left-4 z-30 p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+            aria-label="Open Sidebar"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+            <SidebarToggleIcon className="w-5 h-5" />
+          </button>
+        )}
+
+        {selectedCharacter ? (
+          <>
+            {/* Chat header */}
+            <div className={`${!isSidebarOpen ? "pl-14" : ""}`}>
+              <ChatHeader character={selectedCharacter} />
+            </div>
+
+            {/* Messages area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  userAvatar="/openai.svg"
+                  assistantAvatar={selectedCharacter.avatar}
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input area */}
+            <div className="p-4 bg-white">
+              <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+            </div>
+          </>
+        ) : (
+          /* Character grid when no character selected */
+          <div className={`flex-1 p-5 overflow-y-auto custom-scrollbar`}>
+            <h2 className={`text-xl ml-10 font-semibold text-text-primary mb-6`}>
+              选择一个角色开始对话
+            </h2>
+            <div className={`flex flex-wrap gap-6 max-w-6xl ml-10`}>
+              {characters.map((character) => (
+                <CharacterCard
+                  key={character.id}
+                  character={character}
+                  onClick={handleSelectCharacter}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
