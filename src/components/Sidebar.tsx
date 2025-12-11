@@ -62,7 +62,7 @@ export default function Sidebar({
                 ${isSelected ? "bg-sidebar-selected" : "hover:bg-sidebar-hover"}
               `}
                         >
-                            <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
                                 <Image
                                     src={character.avatar}
                                     alt={character.name}

@@ -178,7 +178,7 @@ export default function Home() {
       {/* Sidebar Wrapper */}
       <div
         className={`
-          flex-shrink-0 transition-all duration-300 ease-in-out h-full overflow-hidden
+          shrink-0 transition-all duration-300 ease-in-out h-full overflow-hidden
           ${isOverlay ? "fixed left-0 top-0 z-50" : "relative"}
           ${isSidebarOpen ? "w-64" : "w-0"}
         `}

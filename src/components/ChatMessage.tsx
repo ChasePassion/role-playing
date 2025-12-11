@@ -26,7 +26,7 @@ export default function ChatMessage({
             className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
         >
             {/* Avatar */}
-            <div className="relative w-9 h-9 rounded-lg overflow-hidden flex-shrink-0">
+            <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0">
                 {isUser ? (
                     <div className="w-full h-full bg-user-bubble flex items-center justify-center">
                         <Image

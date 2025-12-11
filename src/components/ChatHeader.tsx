@@ -10,7 +10,7 @@ interface ChatHeaderProps {
 export default function ChatHeader({ character }: ChatHeaderProps) {
     return (
         <div className="flex items-center gap-3 p-4 border-b border-divider bg-white">
-            <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+            <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
                 <Image
                     src={character.avatar}
                     alt={character.name}
