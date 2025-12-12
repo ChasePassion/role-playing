@@ -140,6 +140,130 @@ Authorization: Bearer <access_token>
 
 ---
 
+### 角色管理 (Characters)
+
+#### `POST /v1/characters`
+
+创建新角色。
+
+**Request Body**
+```json
+{
+  "name": "Luna",
+  "system_prompt": "You are Luna, a helpful AI assistant...",
+  "greeting_message": "Hello! How can I help you today?",
+  "avatar_url": "/uploads/luna.jpg",
+  "tags": ["assistant", "friendly"],
+  "is_public": true
+}
+```
+
+**Response** `201 Created`
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Luna",
+  "system_prompt": "You are Luna, a helpful AI assistant...",
+  "greeting_message": "Hello! How can I help you today?",
+  "avatar_url": "/uploads/luna.jpg",
+  "tags": ["assistant", "friendly"],
+  "creator_id": "user-uuid-123",
+  "is_public": true
+}
+```
+
+---
+
+#### `GET /v1/characters`
+
+获取**当前用户创建**的角色列表 (私有库)。
+
+**Query Parameters**
+- `skip`: (int) 分页偏移, 默认为 0
+- `limit`: (int) 每页数量, 默认为 20 (最大 100)
+
+**Response** `200 OK`
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Luna",
+    "is_public": true,
+    "creator_id": "user-uuid-123",
+    "tags": ["assistant"]
+    // ... 其他完整字段
+  }
+]
+```
+
+---
+
+#### `GET /v1/characters/market`
+
+获取**公开市场**的角色列表 (所有人可见，返回 `is_public=true` 的角色)。
+
+**Query Parameters**
+- `skip`: (int) 分页偏移, 默认为 0
+- `limit`: (int) 每页数量, 默认为 20
+
+---
+
+#### `GET /v1/characters/{id}`
+
+获取单个角色详情。
+
+**权限说明**:
+- 如果你是该角色的创建者 (`creator_id` 匹配)，允许访问。
+- 如果该角色是公开的 (`is_public=true`)，允许访问。
+- 否则返回 `403 Forbidden`。
+
+**Response** `200 OK`
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Luna",
+  "system_prompt": "...",
+  "greeting_message": "...",
+  "avatar_url": "/uploads/...",
+  "tags": ["assistant"],
+  "creator_id": "creator-uuid",
+  "is_public": true
+}
+```
+
+---
+
+#### `PUT /v1/characters/{id}`
+
+更新角色信息。
+
+**权限说明**:
+- 仅**创建者**可以修改角色信息。
+- 非创建者尝试修改返回 `403 Forbidden`.
+
+**Request Body** (所有字段均为可选)
+```json
+{
+  "name": "Luna V2",
+  "greeting_message": "Hi there!",
+  "tags": ["assistant", "v2"],
+  "is_public": false
+}
+```
+
+**Response** `200 OK` (返回更新后的完整对象)
+
+---
+
+#### `DELETE /v1/characters/{id}`
+
+删除角色。
+
+**权限说明**:
+- 仅**创建者**可以删除角色。
+
+**Response** `204 No Content`
+
 ### 文件上传 (Upload)
 
 #### `POST /v1/upload`
