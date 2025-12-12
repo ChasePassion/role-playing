@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar, { Character, SidebarToggleIcon } from "@/components/Sidebar";
 import CharacterCard from "@/components/CharacterCard";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage, { Message } from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import { sendChatMessage, manageMemories } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 // Generate unique IDs for messages
 function generateId(): string {
@@ -19,6 +21,9 @@ function generateChatId(): string {
 }
 
 export default function Home() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
+
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -31,16 +36,22 @@ export default function Home() {
   // isOverlay determines if sidebar overlays (true) or pushes (false) content
   const [isOverlay, setIsOverlay] = useState(false);
 
-  // User ID - in production this would come from auth
-  const userId = "user_default";
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, isAuthLoading, router]);
 
   // Load characters on mount
   useEffect(() => {
+    if (!user) return; // Don't load if not logged in
+
     fetch("/characters.json")
       .then((res) => res.json())
       .then((data) => setCharacters(data.characters))
       .catch((err) => console.error("Failed to load characters:", err));
-  }, []);
+  }, [user]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -114,7 +125,7 @@ export default function Home() {
     // Send to API with streaming
     await sendChatMessage(
       {
-        user_id: userId,
+        user_id: user?.id || "unknown",
         chat_id: chatId,
         message: content,
         history,
@@ -141,7 +152,7 @@ export default function Home() {
         // Manage memories in background
         try {
           await manageMemories({
-            user_id: userId,
+            user_id: user?.id || "unknown",
             chat_id: chatId,
             user_text: content,
             assistant_text: finalContent,
@@ -164,6 +175,14 @@ export default function Home() {
       }
     );
   };
+
+  if (isAuthLoading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden relative">

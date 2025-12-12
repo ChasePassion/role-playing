@@ -24,6 +24,84 @@ export interface MemorySearchRequest {
   query: string;
 }
 
+// --- Auth Interfaces ---
+
+export interface User {
+  id: string;
+  email: string;
+  created_at: string;
+  last_login_at?: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface SendCodeRequest {
+  email: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  code: string;
+}
+
+// --- API Functions ---
+
+/**
+ * Send verification code to email
+ */
+export async function sendVerificationCode(email: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/send_code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to send code: ${response.status}`);
+  }
+}
+
+/**
+ * Login with email and verification code
+ */
+export async function loginWithCode(email: string, code: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Login failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get current user details
+ */
+export async function getCurrentUser(token: string): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/me`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get user: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+
 /**
  * Send a chat message and receive streaming response via SSE
  */
