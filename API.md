@@ -77,8 +77,88 @@ Authorization: Bearer <access_token>
 {
   "id": "uuid-string",
   "email": "user@example.com",
+  "username": "MyUsername",
+  "avatar_url": "/uploads/xxx.jpg",
   "created_at": "2023-12-12T10:00:00Z",
   "last_login_at": "2023-12-12T10:05:00Z"
+}
+```
+
+---
+
+### 用户资料 (User Profile)
+
+#### `GET /v1/users/me`
+
+获取当前用户的完整资料。
+
+**Headers**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response** `200 OK`
+```json
+{
+  "id": "uuid-string",
+  "email": "user@example.com",
+  "username": "MyUsername",
+  "avatar_url": "/uploads/avatar.jpg",
+  "created_at": "2023-12-12T10:00:00Z",
+  "last_login_at": "2023-12-12T10:05:00Z"
+}
+```
+
+---
+
+#### `PUT /v1/users/me`
+
+更新当前用户信息 (用户名、头像)。
+
+**Headers**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body**
+```json
+{
+  "username": "NewName",        // 可选 (2-50字符)
+  "avatar_url": "/uploads/..."  // 可选 (文件路径)
+}
+```
+
+**Response** `200 OK`
+```json
+{
+  "id": "...",
+  "username": "NewName",
+  "avatar_url": "/uploads/...",
+  ...
+}
+```
+
+---
+
+### 文件上传 (Upload)
+
+#### `POST /v1/upload`
+
+上传文件（如头像）。支持 JPEG, PNG, GIF, WEBP，最大 5MB。
+
+**Headers**
+```
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+```
+
+**Form Data**
+- `file`: (Binary File)
+
+**Response** `200 OK`
+```json
+{
+  "url": "/uploads/unique-filename.jpg"
 }
 ```
 

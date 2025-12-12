@@ -8,7 +8,7 @@ import ChatHeader from "@/components/ChatHeader";
 import ChatMessage, { Message } from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import { sendChatMessage, manageMemories } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, isProfileComplete } from "@/lib/auth-context";
 
 // Generate unique IDs for messages
 function generateId(): string {
@@ -36,10 +36,14 @@ export default function Home() {
   // isOverlay determines if sidebar overlays (true) or pushes (false) content
   const [isOverlay, setIsOverlay] = useState(false);
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or profile incomplete
   useEffect(() => {
-    if (!isAuthLoading && !user) {
-      router.push("/login");
+    if (!isAuthLoading) {
+      if (!user) {
+        router.push("/login");
+      } else if (!isProfileComplete(user)) {
+        router.push("/setup");
+      }
     }
   }, [user, isAuthLoading, router]);
 
@@ -236,7 +240,7 @@ export default function Home() {
                 <ChatMessage
                   key={message.id}
                   message={message}
-                  userAvatar="/openai.svg"
+                  userAvatar={user?.avatar_url || "/default-avatar.svg"}
                   assistantAvatar={selectedCharacter.avatar}
                 />
               ))}

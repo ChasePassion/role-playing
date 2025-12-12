@@ -29,6 +29,8 @@ export interface MemorySearchRequest {
 export interface User {
   id: string;
   email: string;
+  username?: string;
+  avatar_url?: string;
   created_at: string;
   last_login_at?: string;
 }
@@ -197,6 +199,60 @@ export async function searchMemories(
 
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// --- User Profile Functions ---
+
+export interface UpdateProfileRequest {
+  username?: string;
+  avatar_url?: string;
+}
+
+/**
+ * Upload a file (e.g., avatar image)
+ */
+export async function uploadFile(file: File, token: string): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/v1/upload`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Upload failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Update current user's profile (username, avatar)
+ */
+export async function updateUserProfile(
+  data: UpdateProfileRequest,
+  token: string
+): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/v1/users/me`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Update failed: ${response.status}`);
   }
 
   return response.json();

@@ -28,16 +28,12 @@ export default function ChatMessage({
             {/* Avatar */}
             <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0">
                 {isUser ? (
-                    <div className="w-full h-full bg-user-bubble flex items-center justify-center">
-                        <Image
-                            src={userAvatar}
-                            alt="User"
-                            width={20}
-                            height={20}
-                            className="text-white"
-                            style={{ filter: "brightness(0) invert(1)" }}
-                        />
-                    </div>
+                    <Image
+                        src={userAvatar}
+                        alt="User"
+                        fill
+                        className="object-cover"
+                    />
                 ) : (
                     <Image
                         src={assistantAvatar}

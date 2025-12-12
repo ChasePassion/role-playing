@@ -14,6 +14,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (email: string, code: string) => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,8 +66,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
+    const refreshUser = async () => {
+        const token = localStorage.getItem("access_token");
+        if (!token) return;
+
+        try {
+            const userData = await getCurrentUser(token);
+            setUser(userData);
+        } catch (error) {
+            console.error("Failed to refresh user:", error);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
@@ -78,4 +91,11 @@ export function useAuth() {
         throw new Error("useAuth must be used within an AuthProvider");
     }
     return context;
+}
+
+/**
+ * Check if user profile is complete (has username and avatar)
+ */
+export function isProfileComplete(user: User | null): boolean {
+    return !!(user?.username && user?.avatar_url);
 }

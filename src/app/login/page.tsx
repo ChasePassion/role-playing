@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-import { sendVerificationCode } from "@/lib/api";
+import { useAuth, isProfileComplete } from "@/lib/auth-context";
+import { sendVerificationCode, getCurrentUser } from "@/lib/api";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -23,8 +23,9 @@ export default function LoginPage() {
         try {
             await sendVerificationCode(email);
             setStep("code");
-        } catch (err: any) {
-            setError(err.message || "发送验证码失败");
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "发送验证码失败";
+            setError(message);
         } finally {
             setIsLoading(false);
         }
@@ -37,9 +38,21 @@ export default function LoginPage() {
 
         try {
             await login(email, code);
-            router.push("/");
-        } catch (err: any) {
-            setError(err.message || "验证码无效");
+            // Check if profile is complete to decide redirect destination
+            const token = localStorage.getItem("access_token");
+            if (token) {
+                const user = await getCurrentUser(token);
+                if (isProfileComplete(user)) {
+                    router.push("/");
+                } else {
+                    router.push("/setup");
+                }
+            } else {
+                router.push("/");
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "验证码无效";
+            setError(message);
         } finally {
             setIsLoading(false);
         }
