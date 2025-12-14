@@ -7,6 +7,12 @@ export interface Character {
     name: string;
     description: string;
     avatar: string;
+    system_prompt?: string;
+    greeting_message?: string;
+    tags?: string[];
+    is_public?: boolean;
+    creator_id?: string;
+    creator_username?: string;
 }
 
 interface SidebarProps {

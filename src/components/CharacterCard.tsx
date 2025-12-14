@@ -39,23 +39,36 @@ export default function CharacterCard({ character, onClick }: CharacterCardProps
                                 {character.name}
                             </h3>
                             <p className="text-xs text-gray-400 mt-0.5">
-                                @MysticSnake • 2.4k 人正在聊
+                                @{character.creator_username || "Creator"} • 5.6k 人正在聊
                             </p>
                         </div>
                     </div>
 
                     {/* Tags */}
-                    <div className="flex gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded border border-blue-100">
-                            #温柔
-                        </span>
-                        <span className="px-2 py-0.5 bg-pink-50 text-pink-600 text-[10px] font-bold rounded border border-pink-100">
-                            #养成
-                        </span>
-                        <span className="px-2 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-bold rounded border border-purple-100">
-                            #古风
-                        </span>
-                    </div>
+                    {character.tags && character.tags.length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                            {character.tags.map((tag, index) => {
+                                // Use same color array as CreateCharacterModal
+                                const colors = [
+                                    { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+                                    { bg: "bg-pink-50", text: "text-pink-600", border: "border-pink-200" },
+                                    { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
+                                    { bg: "bg-cyan-50", text: "text-cyan-600", border: "border-cyan-200" },
+                                    { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200" },
+                                    { bg: "bg-green-50", text: "text-green-600", border: "border-green-200" },
+                                ];
+                                const color = colors[index % colors.length];
+                                return (
+                                    <span
+                                        key={index}
+                                        className={`px-2 py-0.5 ${color.bg} ${color.text} text-[10px] font-bold rounded border ${color.border}`}
+                                    >
+                                        #{tag}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* Description 占据可伸缩空间 */}
                     <p className="text-sm text-gray-600 leading-relaxed line-clamp-3">

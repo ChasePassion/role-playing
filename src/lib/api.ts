@@ -257,3 +257,78 @@ export async function updateUserProfile(
 
   return response.json();
 }
+
+// --- Character Interfaces ---
+
+export interface CreateCharacterRequest {
+  name: string;
+  description: string;
+  system_prompt: string;
+  greeting_message?: string;
+  avatar_url?: string;
+  tags?: string[];
+  is_public: boolean;
+}
+
+export interface CharacterResponse {
+  id: string;
+  name: string;
+  description: string;
+  system_prompt: string;
+  greeting_message?: string;
+  avatar_url?: string;
+  tags?: string[];
+  creator_id: string;
+  is_public: boolean;
+}
+
+// --- Character API Functions ---
+
+/**
+ * Create a new character
+ */
+export async function createCharacter(
+  data: CreateCharacterRequest,
+  token: string
+): Promise<CharacterResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/characters`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Create character failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get public market characters
+ */
+export async function getMarketCharacters(
+  skip: number = 0,
+  limit: number = 20
+): Promise<CharacterResponse[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/v1/characters/market?skip=${skip}&limit=${limit}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Get characters failed: ${response.status}`);
+  }
+
+  return response.json();
+}

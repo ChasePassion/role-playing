@@ -140,6 +140,39 @@ Authorization: Bearer <access_token>
 
 ---
 
+#### `GET /v1/users/{creator_id}/characters`
+
+获取指定创作者的角色列表（**创作者主页**）。
+
+**Headers** (可选)
+```
+Authorization: Bearer <access_token>
+```
+
+**Query Parameters**
+- `skip`: (int) 分页偏移, 默认为 0
+- `limit`: (int) 每页数量, 默认为 20
+
+**权限说明**:
+- 如果 viewer == creator：返回全部角色（含私有）
+- 否则：只返回公开角色
+- 携带无效 Token → `401 Unauthorized`
+
+**Response** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Luna",
+    "description": "...",
+    "is_public": true,
+    "creator_id": "creator-uuid"
+  }
+]
+```
+
+---
+
 ### 角色管理 (Characters)
 
 #### `POST /v1/characters`
@@ -150,23 +183,29 @@ Authorization: Bearer <access_token>
 ```json
 {
   "name": "Luna",
+  "description": "温柔体贴的AI助手，擅长倾听和陪伴",
   "system_prompt": "You are Luna, a helpful AI assistant...",
-  "greeting_message": "Hello! How can I help you today?",
+  "greeting_message": "你好！我是Luna，很高兴认识你！",
   "avatar_url": "/uploads/luna.jpg",
-  "tags": ["assistant", "friendly"],
+  "tags": ["温柔", "助手"],
   "is_public": true
 }
 ```
+
+**字段说明**：
+- `description` (必填): 简短描述，显示在角色卡片上
+- `greeting_message` (选填): 开场问候语，聊天时角色主动发送
 
 **Response** `201 Created`
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "name": "Luna",
+  "description": "温柔体贴的AI助手，擅长倾听和陪伴",
   "system_prompt": "You are Luna, a helpful AI assistant...",
-  "greeting_message": "Hello! How can I help you today?",
+  "greeting_message": "你好！我是Luna，很高兴认识你！",
   "avatar_url": "/uploads/luna.jpg",
-  "tags": ["assistant", "friendly"],
+  "tags": ["温柔", "助手"],
   "creator_id": "user-uuid-123",
   "is_public": true
 }
@@ -212,20 +251,27 @@ Authorization: Bearer <access_token>
 
 获取单个角色详情。
 
+**Headers** (可选)
+```
+Authorization: Bearer <access_token>
+```
+
 **权限说明**:
-- 如果你是该角色的创建者 (`creator_id` 匹配)，允许访问。
-- 如果该角色是公开的 (`is_public=true`)，允许访问。
-- 否则返回 `403 Forbidden`。
+- 公开角色 (`is_public=true`)：任何人可访问
+- 私有角色 (`is_public=false`)：仅创建者可访问（用于编辑回填）
+- 携带无效 Token → `401 Unauthorized`
+- 私有角色 + 非创建者 → `403 Forbidden`
 
 **Response** `200 OK`
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "name": "Luna",
+  "description": "温柔体贴的AI助手",
   "system_prompt": "...",
   "greeting_message": "...",
   "avatar_url": "/uploads/...",
-  "tags": ["assistant"],
+  "tags": ["温柔"],
   "creator_id": "creator-uuid",
   "is_public": true
 }
@@ -368,5 +414,6 @@ data: {"type": "done", "full_content": "你好，有什么可以帮您的吗？"
 |-------------|------------|------|
 | 400 | `BAD_REQUEST` | 参数错误或验证码无效 |
 | 401 | `UNAUTHORIZED` | Token 无效或过期 |
+| 403 | `FORBIDDEN` | 无权访问（如私有角色或非创建者操作） |
 | 404 | `NOT_FOUND` | 资源不存在 |
 | 500 | `INTERNAL_ERROR` | 服务器内部错误 |

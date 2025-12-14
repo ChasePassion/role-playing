@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar, { Character, SidebarToggleIcon } from "@/components/Sidebar";
 import CharacterCard from "@/components/CharacterCard";
+import CreateCharacterModal from "@/components/CreateCharacterModal";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage, { Message } from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
-import { sendChatMessage, manageMemories } from "@/lib/api";
+import { sendChatMessage, manageMemories, getMarketCharacters, CharacterResponse } from "@/lib/api";
 import { useAuth, isProfileComplete } from "@/lib/auth-context";
 
 // Generate unique IDs for messages
@@ -36,6 +37,9 @@ export default function Home() {
   // isOverlay determines if sidebar overlays (true) or pushes (false) content
   const [isOverlay, setIsOverlay] = useState(false);
 
+  // Create character modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   // Redirect if not authenticated or profile incomplete
   useEffect(() => {
     if (!isAuthLoading) {
@@ -47,15 +51,42 @@ export default function Home() {
     }
   }, [user, isAuthLoading, router]);
 
-  // Load characters on mount
-  useEffect(() => {
-    if (!user) return; // Don't load if not logged in
+  // Load characters from API
+  const loadCharacters = async () => {
+    try {
+      const apiCharacters = await getMarketCharacters();
+      // Map API response to Character interface
+      const mapped: Character[] = apiCharacters.map((c: CharacterResponse) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        avatar: c.avatar_url || "/default-avatar.svg",
+        system_prompt: c.system_prompt,
+        tags: c.tags,
+        is_public: c.is_public,
+        creator_id: c.creator_id,
+        creator_username: c.creator_id === user?.id ? user?.username : "Creator",
+      }));
+      setCharacters(mapped);
+    } catch (err) {
+      console.error("Failed to load characters from API:", err);
+      // Fallback to local JSON
+      fetch("/characters.json")
+        .then((res) => res.json())
+        .then((data) => setCharacters(data.characters))
+        .catch((fallbackErr) => console.error("Failed to load fallback characters:", fallbackErr));
+    }
+  };
 
-    fetch("/characters.json")
-      .then((res) => res.json())
-      .then((data) => setCharacters(data.characters))
-      .catch((err) => console.error("Failed to load characters:", err));
+  useEffect(() => {
+    if (!user) return;
+    loadCharacters();
   }, [user]);
+
+  // Handle character created - refresh list
+  const handleCharacterCreated = () => {
+    loadCharacters();
+  };
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -270,6 +301,24 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Create Character FAB Button */}
+      <button
+        onClick={() => setIsCreateModalOpen(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#3964FE] text-white shadow-lg hover:bg-[#2a4fd6] hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center z-40"
+        aria-label="创建角色"
+      >
+        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
+
+      {/* Create Character Modal */}
+      <CreateCharacterModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCharacterCreated}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth, isProfileComplete } from "@/lib/auth-context";
 import { uploadFile, updateUserProfile } from "@/lib/api";
+import AvatarCropper from "@/components/AvatarCropper";
 
 export default function SetupPage() {
     const { user, isLoading: isAuthLoading, refreshUser } = useAuth();
@@ -12,6 +13,7 @@ export default function SetupPage() {
 
     const [username, setUsername] = useState("");
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [cropperFile, setCropperFile] = useState<File | null>(null); // For cropper
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,37 +50,54 @@ export default function SetupPage() {
         // Validate file type
         const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
         if (!validTypes.includes(file.type)) {
-            setError("请选择 JPEG, PNG, GIF 或 WEBP 格式的图片");
+            setError("请选择 JPEG, PNG, GIF 或 WEBP 格式的图片！");
             return;
         }
 
         // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
-            setError("图片大小不能超过 5MB");
+            setError("图片大小不能超过 5MB！");
             return;
         }
 
         setError("");
+        setCropperFile(file); // Trigger cropper
+
+        // Reset file input
+        e.target.value = "";
+    };
+
+    const handleCropConfirm = (croppedBlob: Blob) => {
+        setCropperFile(null);
+
+        // Convert blob to file
+        const file = new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" });
         setAvatarFile(file);
 
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            setAvatarPreview(e.target?.result as string);
-        };
-        reader.readAsDataURL(file);
+        // Preview
+        setAvatarPreview(URL.createObjectURL(croppedBlob));
+    };
+
+    const handleCropCancel = () => {
+        setCropperFile(null);
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         const file = e.dataTransfer.files?.[0];
         if (file) {
-            const input = fileInputRef.current;
-            if (input) {
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                input.files = dataTransfer.files;
-                handleFileSelect({ target: { files: dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>);
+            if (fileInputRef.current) {
+                // Manually trigger check logic instead of modifying input directly
+                const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+                if (!validTypes.includes(file.type)) {
+                    setError("请选择 JPEG, PNG, GIF 或 WEBP 格式的图片");
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    setError("图片大小不能超过 5MB");
+                    return;
+                }
+                setCropperFile(file);
             }
         }
     };
@@ -93,7 +112,7 @@ export default function SetupPage() {
 
         // Validate username
         if (username.length < 2 || username.length > 50) {
-            setError("用户名长度需要在 2-50 字符之间");
+            setError("用户名长度需要在 2-50 字符之间！");
             return;
         }
 
@@ -177,7 +196,7 @@ export default function SetupPage() {
                                 onClick={() => fileInputRef.current?.click()}
                                 onDrop={handleDrop}
                                 onDragOver={handleDragOver}
-                                className="relative mx-auto w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors overflow-hidden group"
+                                className="relative mx-auto w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors overflow-hidden group"
                             >
                                 {avatarPreview ? (
                                     <>
@@ -257,6 +276,15 @@ export default function SetupPage() {
                     </form>
                 </div>
             </div>
+
+            {/* Cropper Modal */}
+            {cropperFile && (
+                <AvatarCropper
+                    file={cropperFile}
+                    onConfirm={handleCropConfirm}
+                    onCancel={handleCropCancel}
+                />
+            )}
         </div>
     );
 }
