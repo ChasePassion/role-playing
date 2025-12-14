@@ -282,6 +282,16 @@ export interface CharacterResponse {
   is_public: boolean;
 }
 
+export interface UpdateCharacterRequest {
+  name?: string;
+  description?: string;
+  system_prompt?: string;
+  greeting_message?: string;
+  avatar_url?: string;
+  tags?: string[];
+  is_public?: boolean;
+}
+
 // --- Character API Functions ---
 
 /**
@@ -331,4 +341,110 @@ export async function getMarketCharacters(
   }
 
   return response.json();
+}
+
+/**
+ * Get characters created by a specific user
+ */
+export async function getUserCharacters(
+  creatorId: string,
+  token?: string,
+  skip: number = 0,
+  limit: number = 20
+): Promise<CharacterResponse[]> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/v1/users/${creatorId}/characters?skip=${skip}&limit=${limit}`,
+    {
+      method: "GET",
+      headers,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Get user characters failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get a single character by ID
+ */
+export async function getCharacterById(
+  id: string,
+  token?: string
+): Promise<CharacterResponse> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/v1/characters/${id}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Get character failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Update a character
+ */
+export async function updateCharacter(
+  id: string,
+  data: UpdateCharacterRequest,
+  token: string
+): Promise<CharacterResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/characters/${id}`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Update character failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete a character
+ */
+export async function deleteCharacter(
+  id: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/v1/characters/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Delete character failed: ${response.status}`);
+  }
 }

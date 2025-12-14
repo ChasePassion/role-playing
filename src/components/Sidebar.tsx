@@ -1,6 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
+import ProfileDialog from "./ProfileDialog";
 
 export interface Character {
     id: string;
@@ -44,46 +48,113 @@ export default function Sidebar({
     onSelectCharacter,
     onToggle,
 }: SidebarProps) {
+    const { user } = useAuth();
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+    // Close profile dialog when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (isProfileOpen && !target.closest('.profile-section')) {
+                setIsProfileOpen(false);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [isProfileOpen]);
+
     return (
-        <aside className="w-64 h-full bg-sidebar-bg flex flex-col border-r border-divider">
-            <div className="p-4 border-b border-divider flex justify-between items-center">
-                <h1 className="text-lg font-semibold text-text-primary">角色列表</h1>
-                <button
-                    onClick={onToggle}
-                    className="p-1 rounded-md hover:bg-sidebar-hover text-gray-500"
-                    aria-label="Close Sidebar"
+        <aside className="w-64 h-full bg-sidebar-bg flex flex-col border-r border-divider relative">
+            {/* Top Fixed Section */}
+            <div className="flex-none p-4">
+                <div className="flex justify-between items-center mb-6">
+                    <button
+                        onClick={onToggle}
+                        className="p-1 rounded-md hover:bg-sidebar-hover text-gray-500"
+                        aria-label="Close Sidebar"
+                    >
+                        <SidebarToggleIcon className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Discover Link */}
+                <Link
+                    href="/"
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-sidebar-hover text-text-primary transition-colors"
                 >
-                    <SidebarToggleIcon className="w-5 h-5" />
-                </button>
+                    <div className="w-5 h-5 flex items-center justify-center">
+                        <Image src="/find.svg" alt="Discover" width={20} height={20} />
+                    </div>
+                    <span className="font-medium">发现</span>
+                </Link>
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {characters.map((character) => {
-                    const isSelected = character.id === selectedCharacterId;
-                    return (
-                        <div
-                            key={character.id}
-                            onClick={() => onSelectCharacter(character)}
-                            className={`
-                flex items-center gap-3 p-3 cursor-pointer transition-colors duration-150
-                ${isSelected ? "bg-sidebar-selected" : "hover:bg-sidebar-hover"}
-              `}
-                        >
-                            <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
-                                <Image
-                                    src={character.avatar}
-                                    alt={character.name}
-                                    fill
-                                    className="object-cover"
-                                />
+
+            {/* Middle Scrollable Section - Chat History */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-2">
+                <div className="space-y-1">
+                    {characters.map((character) => {
+                        const isSelected = character.id === selectedCharacterId;
+                        return (
+                            <div
+                                key={character.id}
+                                onClick={() => onSelectCharacter(character)}
+                                className={`
+                                    flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-150
+                                    ${isSelected ? "bg-sidebar-selected" : "hover:bg-sidebar-hover"}
+                                `}
+                            >
+                                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                                    <Image
+                                        src={character.avatar}
+                                        alt={character.name}
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-text-primary truncate">
+                                        {character.name}
+                                    </p>
+                                    <p className="text-xs text-gray-400 truncate">
+                                        {character.description}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-text-primary truncate">
-                                    {character.name}
-                                </p>
-                            </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Bottom Fixed Section - Profile */}
+            <div className="flex-none p-4 mt-auto border-t border-divider relative profile-section">
+                <div
+                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-hover cursor-pointer transition-colors"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsProfileOpen(!isProfileOpen);
+                    }}
+                >
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                        <Image
+                            src={user?.avatar_url || "/default-avatar.svg"}
+                            alt={user?.username || "User"}
+                            fill
+                            className="object-cover rounded-[0.5rem]"
+                        />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text-primary truncate">
+                            {user?.username || "Guest"}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Profile Dialog */}
+                <ProfileDialog
+                    isOpen={isProfileOpen}
+                    onClose={() => setIsProfileOpen(false)}
+                />
             </div>
         </aside>
     );

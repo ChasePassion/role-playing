@@ -6,9 +6,18 @@ import type { Character } from "./Sidebar";
 interface CharacterCardProps {
     character: Character;
     onClick: (character: Character) => void;
+    showMenu?: boolean;
+    onEdit?: (character: Character) => void;
+    onDelete?: (character: Character) => void;
 }
 
-export default function CharacterCard({ character, onClick }: CharacterCardProps) {
+export default function CharacterCard({
+    character,
+    onClick,
+    showMenu = false,
+    onEdit,
+    onDelete
+}: CharacterCardProps) {
     return (
         <div
             onClick={() => onClick(character)}
@@ -77,19 +86,58 @@ export default function CharacterCard({ character, onClick }: CharacterCardProps
                 </div>
 
                 {/* 下半部分：固定在底部的 footer，不用 absolute */}
-                <div className="mt-3 flex justify-between items-center">
+                <div className="mt-3 flex justify-between items-center relative">
                     <span className="text-xs text-gray-400">上次活跃: 刚刚</span>
 
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 shadow-sm border border-gray-100">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="w-5 h-5"
-                        >
-                            <path d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10c-1.702 0-3.32-.42-4.757-1.166L2.308 22.8c-.463.167-.936-.263-.8-.74L3.89 17.15C2.686 15.655 2 13.882 2 12zm13-1h-6v2h6v-2z" />
-                        </svg>
-                    </div>
+                    {showMenu ? (
+                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const menu = e.currentTarget.nextElementSibling;
+                                    menu?.classList.toggle('hidden');
+                                }}
+                            >
+                                <Image src="/vertical dots.svg" alt="Menu" width={20} height={20} />
+                            </button>
+                            {/* Dropdown Menu */}
+                            <div className="hidden absolute right-0 bottom-full mb-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-20">
+                                <button
+                                    onClick={() => onEdit?.(character)}
+                                    className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-gray-50 text-left transition-colors"
+                                >
+                                    <Image src="/edit.svg" alt="Edit" width={16} height={16} />
+                                    <span className="text-sm text-gray-700">编辑</span>
+                                </button>
+                                <button
+                                    onClick={() => onDelete?.(character)}
+                                    className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-red-50 text-left transition-colors"
+                                >
+                                    <Image
+                                        src="/delete.svg"
+                                        alt="Delete"
+                                        width={16}
+                                        height={16}
+                                        style={{ filter: "invert(16%) sepia(96%) saturate(6932%) hue-rotate(357deg) brightness(90%) contrast(125%)" }}
+                                    />
+                                    <span className="text-sm text-red-600">删除</span>
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 shadow-sm border border-gray-100">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="w-5 h-5"
+                            >
+                                <path d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10c-1.702 0-3.32-.42-4.757-1.166L2.308 22.8c-.463.167-.936-.263-.8-.74L3.89 17.15C2.686 15.655 2 13.882 2 12zm13-1h-6v2h6v-2z" />
+                            </svg>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

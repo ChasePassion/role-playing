@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
-import { createCharacter, uploadFile, CreateCharacterRequest } from "@/lib/api";
+import { createCharacter, updateCharacter, uploadFile, CreateCharacterRequest, UpdateCharacterRequest } from "@/lib/api";
 import AvatarCropper from "./AvatarCropper";
+import type { Character } from "./Sidebar";
 
 interface CreateCharacterModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    character?: Character;
+    mode?: 'create' | 'edit';
 }
 
 // Tag colors for custom tags (shared with CharacterCard)
@@ -25,6 +28,8 @@ export default function CreateCharacterModal({
     isOpen,
     onClose,
     onSuccess,
+    character,
+    mode = 'create'
 }: CreateCharacterModalProps) {
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
@@ -41,6 +46,40 @@ export default function CreateCharacterModal({
     const [error, setError] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Pre-fill form in edit mode
+    useEffect(() => {
+        if (isOpen && mode === 'edit' && character) {
+            setName(character.name);
+            setDescription(character.description);
+            setGreetingMessage(character.greeting_message || "");
+            setSystemPrompt(character.system_prompt || "");
+            setIsPublic(character.is_public ?? true);
+            setAvatarUrl(character.avatar);
+            setAvatarPreview(character.avatar);
+
+            // Map tags
+            if (character.tags && character.tags.length > 0) {
+                const mappedTags = character.tags.map((tag, index) => ({
+                    label: tag,
+                    color: TAG_COLORS[index % TAG_COLORS.length]
+                }));
+                setSelectedTags(mappedTags);
+            } else {
+                setSelectedTags([]);
+            }
+        } else if (isOpen && mode === 'create') {
+            // Reset form for create mode
+            setName("");
+            setDescription("");
+            setGreetingMessage("");
+            setSystemPrompt("");
+            setSelectedTags([]);
+            setIsPublic(true);
+            setAvatarUrl(null);
+            setAvatarPreview(null);
+        }
+    }, [isOpen, mode, character]);
 
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
@@ -156,33 +195,45 @@ export default function CreateCharacterModal({
             const token = localStorage.getItem("access_token");
             if (!token) throw new Error("请先登录");
 
-            const data: CreateCharacterRequest = {
+            // Prepare base data
+            const baseData = {
                 name: name.trim(),
-                description: description.trim(),  // Card display description (REQUIRED)
+                description: description.trim(),
                 system_prompt: systemPrompt.trim(),
-                greeting_message: greetingMessage.trim() || undefined,  // Chat opening (OPTIONAL)
+                greeting_message: greetingMessage.trim() || undefined,
                 avatar_url: avatarUrl || undefined,
                 tags: selectedTags.length > 0 ? selectedTags.map(tag => tag.label) : undefined,
                 is_public: isPublic,
             };
 
-            console.log('📤 Creating character with data:', data);
-            await createCharacter(data, token);
+            if (mode === 'edit' && character) {
+                // Update existing character
+                const updateData: UpdateCharacterRequest = baseData;
+                console.log('📤 Updating character with data:', updateData);
+                await updateCharacter(character.id, updateData, token);
+            } else {
+                // Create new character
+                const createData: CreateCharacterRequest = baseData;
+                console.log('📤 Creating character with data:', createData);
+                await createCharacter(createData, token);
+            }
 
             // Reset form
-            setName("");
-            setDescription("");
-            setGreetingMessage("");
-            setSystemPrompt("");
-            setSelectedTags([]);
-            setIsPublic(true);
-            setAvatarUrl(null);
-            setAvatarPreview(null);
+            if (mode === 'create') {
+                setName("");
+                setDescription("");
+                setGreetingMessage("");
+                setSystemPrompt("");
+                setSelectedTags([]);
+                setIsPublic(true);
+                setAvatarUrl(null);
+                setAvatarPreview(null);
+            }
 
             onSuccess();
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "创建角色失败");
+            setError(err instanceof Error ? err.message : (mode === 'edit' ? "更新失败" : "创建角色失败"));
         } finally {
             setIsSubmitting(false);
         }
@@ -213,7 +264,9 @@ export default function CreateCharacterModal({
             >
                 {/* Header - Fixed */}
                 <div className="flex-none flex items-center justify-between p-5 border-b border-gray-100 bg-white z-10">
-                    <h2 className="text-xl font-bold text-gray-900">创建新角色</h2>
+                    <h2 className="text-xl font-bold text-gray-900">
+                        {mode === 'edit' ? "编辑角色" : "创建新角色"}
+                    </h2>
                     <button
                         onClick={handleClose}
                         className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
@@ -234,7 +287,32 @@ export default function CreateCharacterModal({
                         </div>
                     )}
 
-                    {/* Avatar upload */}
+// ... (rest of body remains same)
+
+                    {/* Footer - Fixed */}
+                    <div className="flex-none flex gap-3 p-5 border-t border-gray-100 bg-white z-10">
+                        <button
+                            onClick={handleClose}
+                            disabled={isSubmitting}
+                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                            取消
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting || isUploading}
+                            className="flex-1 px-4 py-2.5 bg-[#3964FE] text-white rounded-xl font-medium hover:bg-[#2a4fd6] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    {mode === 'edit' ? "保存中..." : "创建中..."}
+                                </>
+                            ) : (
+                                mode === 'edit' ? "保存修改" : "创建角色"
+                            )}
+                        </button>
+                    </div>
                     <div className="flex flex-col items-center">
                         <div
                             onClick={handleAvatarClick}
