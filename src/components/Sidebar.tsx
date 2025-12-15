@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import type { CharacterVisibility } from "@/lib/api";
 import ProfileDialog from "./ProfileDialog";
 
 export interface Character {
@@ -15,6 +16,7 @@ export interface Character {
     greeting_message?: string;
     tags?: string[];
     is_public?: boolean;
+    visibility?: CharacterVisibility;
     creator_id?: string;
     creator_username?: string;
 }

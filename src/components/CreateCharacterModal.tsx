@@ -2,7 +2,7 @@
 
 import { useState, useRef, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
-import { createCharacter, updateCharacter, uploadFile, CreateCharacterRequest, UpdateCharacterRequest } from "@/lib/api";
+import { createCharacter, updateCharacter, uploadFile, CreateCharacterRequest, UpdateCharacterRequest, CharacterVisibility } from "@/lib/api";
 import AvatarCropper from "./AvatarCropper";
 import type { Character } from "./Sidebar";
 
@@ -37,8 +37,8 @@ export default function CreateCharacterModal({
     const [systemPrompt, setSystemPrompt] = useState("");
     const [tagInput, setTagInput] = useState("");
     const [selectedTags, setSelectedTags] = useState<{ label: string; color: typeof TAG_COLORS[0] }[]>([]);
-    const [isPublic, setIsPublic] = useState(true);
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [visibility, setVisibility] = useState<CharacterVisibility>("PUBLIC");
+    const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null); // For cropper
     const [isUploading, setIsUploading] = useState(false);
@@ -54,8 +54,15 @@ export default function CreateCharacterModal({
             setDescription(character.description);
             setGreetingMessage(character.greeting_message || "");
             setSystemPrompt(character.system_prompt || "");
-            setIsPublic(character.is_public ?? true);
-            setAvatarUrl(character.avatar);
+            // Handle visibility - map from is_public for backwards compatibility
+            if (character.visibility) {
+                setVisibility(character.visibility);
+            } else if (character.is_public !== undefined) {
+                setVisibility(character.is_public ? "PUBLIC" : "PRIVATE");
+            } else {
+                setVisibility("PUBLIC");
+            }
+            setAvatarFileName(character.avatar);
             setAvatarPreview(character.avatar);
 
             // Map tags
@@ -75,8 +82,8 @@ export default function CreateCharacterModal({
             setGreetingMessage("");
             setSystemPrompt("");
             setSelectedTags([]);
-            setIsPublic(true);
-            setAvatarUrl(null);
+            setVisibility("PUBLIC");
+            setAvatarFileName(null);
             setAvatarPreview(null);
         }
     }, [isOpen, mode, character]);
@@ -114,7 +121,7 @@ export default function CreateCharacterModal({
             setAvatarPreview(previewUrl);
 
             const result = await uploadFile(file, token);
-            setAvatarUrl(result.url);
+            setAvatarFileName(result.url);
         } catch (err) {
             setError(err instanceof Error ? err.message : "上传失败");
             setAvatarPreview(null);
@@ -201,9 +208,9 @@ export default function CreateCharacterModal({
                 description: description.trim(),
                 system_prompt: systemPrompt.trim(),
                 greeting_message: greetingMessage.trim() || undefined,
-                avatar_url: avatarUrl || undefined,
+                avatar_file_name: avatarFileName || undefined,
                 tags: selectedTags.length > 0 ? selectedTags.map(tag => tag.label) : undefined,
-                is_public: isPublic,
+                visibility: visibility,
             };
 
             if (mode === 'edit' && character) {
@@ -225,8 +232,8 @@ export default function CreateCharacterModal({
                 setGreetingMessage("");
                 setSystemPrompt("");
                 setSelectedTags([]);
-                setIsPublic(true);
-                setAvatarUrl(null);
+                setVisibility("PUBLIC");
+                setAvatarFileName(null);
                 setAvatarPreview(null);
             }
 
@@ -287,32 +294,7 @@ export default function CreateCharacterModal({
                         </div>
                     )}
 
-// ... (rest of body remains same)
-
-                    {/* Footer - Fixed */}
-                    <div className="flex-none flex gap-3 p-5 border-t border-gray-100 bg-white z-10">
-                        <button
-                            onClick={handleClose}
-                            disabled={isSubmitting}
-                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-                        >
-                            取消
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={isSubmitting || isUploading}
-                            className="flex-1 px-4 py-2.5 bg-[#3964FE] text-white rounded-xl font-medium hover:bg-[#2a4fd6] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    {mode === 'edit' ? "保存中..." : "创建中..."}
-                                </>
-                            ) : (
-                                mode === 'edit' ? "保存修改" : "创建角色"
-                            )}
-                        </button>
-                    </div>
+                    {/* Avatar upload */}
                     <div className="flex flex-col items-center">
                         <div
                             onClick={handleAvatarClick}
@@ -469,22 +451,46 @@ export default function CreateCharacterModal({
                         )}
                     </div>
 
-                    {/* Public toggle */}
-                    <div className="flex items-center justify-between py-2">
-                        <div>
-                            <span className="text-sm font-medium text-gray-700">公开角色</span>
-                            <p className="text-xs text-gray-500 mt-0.5">公开后其他用户可以在市场中看到</p>
-                        </div>
-                        <button
-                            onClick={() => setIsPublic(!isPublic)}
-                            className={`relative w-12 h-6 rounded-full transition-colors ${isPublic ? "bg-blue-600" : "bg-gray-300"
-                                }`}
-                        >
-                            <div
-                                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isPublic ? "translate-x-6" : "translate-x-0"
+                    {/* Visibility selector */}
+                    <div className="py-2">
+                        <span className="text-sm font-medium text-gray-700 block mb-2">可见性</span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setVisibility("PUBLIC")}
+                                className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${visibility === "PUBLIC"
+                                    ? "bg-blue-600 text-white border-blue-600"
+                                    : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
                                     }`}
-                            />
-                        </button>
+                            >
+                                公开
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setVisibility("UNLISTED")}
+                                className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${visibility === "UNLISTED"
+                                    ? "bg-blue-600 text-white border-blue-600"
+                                    : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
+                                    }`}
+                            >
+                                链接可见
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setVisibility("PRIVATE")}
+                                className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${visibility === "PRIVATE"
+                                    ? "bg-blue-600 text-white border-blue-600"
+                                    : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
+                                    }`}
+                            >
+                                私有
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1.5">
+                            {visibility === "PUBLIC" && "将显示在市场中，任何人可访问"}
+                            {visibility === "UNLISTED" && "不在市场中显示，但可通过链接访问"}
+                            {visibility === "PRIVATE" && "仅自己可见，用于编辑草稿"}
+                        </p>
                     </div>
                 </div>
 

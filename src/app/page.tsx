@@ -38,10 +38,10 @@ export default function DiscoverPage() {
         id: c.id,
         name: c.name,
         description: c.description,
-        avatar: c.avatar_url || "/default-avatar.svg",
+        avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
         system_prompt: c.system_prompt,
         tags: c.tags,
-        is_public: c.is_public,
+        visibility: c.visibility,
         creator_id: c.creator_id,
         creator_username: c.creator_id === user?.id ? user?.username : "Creator", // Simplified for now
       }));
@@ -79,10 +79,8 @@ export default function DiscoverPage() {
   };
 
   const handleSelectCharacter = (character: Character) => {
-    // Navigate to chat or detail page in future
-    // For now just console log
-    console.log("Selected character:", character);
-    // router.push(`/chat/${character.id}`); 
+    // Navigate to chat page
+    router.push(`/chat/${character.id}`);
   };
 
   if (isAuthLoading || !user) {

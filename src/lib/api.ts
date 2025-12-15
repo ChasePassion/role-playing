@@ -260,14 +260,17 @@ export async function updateUserProfile(
 
 // --- Character Interfaces ---
 
+// Visibility enum for character access control
+export type CharacterVisibility = "PUBLIC" | "PRIVATE" | "UNLISTED";
+
 export interface CreateCharacterRequest {
   name: string;
   description: string;
   system_prompt: string;
   greeting_message?: string;
-  avatar_url?: string;
+  avatar_file_name?: string;
   tags?: string[];
-  is_public: boolean;
+  visibility?: CharacterVisibility; // Default: PRIVATE
 }
 
 export interface CharacterResponse {
@@ -276,10 +279,12 @@ export interface CharacterResponse {
   description: string;
   system_prompt: string;
   greeting_message?: string;
-  avatar_url?: string;
+  avatar_file_name?: string;
   tags?: string[];
   creator_id: string;
-  is_public: boolean;
+  visibility: CharacterVisibility;
+  identifier?: string;
+  interaction_count: number;
 }
 
 export interface UpdateCharacterRequest {
@@ -287,9 +292,9 @@ export interface UpdateCharacterRequest {
   description?: string;
   system_prompt?: string;
   greeting_message?: string;
-  avatar_url?: string;
+  avatar_file_name?: string;
   tags?: string[];
-  is_public?: boolean;
+  visibility?: CharacterVisibility;
 }
 
 // --- Character API Functions ---

@@ -54,10 +54,10 @@ export default function ProfilePage() {
                 id: c.id,
                 name: c.name,
                 description: c.description,
-                avatar: c.avatar_url || "/default-avatar.svg",
+                avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
                 system_prompt: c.system_prompt,
                 tags: c.tags,
-                is_public: c.is_public,
+                visibility: c.visibility,
                 creator_id: c.creator_id,
                 creator_username: user.username,
             }));

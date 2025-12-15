@@ -154,8 +154,8 @@ Authorization: Bearer <access_token>
 - `limit`: (int) 每页数量, 默认为 20
 
 **权限说明**:
-- 如果 viewer == creator：返回全部角色（含私有）
-- 否则：只返回公开角色
+- 如果 viewer == creator：返回全部角色（含私有、非列表）
+- 否则：只返回公开角色 (`visibility: PUBLIC`)
 - 携带无效 Token → `401 Unauthorized`
 
 **Response** `200 OK`
@@ -165,8 +165,10 @@ Authorization: Bearer <access_token>
     "id": "uuid",
     "name": "Luna",
     "description": "...",
-    "is_public": true,
-    "creator_id": "creator-uuid"
+    "visibility": "PUBLIC",
+    "creator_id": "creator-uuid",
+    "identifier": null,
+    "interaction_count": 0
   }
 ]
 ```
@@ -174,6 +176,18 @@ Authorization: Bearer <access_token>
 ---
 
 ### 角色管理 (Characters)
+
+#### Visibility 可见性枚举
+
+角色支持三种可见性状态：
+
+| 值 | 说明 |
+|----|------|
+| `PUBLIC` | 公开：在市场列表中可见，任何人可访问 |
+| `PRIVATE` | 私有：不在列表中显示，仅创建者可访问 |
+| `UNLISTED` | 非列表：不在市场列表中，但可通过链接直接访问 |
+
+---
 
 #### `POST /v1/characters`
 
@@ -186,15 +200,22 @@ Authorization: Bearer <access_token>
   "description": "温柔体贴的AI助手，擅长倾听和陪伴",
   "system_prompt": "You are Luna, a helpful AI assistant...",
   "greeting_message": "你好！我是Luna，很高兴认识你！",
-  "avatar_url": "/uploads/luna.jpg",
+  "avatar_file_name": "luna.jpg",
   "tags": ["温柔", "助手"],
-  "is_public": true
+  "visibility": "PUBLIC"
 }
 ```
 
 **字段说明**：
-- `description` (必填): 简短描述，显示在角色卡片上
-- `greeting_message` (选填): 开场问候语，聊天时角色主动发送
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `name` | ✅ | 角色名称 (1-10字符) |
+| `description` | ✅ | 简短描述，显示在角色卡片上 (1-35字符) |
+| `system_prompt` | ✅ | 角色系统提示词 |
+| `greeting_message` | ❌ | 开场问候语，聊天时角色主动发送 |
+| `avatar_file_name` | ❌ | 头像文件名 (通过 /v1/upload 上传后获得) |
+| `tags` | ❌ | 角色标签 (最多3个，每个1-4字符) |
+| `visibility` | ❌ | 可见性: `PUBLIC`/`PRIVATE`/`UNLISTED` (默认 PRIVATE) |
 
 **Response** `201 Created`
 ```json
@@ -204,10 +225,12 @@ Authorization: Bearer <access_token>
   "description": "温柔体贴的AI助手，擅长倾听和陪伴",
   "system_prompt": "You are Luna, a helpful AI assistant...",
   "greeting_message": "你好！我是Luna，很高兴认识你！",
-  "avatar_url": "/uploads/luna.jpg",
+  "avatar_file_name": "luna.jpg",
   "tags": ["温柔", "助手"],
   "creator_id": "user-uuid-123",
-  "is_public": true
+  "visibility": "PUBLIC",
+  "identifier": null,
+  "interaction_count": 0
 }
 ```
 
@@ -227,9 +250,11 @@ Authorization: Bearer <access_token>
   {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "Luna",
-    "is_public": true,
+    "visibility": "PUBLIC",
     "creator_id": "user-uuid-123",
-    "tags": ["assistant"]
+    "tags": ["assistant"],
+    "identifier": null,
+    "interaction_count": 42
     // ... 其他完整字段
   }
 ]
@@ -239,7 +264,7 @@ Authorization: Bearer <access_token>
 
 #### `GET /v1/characters/market`
 
-获取**公开市场**的角色列表 (所有人可见，返回 `is_public=true` 的角色)。
+获取**公开市场**的角色列表 (所有人可见，返回 `visibility=PUBLIC` 的角色)。
 
 **Query Parameters**
 - `skip`: (int) 分页偏移, 默认为 0
@@ -257,8 +282,9 @@ Authorization: Bearer <access_token>
 ```
 
 **权限说明**:
-- 公开角色 (`is_public=true`)：任何人可访问
-- 私有角色 (`is_public=false`)：仅创建者可访问（用于编辑回填）
+- 公开角色 (`visibility: PUBLIC`)：任何人可访问
+- 非列表角色 (`visibility: UNLISTED`)：有链接即可访问
+- 私有角色 (`visibility: PRIVATE`)：仅创建者可访问（用于编辑回填）
 - 携带无效 Token → `401 Unauthorized`
 - 私有角色 + 非创建者 → `403 Forbidden`
 
@@ -270,10 +296,12 @@ Authorization: Bearer <access_token>
   "description": "温柔体贴的AI助手",
   "system_prompt": "...",
   "greeting_message": "...",
-  "avatar_url": "/uploads/...",
+  "avatar_file_name": "luna.jpg",
   "tags": ["温柔"],
   "creator_id": "creator-uuid",
-  "is_public": true
+  "visibility": "PUBLIC",
+  "identifier": null,
+  "interaction_count": 100
 }
 ```
 
@@ -293,7 +321,7 @@ Authorization: Bearer <access_token>
   "name": "Luna V2",
   "greeting_message": "Hi there!",
   "tags": ["assistant", "v2"],
-  "is_public": false
+  "visibility": "UNLISTED"
 }
 ```
 
