@@ -79,7 +79,7 @@ export default function AvatarCropper({ file, onConfirm, onCancel }: AvatarCropp
         const imgWidth = imgRef.current.clientWidth;
         const imgHeight = imgRef.current.clientHeight;
 
-        let newRect = { ...startRect };
+        const newRect = { ...startRect };
 
         if (dragType === "move") {
             newRect.x = Math.max(0, Math.min(imgWidth - newRect.width, startRect.x + deltaX));

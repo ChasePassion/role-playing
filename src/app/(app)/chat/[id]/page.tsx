@@ -2,33 +2,27 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
-import { useAuth, isProfileComplete } from "@/lib/auth-context";
-import { getCharacterById, getMarketCharacters, sendChatMessage, CharacterResponse, ChatRequest } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { getCharacterById, sendChatMessage, CharacterResponse, ChatRequest } from "@/lib/api";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage, { Message } from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
-import Sidebar, { Character, SidebarToggleIcon } from "@/components/Sidebar";
+import { Character } from "@/components/Sidebar";
+import { useSidebar } from "../../layout";
 
 export default function ChatPage() {
     const params = useParams();
     const router = useRouter();
-    const { user, isLoading: isAuthLoading } = useAuth();
+    const { user } = useAuth();
+    const { setSelectedCharacterId } = useSidebar();
 
-    const characterId = params.characterId as string;
+    const characterId = params.id as string;
 
     const [character, setCharacter] = useState<Character | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // Sidebar characters state
-    const [sidebarCharacters, setSidebarCharacters] = useState<Character[]>([]);
-
-    // Sidebar state
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [isOverlay, setIsOverlay] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -37,16 +31,15 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Auth check
+    // Set selected character in sidebar
     useEffect(() => {
-        if (!isAuthLoading) {
-            if (!user) {
-                router.push("/login");
-            } else if (!isProfileComplete(user)) {
-                router.push("/setup");
-            }
+        if (characterId) {
+            setSelectedCharacterId(characterId);
         }
-    }, [user, isAuthLoading, router]);
+        return () => {
+            setSelectedCharacterId(null);
+        };
+    }, [characterId, setSelectedCharacterId]);
 
     // Load character
     useEffect(() => {
@@ -94,51 +87,6 @@ export default function ChatPage() {
 
         loadCharacter();
     }, [characterId, user]);
-
-    // Load sidebar characters
-    useEffect(() => {
-        async function loadSidebarCharacters() {
-            if (!user) return;
-            try {
-                const apiCharacters = await getMarketCharacters();
-                const mapped: Character[] = apiCharacters.map((c: CharacterResponse) => ({
-                    id: c.id,
-                    name: c.name,
-                    description: c.description,
-                    avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
-                    system_prompt: c.system_prompt,
-                    tags: c.tags,
-                    visibility: c.visibility,
-                    creator_id: c.creator_id,
-                }));
-                setSidebarCharacters(mapped);
-            } catch (err) {
-                console.error("Failed to load sidebar characters:", err);
-            }
-        }
-        loadSidebarCharacters();
-    }, [user]);
-
-    // Handle resize for sidebar
-    useEffect(() => {
-        const handleResize = () => {
-            if (isSidebarOpen && window.innerWidth < 800) {
-                setIsSidebarOpen(false);
-            }
-        };
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, [isSidebarOpen]);
-
-    const handleToggleSidebar = () => {
-        if (isSidebarOpen) {
-            setIsSidebarOpen(false);
-        } else {
-            const shouldOverlay = window.innerWidth < 800;
-            setIsOverlay(shouldOverlay);
-            setIsSidebarOpen(true);
-        }
-    };
 
     const handleSendMessage = async (content: string) => {
         if (!character || !user || isStreaming) return;
@@ -211,17 +159,9 @@ export default function ChatPage() {
         );
     };
 
-    if (isAuthLoading || !user) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-white">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-        );
-    }
-
     if (isLoading) {
         return (
-            <div className="flex h-screen items-center justify-center bg-white">
+            <div className="flex-1 flex items-center justify-center bg-white">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
         );
@@ -229,7 +169,7 @@ export default function ChatPage() {
 
     if (error || !character) {
         return (
-            <div className="flex h-screen items-center justify-center bg-white">
+            <div className="flex-1 flex items-center justify-center bg-white">
                 <div className="text-center">
                     <p className="text-red-500 mb-4">{error || "Character not found"}</p>
                     <button
@@ -244,67 +184,29 @@ export default function ChatPage() {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden relative">
-            {/* Overlay background */}
-            {isSidebarOpen && isOverlay && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 transition-opacity"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
+        <>
+            {/* Chat Header */}
+            <ChatHeader character={character} />
 
-            {/* Sidebar Wrapper */}
-            <div
-                className={`
-                    shrink-0 transition-all duration-300 ease-in-out h-full overflow-hidden
-                    ${isOverlay ? "fixed left-0 top-0 z-50" : "relative"}
-                    ${isSidebarOpen ? "w-64" : "w-0"}
-                `}
-            >
-                <Sidebar
-                    characters={sidebarCharacters}
-                    selectedCharacterId={character.id}
-                    onSelectCharacter={(c) => router.push(`/chat/${c.id}`)}
-                    onToggle={handleToggleSidebar}
-                />
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                <div className="max-w-3xl mx-auto space-y-6">
+                    {messages.map((message) => (
+                        <ChatMessage
+                            key={message.id}
+                            message={message}
+                            userAvatar={user?.avatar_url || "/default-avatar.svg"}
+                            assistantAvatar={character.avatar}
+                        />
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
             </div>
 
-            {/* Main Chat Area */}
-            <main className="flex-1 flex flex-col bg-white overflow-hidden">
-                {/* Toggle Button */}
-                {!isSidebarOpen && (
-                    <button
-                        onClick={handleToggleSidebar}
-                        className="absolute top-4 left-4 z-30 p-2 rounded-lg hover:bg-gray-100 text-gray-500"
-                        aria-label="Open Sidebar"
-                    >
-                        <SidebarToggleIcon className="w-5 h-5" />
-                    </button>
-                )}
-
-                {/* Chat Header */}
-                <ChatHeader character={character} />
-
-                {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                    <div className="max-w-3xl mx-auto space-y-6">
-                        {messages.map((message) => (
-                            <ChatMessage
-                                key={message.id}
-                                message={message}
-                                userAvatar={user.avatar_url || "/default-avatar.svg"}
-                                assistantAvatar={character.avatar}
-                            />
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
-                </div>
-
-                {/* Input Area */}
-                <div className="border-t border-divider bg-white py-4">
-                    <ChatInput onSend={handleSendMessage} disabled={isStreaming} />
-                </div>
-            </main>
-        </div>
+            {/* Input Area */}
+            <div className="border-t border-divider bg-white py-4">
+                <ChatInput onSend={handleSendMessage} disabled={isStreaming} />
+            </div>
+        </>
     );
 }
