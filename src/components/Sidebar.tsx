@@ -15,7 +15,6 @@ export interface Character {
     system_prompt?: string;
     greeting_message?: string;
     tags?: string[];
-    is_public?: boolean;
     visibility?: CharacterVisibility;
     creator_id?: string;
     creator_username?: string;

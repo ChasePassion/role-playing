@@ -57,8 +57,6 @@ export default function CreateCharacterModal({
             // Handle visibility - map from is_public for backwards compatibility
             if (character.visibility) {
                 setVisibility(character.visibility);
-            } else if (character.is_public !== undefined) {
-                setVisibility(character.is_public ? "PUBLIC" : "PRIVATE");
             } else {
                 setVisibility("PUBLIC");
             }
