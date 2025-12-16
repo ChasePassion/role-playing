@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             try {
-                const userData = await getCurrentUser(token);
+                const userData = await getCurrentUser();
                 setUser(userData);
             } catch (error) {
                 console.error("Failed to load user:", error);
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const response: AuthResponse = await loginWithCode(email, code);
             localStorage.setItem("access_token", response.access_token);
-            const userData = await getCurrentUser(response.access_token);
+            const userData = await getCurrentUser();
             setUser(userData);
         } catch (error) {
             console.error("Login failed:", error);
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!token) return;
 
         try {
-            const userData = await getCurrentUser(token);
+            const userData = await getCurrentUser();
             setUser(userData);
         } catch (error) {
             console.error("Failed to refresh user:", error);

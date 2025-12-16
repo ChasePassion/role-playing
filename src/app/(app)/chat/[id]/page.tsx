@@ -50,8 +50,7 @@ export default function ChatPage() {
             setError(null);
 
             try {
-                const token = localStorage.getItem("access_token");
-                const data: CharacterResponse = await getCharacterById(characterId, token || undefined);
+                const data: CharacterResponse = await getCharacterById(characterId);
 
                 const mappedCharacter: Character = {
                     id: data.id,

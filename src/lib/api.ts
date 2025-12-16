@@ -88,7 +88,12 @@ export async function loginWithCode(email: string, code: string): Promise<AuthRe
 /**
  * Get current user details
  */
-export async function getCurrentUser(token: string): Promise<User> {
+export async function getCurrentUser(): Promise<User> {
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const response = await fetch(`${API_BASE_URL}/v1/auth/me`, {
     method: "GET",
     headers: {
@@ -214,7 +219,12 @@ export interface UpdateProfileRequest {
 /**
  * Upload a file (e.g., avatar image)
  */
-export async function uploadFile(file: File, token: string): Promise<{ url: string }> {
+export async function uploadFile(file: File): Promise<{ url: string }> {
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const formData = new FormData();
   formData.append("file", file);
 
@@ -238,9 +248,13 @@ export async function uploadFile(file: File, token: string): Promise<{ url: stri
  * Update current user's profile (username, avatar)
  */
 export async function updateUserProfile(
-  data: UpdateProfileRequest,
-  token: string
+  data: UpdateProfileRequest
 ): Promise<User> {
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const response = await fetch(`${API_BASE_URL}/v1/users/me`, {
     method: "PUT",
     headers: {
@@ -303,9 +317,13 @@ export interface UpdateCharacterRequest {
  * Create a new character
  */
 export async function createCharacter(
-  data: CreateCharacterRequest,
-  token: string
+  data: CreateCharacterRequest
 ): Promise<CharacterResponse> {
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const response = await fetch(`${API_BASE_URL}/v1/characters`, {
     method: "POST",
     headers: {
@@ -353,10 +371,10 @@ export async function getMarketCharacters(
  */
 export async function getUserCharacters(
   creatorId: string,
-  token?: string,
   skip: number = 0,
   limit: number = 20
 ): Promise<CharacterResponse[]> {
+  const token = localStorage.getItem("access_token");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -385,9 +403,9 @@ export async function getUserCharacters(
  * Get a single character by ID
  */
 export async function getCharacterById(
-  id: string,
-  token?: string
+  id: string
 ): Promise<CharacterResponse> {
+  const token = localStorage.getItem("access_token");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -414,9 +432,13 @@ export async function getCharacterById(
  */
 export async function updateCharacter(
   id: string,
-  data: UpdateCharacterRequest,
-  token: string
+  data: UpdateCharacterRequest
 ): Promise<CharacterResponse> {
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const response = await fetch(`${API_BASE_URL}/v1/characters/${id}`, {
     method: "PUT",
     headers: {
@@ -438,9 +460,13 @@ export async function updateCharacter(
  * Delete a character
  */
 export async function deleteCharacter(
-  id: string,
-  token: string
+  id: string
 ): Promise<void> {
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const response = await fetch(`${API_BASE_URL}/v1/characters/${id}`, {
     method: "DELETE",
     headers: {

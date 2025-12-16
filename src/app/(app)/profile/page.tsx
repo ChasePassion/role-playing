@@ -38,7 +38,7 @@ export default function ProfilePage() {
             const token = localStorage.getItem("access_token");
             if (!token) return;
 
-            const apiCharacters = await getUserCharacters(user.id, token);
+            const apiCharacters = await getUserCharacters(user.id);
             const mapped: Character[] = apiCharacters.map((c: CharacterResponse) => ({
                 id: c.id,
                 name: c.name,
@@ -81,7 +81,7 @@ export default function ProfilePage() {
             const token = localStorage.getItem("access_token");
             if (!token) throw new Error("No token");
 
-            await deleteCharacter(characterToDelete.id, token);
+            await deleteCharacter(characterToDelete.id);
             await loadUserCharacters(); // Refresh list
             await refreshSidebarCharacters(); // Refresh sidebar
             setIsDeleteDialogOpen(false);

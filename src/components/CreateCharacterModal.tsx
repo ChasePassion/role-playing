@@ -118,7 +118,7 @@ export default function CreateCharacterModal({
             const previewUrl = URL.createObjectURL(croppedBlob);
             setAvatarPreview(previewUrl);
 
-            const result = await uploadFile(file, token);
+            const result = await uploadFile(file);
             setAvatarFileName(result.url);
         } catch (err) {
             setError(err instanceof Error ? err.message : "上传失败");
@@ -215,12 +215,12 @@ export default function CreateCharacterModal({
                 // Update existing character
                 const updateData: UpdateCharacterRequest = baseData;
                 console.log('📤 Updating character with data:', updateData);
-                await updateCharacter(character.id, updateData, token);
+                await updateCharacter(character.id, updateData);
             } else {
                 // Create new character
                 const createData: CreateCharacterRequest = baseData;
                 console.log('📤 Creating character with data:', createData);
-                await createCharacter(createData, token);
+                await createCharacter(createData);
             }
 
             // Reset form

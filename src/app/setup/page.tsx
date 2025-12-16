@@ -135,18 +135,15 @@ export default function SetupPage() {
 
             // Upload avatar if new file selected
             if (avatarFile) {
-                const uploadResult = await uploadFile(avatarFile, token);
+                const uploadResult = await uploadFile(avatarFile);
                 avatarUrl = uploadResult.url;
             }
 
             // Update profile
-            await updateUserProfile(
-                {
-                    username,
-                    avatar_url: avatarUrl,
-                },
-                token
-            );
+            await updateUserProfile({
+                username,
+                avatar_url: avatarUrl,
+            });
 
             // Refresh user data
             await refreshUser();

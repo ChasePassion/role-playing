@@ -41,7 +41,7 @@ export default function LoginPage() {
             // Check if profile is complete to decide redirect destination
             const token = localStorage.getItem("access_token");
             if (token) {
-                const user = await getCurrentUser(token);
+                const user = await getCurrentUser();
                 if (isProfileComplete(user)) {
                     router.push("/");
                 } else {
