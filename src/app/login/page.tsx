@@ -39,16 +39,11 @@ export default function LoginPage() {
         try {
             await login(email, code);
             // Check if profile is complete to decide redirect destination
-            const token = localStorage.getItem("access_token");
-            if (token) {
-                const user = await getCurrentUser();
-                if (isProfileComplete(user)) {
-                    router.push("/");
-                } else {
-                    router.push("/setup");
-                }
-            } else {
+            const user = await getCurrentUser();
+            if (isProfileComplete(user)) {
                 router.push("/");
+            } else {
+                router.push("/setup");
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : "验证码无效";

@@ -13,7 +13,7 @@ import { useSidebar } from "../../layout";
 export default function ChatPage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, isAuthed } = useAuth();
     const { setSelectedCharacterId } = useSidebar();
 
     const characterId = params.id as string;
@@ -44,7 +44,7 @@ export default function ChatPage() {
     // Load character
     useEffect(() => {
         async function loadCharacter() {
-            if (!characterId || !user) return;
+            if (!characterId || !isAuthed) return;
 
             setIsLoading(true);
             setError(null);
@@ -85,7 +85,7 @@ export default function ChatPage() {
         }
 
         loadCharacter();
-    }, [characterId, user]);
+    }, [characterId, isAuthed]);
 
     const handleSendMessage = async (content: string) => {
         if (!character || !user || isStreaming) return;

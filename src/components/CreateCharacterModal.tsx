@@ -2,6 +2,7 @@
 
 import { useState, useRef, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
+import { useAuth } from "@/lib/auth-context";
 import { createCharacter, updateCharacter, uploadFile, CreateCharacterRequest, UpdateCharacterRequest, CharacterVisibility } from "@/lib/api";
 import AvatarCropper from "./AvatarCropper";
 import type { Character } from "./Sidebar";
@@ -31,6 +32,7 @@ export default function CreateCharacterModal({
     character,
     mode = 'create'
 }: CreateCharacterModalProps) {
+    const { isAuthed } = useAuth();
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [greetingMessage, setGreetingMessage] = useState("");
@@ -108,8 +110,7 @@ export default function CreateCharacterModal({
         setError(null);
 
         try {
-            const token = localStorage.getItem("access_token");
-            if (!token) throw new Error("请先登录");
+            if (!isAuthed) throw new Error("请先登录");
 
             // Convert blob to file
             const file = new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" });
@@ -197,8 +198,7 @@ export default function CreateCharacterModal({
         setError(null);
 
         try {
-            const token = localStorage.getItem("access_token");
-            if (!token) throw new Error("请先登录");
+            if (!isAuthed) throw new Error("请先登录");
 
             // Prepare base data
             const baseData = {

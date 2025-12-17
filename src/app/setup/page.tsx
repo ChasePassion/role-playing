@@ -8,7 +8,7 @@ import { uploadFile, updateUserProfile } from "@/lib/api";
 import AvatarCropper from "@/components/AvatarCropper";
 
 export default function SetupPage() {
-    const { user, isLoading: isAuthLoading, refreshUser } = useAuth();
+    const { user, isAuthed, isLoading: isAuthLoading, refreshUser } = useAuth();
     const router = useRouter();
 
     const [username, setUsername] = useState("");
@@ -21,10 +21,10 @@ export default function SetupPage() {
 
     // Redirect if not authenticated
     useEffect(() => {
-        if (!isAuthLoading && !user) {
+        if (!isAuthLoading && !isAuthed) {
             router.push("/login");
         }
-    }, [user, isAuthLoading, router]);
+    }, [isAuthed, isAuthLoading, router]);
 
     // Redirect if profile already complete
     useEffect(() => {
@@ -125,8 +125,7 @@ export default function SetupPage() {
         setIsSubmitting(true);
 
         try {
-            const token = localStorage.getItem("access_token");
-            if (!token) {
+            if (!isAuthed) {
                 router.push("/login");
                 return;
             }

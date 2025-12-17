@@ -11,7 +11,7 @@ import { useSidebar } from "../layout";
 import { Character } from "@/components/Sidebar";
 
 export default function ProfilePage() {
-    const { user } = useAuth();
+    const { user, isAuthed } = useAuth();
     const { setSelectedCharacterId, refreshSidebarCharacters } = useSidebar();
 
     const [characters, setCharacters] = useState<Character[]>([]);
@@ -33,11 +33,8 @@ export default function ProfilePage() {
 
     // Load User Characters
     const loadUserCharacters = useCallback(async () => {
-        if (!user) return;
+        if (!user || !isAuthed) return;
         try {
-            const token = localStorage.getItem("access_token");
-            if (!token) return;
-
             const apiCharacters = await getUserCharacters(user.id);
             const mapped: Character[] = apiCharacters.map((c: CharacterResponse) => ({
                 id: c.id,
@@ -54,7 +51,7 @@ export default function ProfilePage() {
         } catch (err) {
             console.error("Failed to load user characters:", err);
         }
-    }, [user]);
+    }, [user, isAuthed]);
 
     useEffect(() => {
         if (user) {
@@ -74,13 +71,10 @@ export default function ProfilePage() {
     };
 
     const handleConfirmDelete = async () => {
-        if (!characterToDelete || !user) return;
+        if (!characterToDelete || !user || !isAuthed) return;
 
         setIsDeleting(true);
         try {
-            const token = localStorage.getItem("access_token");
-            if (!token) throw new Error("No token");
-
             await deleteCharacter(characterToDelete.id);
             await loadUserCharacters(); // Refresh list
             await refreshSidebarCharacters(); // Refresh sidebar
