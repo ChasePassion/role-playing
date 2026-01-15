@@ -170,7 +170,7 @@ export class ApiService {
                 headers["Authorization"] = `Bearer ${token}`;
             }
 
-            const response = await fetch(`http://localhost:8000/v1/chat`, {
+            const response = await fetch(`/v1/chat`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(request),
