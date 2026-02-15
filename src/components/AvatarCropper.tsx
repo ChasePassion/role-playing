@@ -214,6 +214,8 @@ export default function AvatarCropper({ file, onConfirm, onCancel }: AvatarCropp
                     className="flex-1 overflow-hidden bg-gray-900 relative flex items-center justify-center select-none"
                     style={{ minHeight: "300px", touchAction: "none" }}
                 >
+                    {/* Native img is required for direct canvas cropping and pointer calculations. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         ref={imgRef}
                         src={imageSrc}
