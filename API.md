@@ -151,7 +151,8 @@ Authorization: Bearer <access_token>
 
 **Query Parameters**
 - `skip`: (int) 分页偏移, 默认为 0
-- `limit`: (int) 每页数量, 默认为 20
+- `limit`: (int) 每页数量, 默认为 20 (最大 100)
+
 
 **权限说明**:
 - 如果 viewer == creator：返回全部角色（含私有、非列表）
@@ -250,15 +251,19 @@ Authorization: Bearer <access_token>
   {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "Luna",
-    "visibility": "PUBLIC",
-    "creator_id": "user-uuid-123",
+    "description": "温柔体贴的AI助手，擅长倾听和陪伴",
+    "system_prompt": "You are Luna, a helpful AI assistant...",
+    "greeting_message": "你好！我是Luna，很高兴认识你！",
+    "avatar_file_name": "luna.jpg",
     "tags": ["assistant"],
+    "creator_id": "user-uuid-123",
+    "visibility": "PUBLIC",
     "identifier": null,
     "interaction_count": 42
-    // ... 其他完整字段
   }
 ]
 ```
+
 
 ---
 
@@ -268,7 +273,8 @@ Authorization: Bearer <access_token>
 
 **Query Parameters**
 - `skip`: (int) 分页偏移, 默认为 0
-- `limit`: (int) 每页数量, 默认为 20
+- `limit`: (int) 每页数量, 默认为 20 (最大 100)
+
 
 ---
 
@@ -319,13 +325,17 @@ Authorization: Bearer <access_token>
 ```json
 {
   "name": "Luna V2",
+  "description": "温柔体贴的AI助手",
+  "system_prompt": "You are Luna, a helpful AI assistant...",
   "greeting_message": "Hi there!",
+  "avatar_file_name": "luna.jpg",
   "tags": ["assistant", "v2"],
   "visibility": "UNLISTED"
 }
 ```
 
 **Response** `200 OK` (返回更新后的完整对象)
+
 
 ---
 
@@ -375,6 +385,19 @@ Content-Type: multipart/form-data
 }
 ```
 
+#### `GET /v1/health`
+
+检查服务状态（API 前缀版本）。
+
+**Response** `200 OK`
+```json
+{
+  "status": "ok",
+  "version": "1.0.0"
+}
+```
+
+
 ---
 
 ### 对话 (Planned / Legacy)
@@ -388,15 +411,17 @@ Content-Type: multipart/form-data
 **Request Body**
 ```json
 {
-  "user_id": "string",      // 必填：用户标识
-  "chat_id": "string",      // 必填：对话标识
-  "message": "string",      // 必填：用户消息
-  "history": [              // 可选：历史消息
+  "user_id": "string",       // Required: user identifier
+  "character_id": "string",  // Required: character identifier
+  "chat_id": "string",       // Required: conversation identifier
+  "message": "string",       // Required: user message
+  "history": [                // Optional: message history
     {"role": "user", "content": "..."},
     {"role": "assistant", "content": "..."}
   ]
 }
 ```
+
 
 **Response** `200 OK` (text/event-stream)
 
@@ -419,10 +444,11 @@ data: {"type": "done", "full_content": "你好，有什么可以帮您的吗？"
 **Request Body**
 ```json
 {
-  "user_id": "string",        // 必填：用户标识
-  "chat_id": "string",        // 必填：对话标识
-  "user_text": "string",      // 必填：用户输入
-  "assistant_text": "string"  // 必填：助手回复
+  "user_id": "string",        // Required: user identifier
+  "character_id": "string",   // Required: character identifier
+  "chat_id": "string",        // Required: conversation identifier
+  "user_text": "string",      // Required: user input
+  "assistant_text": "string"  // Required: assistant response
 }
 ```
 
@@ -433,6 +459,103 @@ data: {"type": "done", "full_content": "你好，有什么可以帮您的吗？"
   "success": true
 }
 ```
+
+---
+
+#### `POST /v1/memories/search`
+
+搜索记忆（情景+语义）。
+
+**Request Body**
+```json
+{
+  "user_id": "string",        // Required: user identifier
+  "character_id": "string",   // Required: character identifier
+  "query": "string"           // Required: search query
+}
+```
+
+**Response** `200 OK`
+```json
+{
+  "episodic": [
+    {
+      "id": 1,
+      "user_id": "string",
+      "character_id": "string",
+      "memory_type": "episodic",
+      "ts": 1710000000,
+      "chat_id": "string",
+      "text": "...",
+      "group_id": -1
+    }
+  ],
+  "semantic": []
+}
+```
+
+---
+
+#### `DELETE /v1/memories/{memory_id}`
+
+删除单条记忆。
+
+**Query Parameters**
+- `user_id`: string (Required)
+- `character_id`: string (Required)
+
+**Response** `200 OK`
+```json
+{
+  "success": true,
+  "deleted_count": 1
+}
+```
+
+---
+
+#### `DELETE /v1/memories/reset`
+
+删除指定用户与角色的全部记忆。
+
+**Request Body**
+```json
+{
+  "user_id": "string",        // Required: user identifier
+  "character_id": "string"    // Required: character identifier
+}
+```
+
+**Response** `200 OK`
+```json
+{
+  "success": true,
+  "deleted_count": 10
+}
+```
+
+---
+
+#### `POST /v1/memories/consolidate`
+
+合并情景记忆生成语义记忆。
+
+**Request Body**
+```json
+{
+  "user_id": "string",        // Optional: user identifier
+  "character_id": "string"    // Required: character identifier
+}
+```
+
+**Response** `200 OK`
+```json
+{
+  "memories_processed": 10,
+  "semantic_created": 2
+}
+```
+
 
 ---
 

@@ -115,10 +115,12 @@ export default function ChatPage() {
 
         const request: ChatRequest = {
             user_id: user.id,
+            character_id: characterId,
             chat_id: characterId, // Using characterId as chat_id for now
             message: content,
             history,
         };
+
 
         await sendChatMessage(
             request,

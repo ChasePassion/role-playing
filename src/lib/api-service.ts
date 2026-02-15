@@ -9,6 +9,7 @@ export interface ChatMessage {
 
 export interface ChatRequest {
     user_id: string;
+    character_id: string;
     chat_id: string;
     message: string;
     history?: ChatMessage[];
@@ -16,6 +17,7 @@ export interface ChatRequest {
 
 export interface MemoryManageRequest {
     user_id: string;
+    character_id: string;
     chat_id: string;
     user_text: string;
     assistant_text: string;
@@ -23,8 +25,10 @@ export interface MemoryManageRequest {
 
 export interface MemorySearchRequest {
     user_id: string;
+    character_id: string;
     query: string;
 }
+
 
 export interface User {
     id: string;
