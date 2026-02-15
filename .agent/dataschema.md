@@ -342,3 +342,5 @@ turns
 - 在 CI 增加 schema drift 检查：
   - ORM 与真实 PG schema 对比
   - Milvus collection fields/index 配置校验
+
+文档更新时间：2026-02-15 15:48:28

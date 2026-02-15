@@ -442,3 +442,5 @@ data: {"type":"error","code":"chat_stream_failed","message":"chat stream failed:
 | `external_error` | 502 | 通用上游依赖错误 |
 | `external_timeout` | 504 | 上游依赖超时 |
 | `internal_error` | 500 | 未知内部错误 |
+
+文档更新时间：2026-02-15 15:48:28
