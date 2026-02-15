@@ -1,7 +1,6 @@
 import { httpClient } from "./http-client";
-import { tokenStore, UnauthorizedError } from "./token-store";
+import { ApiError, tokenStore, UnauthorizedError } from "./token-store";
 
-// Type definitions (moved from api.ts)
 export interface ChatMessage {
     role: "user" | "assistant";
     content: string;
@@ -28,7 +27,6 @@ export interface MemorySearchRequest {
     character_id: string;
     query: string;
 }
-
 
 export interface User {
     id: string;
@@ -94,8 +92,25 @@ export interface UpdateCharacterRequest {
     visibility?: CharacterVisibility;
 }
 
+interface StreamChunkEvent {
+    type: "chunk";
+    content: string;
+}
+
+interface StreamDoneEvent {
+    type: "done";
+    full_content: string;
+}
+
+interface StreamErrorEvent {
+    type: "error";
+    code?: string;
+    message?: string;
+}
+
+type StreamEvent = StreamChunkEvent | StreamDoneEvent | StreamErrorEvent;
+
 export class ApiService {
-    // 认证相关
     async sendVerificationCode(email: string): Promise<void> {
         await httpClient.post("/v1/auth/send_code", { email });
     }
@@ -111,25 +126,25 @@ export class ApiService {
     }
 
     async getCurrentUser(): Promise<User> {
-        return await httpClient.get<User>("/v1/auth/me");
+        return httpClient.get<User>("/v1/auth/me");
     }
 
-    // 用户相关
     async uploadFile(file: File): Promise<{ url: string }> {
-        return await httpClient.upload("/v1/upload", file);
+        return httpClient.upload<{ url: string }>("/v1/upload", file);
     }
 
     async updateUserProfile(data: UpdateProfileRequest): Promise<User> {
-        return await httpClient.put<User>("/v1/users/me", data);
+        return httpClient.put<User>("/v1/users/me", data);
     }
 
-    // 角色相关
     async createCharacter(data: CreateCharacterRequest): Promise<CharacterResponse> {
-        return await httpClient.post<CharacterResponse>("/v1/characters", data);
+        return httpClient.post<CharacterResponse>("/v1/characters", data);
     }
 
     async getMarketCharacters(skip = 0, limit = 20): Promise<CharacterResponse[]> {
-        return httpClient.get<CharacterResponse[]>(`/v1/characters/market?skip=${skip}&limit=${limit}`);
+        return httpClient.get<CharacterResponse[]>(
+            `/v1/characters/market?skip=${skip}&limit=${limit}`
+        );
     }
 
     async getCharacterById(id: string): Promise<CharacterResponse> {
@@ -150,14 +165,13 @@ export class ApiService {
         id: string,
         data: UpdateCharacterRequest
     ): Promise<CharacterResponse> {
-        return await httpClient.put<CharacterResponse>(`/v1/characters/${id}`, data);
+        return httpClient.put<CharacterResponse>(`/v1/characters/${id}`, data);
     }
 
     async deleteCharacter(id: string): Promise<void> {
         await httpClient.delete(`/v1/characters/${id}`);
     }
 
-    // 聊天相关
     async sendChatMessage(
         request: ChatRequest,
         onChunk: (content: string) => void,
@@ -181,12 +195,19 @@ export class ApiService {
             });
 
             if (!response.ok) {
+                const errorData: { code?: string; message?: string; detail?: string } =
+                    await response.json().catch(() => ({}));
+                const errorMessage =
+                    errorData.message ||
+                    errorData.detail ||
+                    `HTTP error! status: ${response.status}`;
+
                 if (response.status === 401) {
-                    // 统一处理 401：先清 token，再抛错误
                     tokenStore.clearToken();
-                    throw new UnauthorizedError();
+                    throw new UnauthorizedError(errorMessage);
                 }
-                throw new Error(`HTTP error! status: ${response.status}`);
+
+                throw new ApiError(response.status, errorData.code, errorMessage);
             }
 
             const reader = response.body?.getReader();
@@ -195,46 +216,65 @@ export class ApiService {
             }
 
             const decoder = new TextDecoder();
+            let pending = "";
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const text = decoder.decode(value);
-                const lines = text.split("\n");
+                pending += decoder.decode(value, { stream: true });
+                const lines = pending.split("\n");
+                pending = lines.pop() ?? "";
 
                 for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-                            if (data.type === "chunk") {
-                                onChunk(data.content);
-                            } else if (data.type === "done") {
-                                onDone(data.full_content);
-                            } else if (data.type === "error") {
-                                onError(data.content || "Unknown error");
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+
+                    const payload = trimmed.slice(5).trim();
+                    if (!payload) continue;
+
+                    try {
+                        const data = JSON.parse(payload) as StreamEvent;
+                        if (data.type === "chunk") {
+                            onChunk(data.content);
+                        } else if (data.type === "done") {
+                            onDone(data.full_content);
+                        } else if (data.type === "error") {
+                            if (data.code && data.message) {
+                                onError(`${data.code}: ${data.message}`);
+                            } else {
+                                onError(data.message || "Unknown error");
                             }
-                        } catch {
-                            // Ignore JSON parse errors for incomplete chunks
                         }
+                    } catch {
+                        // Ignore malformed stream rows.
                     }
                 }
             }
         } catch (error) {
             if (error instanceof UnauthorizedError) {
                 onError("Authentication required");
-            } else {
-                onError(error instanceof Error ? error.message : "Unknown error");
+                return;
             }
+
+            if (error instanceof ApiError) {
+                onError(error.detail || `API error: ${error.status}`);
+                return;
+            }
+
+            onError(error instanceof Error ? error.message : "Unknown error");
         }
     }
 
-    // 记忆相关
-    async manageMemories(request: MemoryManageRequest): Promise<{ added_ids: number[]; success: boolean }> {
+    async manageMemories(
+        request: MemoryManageRequest
+    ): Promise<{ added_ids: number[]; success: boolean }> {
         return httpClient.post("/v1/memories/manage", request);
     }
 
-    async searchMemories(request: MemorySearchRequest): Promise<{ episodic: unknown[]; semantic: unknown[] }> {
+    async searchMemories(
+        request: MemorySearchRequest
+    ): Promise<{ episodic: unknown[]; semantic: unknown[] }> {
         return httpClient.post("/v1/memories/search", request);
     }
 }
