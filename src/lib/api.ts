@@ -20,6 +20,10 @@ export const deleteCharacter = apiService.deleteCharacter.bind(apiService);
 
 // 聊天相关
 export const sendChatMessage = apiService.sendChatMessage.bind(apiService);
+export const getRecentChat = apiService.getRecentChat.bind(apiService);
+export const createChatInstance = apiService.createChat.bind(apiService);
+export const getChatTurns = apiService.getChatTurns.bind(apiService);
+export const streamChatMessage = apiService.streamChatMessage.bind(apiService);
 
 // 记忆相关
 export const manageMemories = apiService.manageMemories.bind(apiService);
@@ -32,6 +36,13 @@ export type {
   AuthResponse,
   ChatMessage,
   ChatRequest,
+  ChatDetailResponse,
+  ChatCreateRequest,
+  ChatCreateResponse,
+  TurnsPageResponse,
+  ChatStreamRequest,
+  ChatResponse,
+  TurnResponse,
   MemoryManageRequest,
   MemorySearchRequest,
   UpdateProfileRequest,

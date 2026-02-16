@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getCharacterById, sendChatMessage, CharacterResponse, ChatRequest } from "@/lib/api";
+import { getChatTurns, streamChatMessage, TurnsPageResponse } from "@/lib/api";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage, { Message } from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
@@ -16,7 +16,7 @@ export default function ChatPage() {
     const { user, isAuthed } = useAuth();
     const { setSelectedCharacterId } = useSidebar();
 
-    const characterId = params.id as string;
+    const chatId = params.id as string;
 
     const [character, setCharacter] = useState<Character | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -31,133 +31,114 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Set selected character in sidebar
+    // Load chat (character + turns)
     useEffect(() => {
-        if (characterId) {
-            setSelectedCharacterId(characterId);
-        }
-        return () => {
-            setSelectedCharacterId(null);
-        };
-    }, [characterId, setSelectedCharacterId]);
-
-    // Load character
-    useEffect(() => {
-        async function loadCharacter() {
-            if (!characterId || !isAuthed) return;
+        async function loadChat() {
+            if (!chatId || !isAuthed) return;
 
             setIsLoading(true);
             setError(null);
 
             try {
-                const data: CharacterResponse = await getCharacterById(characterId);
+                const data: TurnsPageResponse = await getChatTurns(chatId, { limit: 50 });
 
+                const c = data.character;
                 const mappedCharacter: Character = {
-                    id: data.id,
-                    name: data.name,
-                    description: data.description,
-                    avatar: data.avatar_file_name ? `${data.avatar_file_name}` : "/default-avatar.svg",
-                    system_prompt: data.system_prompt,
-                    greeting_message: data.greeting_message,
-                    tags: data.tags,
-                    visibility: data.visibility,
-                    creator_id: data.creator_id,
+                    id: c.id,
+                    name: c.name,
+                    description: c.description,
+                    avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
+                    greeting_message: c.greeting_message,
+                    tags: c.tags,
+                    visibility: c.visibility,
+                    creator_id: c.creator_id ?? undefined,
                 };
 
                 setCharacter(mappedCharacter);
+                setSelectedCharacterId(c.id);
 
-                // Add greeting message if exists
-                if (data.greeting_message) {
-                    setMessages([
-                        {
-                            id: "greeting",
-                            role: "assistant",
-                            content: data.greeting_message,
-                        },
-                    ]);
-                }
+                const mappedMessages: Message[] = data.turns
+                    .filter((t) => t.author_type === "USER" || t.author_type === "CHARACTER")
+                    .filter((t) => t.primary_candidate.is_final || t.primary_candidate.content.trim() !== "")
+                    .map((t) => ({
+                        id: t.id,
+                        role: t.author_type === "USER" ? "user" : "assistant",
+                        content: t.primary_candidate.content,
+                    }));
+
+                setMessages(mappedMessages);
             } catch (err) {
-                console.error("Failed to load character:", err);
-                setError(err instanceof Error ? err.message : "Failed to load character");
+                console.error("Failed to load chat:", err);
+                setError(err instanceof Error ? err.message : "Failed to load chat");
             } finally {
                 setIsLoading(false);
             }
         }
 
-        loadCharacter();
-    }, [characterId, isAuthed]);
+        loadChat();
+
+        return () => {
+            setSelectedCharacterId(null);
+        };
+    }, [chatId, isAuthed, setSelectedCharacterId]);
 
     const handleSendMessage = async (content: string) => {
         if (!character || !user || isStreaming) return;
 
+        const tempUserId = `user-${Date.now()}`;
+        const tempAssistantId = `assistant-${Date.now()}`;
+
         // Add user message
         const userMessage: Message = {
-            id: `user-${Date.now()}`,
+            id: tempUserId,
             role: "user",
             content,
         };
         setMessages((prev) => [...prev, userMessage]);
 
         // Prepare streaming assistant message
-        const assistantMessageId = `assistant-${Date.now()}`;
         setMessages((prev) => [
             ...prev,
-            { id: assistantMessageId, role: "assistant", content: "" },
+            { id: tempAssistantId, role: "assistant", content: "" },
         ]);
 
         setIsStreaming(true);
 
-        // Build history for API
-        const history = messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-        }));
-
-        const request: ChatRequest = {
-            user_id: user.id,
-            character_id: characterId,
-            chat_id: characterId, // Using characterId as chat_id for now
-            message: content,
-            history,
-        };
-
-
-        await sendChatMessage(
-            request,
-            // onChunk - update assistant message incrementally
-            (chunk) => {
+        await streamChatMessage(chatId, { content }, {
+            onMeta: () => {
+                // Server turn IDs are available here if/when we want to persist optimistic UI anchors.
+            },
+            onChunk: (chunk) => {
                 setMessages((prev) =>
                     prev.map((m) =>
-                        m.id === assistantMessageId
+                        m.id === tempAssistantId
                             ? { ...m, content: m.content + chunk }
                             : m
                     )
                 );
             },
-            // onDone - finalize message
-            (fullContent) => {
+            onDone: (fullContent) => {
                 setMessages((prev) =>
                     prev.map((m) =>
-                        m.id === assistantMessageId
+                        m.id === tempAssistantId
                             ? { ...m, content: fullContent }
                             : m
                     )
                 );
                 setIsStreaming(false);
             },
-            // onError
-            (error) => {
+            onError: (error) => {
                 console.error("Chat error:", error);
                 setMessages((prev) =>
                     prev.map((m) =>
-                        m.id === assistantMessageId
+                        m.id === tempAssistantId
                             ? { ...m, content: `Error: ${error}` }
                             : m
                     )
                 );
                 setIsStreaming(false);
             }
-        );
+        });
     };
 
     if (isLoading) {
@@ -172,7 +153,7 @@ export default function ChatPage() {
         return (
             <div className="flex-1 flex items-center justify-center bg-white">
                 <div className="text-center">
-                    <p className="text-red-500 mb-4">{error || "Character not found"}</p>
+                    <p className="text-red-500 mb-4">{error || "Chat not found"}</p>
                     <button
                         onClick={() => router.push("/")}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

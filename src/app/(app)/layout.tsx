@@ -3,7 +3,7 @@
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, isProfileComplete } from "@/lib/auth-context";
-import { getMarketCharacters, CharacterResponse } from "@/lib/api";
+import { getMarketCharacters, CharacterResponse, getRecentChat, createChatInstance } from "@/lib/api";
 import Sidebar, { Character, SidebarToggleIcon } from "@/components/Sidebar";
 
 // Context for sidebar state
@@ -97,8 +97,16 @@ export default function AppLayout({
         }
     };
 
-    const handleSelectCharacter = (character: Character) => {
-        router.push(`/chat/${character.id}`);
+    const handleSelectCharacter = async (character: Character) => {
+        try {
+            const recent = await getRecentChat(character.id);
+            const chatId =
+                recent?.chat?.id ||
+                (await createChatInstance({ character_id: character.id })).chat.id;
+            router.push(`/chat/${chatId}`);
+        } catch (err) {
+            console.error("Failed to open chat:", err);
+        }
     };
 
     // Show loading state while checking auth

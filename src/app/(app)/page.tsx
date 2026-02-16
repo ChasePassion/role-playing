@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import CharacterCard from "@/components/CharacterCard";
 import CreateCharacterModal from "@/components/CreateCharacterModal";
-import { getMarketCharacters, CharacterResponse } from "@/lib/api";
+import { getMarketCharacters, CharacterResponse, getRecentChat, createChatInstance } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useSidebar } from "./layout";
 import { Character } from "@/components/Sidebar";
@@ -50,9 +50,16 @@ export default function DiscoverPage() {
         }
     }, [user, loadCharacters]);
 
-    const handleSelectCharacter = (character: Character) => {
-        // Navigate to chat page
-        router.push(`/chat/${character.id}`);
+    const handleSelectCharacter = async (character: Character) => {
+        try {
+            const recent = await getRecentChat(character.id);
+            const chatId =
+                recent?.chat?.id ||
+                (await createChatInstance({ character_id: character.id })).chat.id;
+            router.push(`/chat/${chatId}`);
+        } catch (err) {
+            console.error("Failed to open chat:", err);
+        }
     };
 
     return (

@@ -57,6 +57,11 @@ export interface UpdateProfileRequest {
 }
 
 export type CharacterVisibility = "PUBLIC" | "PRIVATE" | "UNLISTED";
+export type ChatVisibility = CharacterVisibility;
+export type ChatState = "ACTIVE" | "ARCHIVED";
+export type ChatType = "ONE_ON_ONE" | "ROOM";
+export type TurnAuthorType = "USER" | "CHARACTER" | "SYSTEM";
+export type TurnState = "OK" | "FILTERED" | "DELETED" | "ERROR";
 
 export interface CreateCharacterRequest {
     name: string;
@@ -80,6 +85,82 @@ export interface CharacterResponse {
     visibility: CharacterVisibility;
     identifier?: string;
     interaction_count: number;
+}
+
+export interface CharacterBrief {
+    id: string;
+    name: string;
+    description: string;
+    greeting_message?: string;
+    avatar_file_name?: string;
+    tags?: string[];
+    visibility: CharacterVisibility;
+    creator_id?: string | null;
+    interaction_count: number;
+}
+
+export interface ChatResponse {
+    id: string;
+    user_id: string;
+    character_id: string;
+    type: ChatType;
+    state: ChatState;
+    visibility: ChatVisibility;
+    last_turn_at?: string | null;
+    last_turn_id?: string | null;
+    last_read_turn_no?: number | null;
+    created_at: string;
+    updated_at: string;
+    archived_at?: string | null;
+    meta?: Record<string, unknown> | null;
+}
+
+export interface CandidateResponse {
+    id: string;
+    candidate_no: number;
+    content: string;
+    model_type?: string | null;
+    is_final: boolean;
+    rank?: number | null;
+    created_at: string;
+    extra?: Record<string, unknown> | null;
+}
+
+export interface TurnResponse {
+    id: string;
+    turn_no: number;
+    author_type: TurnAuthorType;
+    state: TurnState;
+    is_proactive: boolean;
+    primary_candidate: CandidateResponse;
+}
+
+export interface ChatDetailResponse {
+    chat: ChatResponse;
+    character: CharacterBrief;
+}
+
+export interface ChatCreateRequest {
+    character_id: string;
+    meta?: Record<string, unknown>;
+}
+
+export interface ChatCreateResponse {
+    chat: ChatResponse;
+    character: CharacterBrief;
+    initial_turns: TurnResponse[];
+}
+
+export interface TurnsPageResponse {
+    chat: ChatResponse;
+    character: CharacterBrief;
+    turns: TurnResponse[];
+    next_before_turn_no?: number | null;
+    has_more: boolean;
+}
+
+export interface ChatStreamRequest {
+    content: string;
 }
 
 export interface UpdateCharacterRequest {
@@ -109,6 +190,36 @@ interface StreamErrorEvent {
 }
 
 type StreamEvent = StreamChunkEvent | StreamDoneEvent | StreamErrorEvent;
+
+interface ChatStreamMetaEvent {
+    type: "meta";
+    user_turn: { id: string; turn_no: number; candidate_id: string };
+    assistant_turn: { id: string; turn_no: number; candidate_id: string };
+}
+
+interface ChatStreamChunkEvent {
+    type: "chunk";
+    content: string;
+}
+
+interface ChatStreamDoneEvent {
+    type: "done";
+    full_content: string;
+    assistant_turn_id?: string;
+    assistant_candidate_id?: string;
+}
+
+interface ChatStreamErrorEvent {
+    type: "error";
+    code?: string;
+    message?: string;
+}
+
+type ChatStreamEvent =
+    | ChatStreamMetaEvent
+    | ChatStreamChunkEvent
+    | ChatStreamDoneEvent
+    | ChatStreamErrorEvent;
 
 export class ApiService {
     async sendVerificationCode(email: string): Promise<void> {
@@ -263,6 +374,128 @@ export class ApiService {
             }
 
             onError(error instanceof Error ? error.message : "Unknown error");
+        }
+    }
+
+    async getRecentChat(characterId: string): Promise<ChatDetailResponse | null> {
+        return httpClient.get<ChatDetailResponse | null>(
+            `/v1/chats/recent?character_id=${characterId}`
+        );
+    }
+
+    async createChat(request: ChatCreateRequest): Promise<ChatCreateResponse> {
+        return httpClient.post<ChatCreateResponse, ChatCreateRequest>(`/v1/chats`, request);
+    }
+
+    async getChatTurns(
+        chatId: string,
+        options: { before_turn_no?: number; limit?: number } = {}
+    ): Promise<TurnsPageResponse> {
+        const params = new URLSearchParams();
+        if (options.before_turn_no) params.set("before_turn_no", String(options.before_turn_no));
+        params.set("limit", String(options.limit ?? 20));
+        const qs = params.toString();
+        const suffix = qs ? `?${qs}` : "";
+        return httpClient.get<TurnsPageResponse>(`/v1/chats/${chatId}/turns${suffix}`);
+    }
+
+    async streamChatMessage(
+        chatId: string,
+        request: ChatStreamRequest,
+        handlers: {
+            onMeta?: (meta: ChatStreamMetaEvent) => void;
+            onChunk: (content: string) => void;
+            onDone: (fullContent: string) => void;
+            onError: (error: string) => void;
+        }
+    ): Promise<void> {
+        try {
+            const token = tokenStore.getToken();
+            const headers: Record<string, string> = {
+                "Content-Type": "application/json",
+            };
+
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`/v1/chats/${chatId}/stream`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(request),
+            });
+
+            if (!response.ok) {
+                const errorData: { code?: string; message?: string; detail?: string } =
+                    await response.json().catch(() => ({}));
+                const errorMessage =
+                    errorData.message ||
+                    errorData.detail ||
+                    `HTTP error! status: ${response.status}`;
+
+                if (response.status === 401) {
+                    tokenStore.clearToken();
+                    throw new UnauthorizedError(errorMessage);
+                }
+
+                throw new ApiError(response.status, errorData.code, errorMessage);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error("No response body");
+            }
+
+            const decoder = new TextDecoder();
+            let pending = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                pending += decoder.decode(value, { stream: true });
+                const lines = pending.split("\n");
+                pending = lines.pop() ?? "";
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+
+                    const payload = trimmed.slice(5).trim();
+                    if (!payload) continue;
+
+                    try {
+                        const data = JSON.parse(payload) as ChatStreamEvent;
+                        if (data.type === "meta") {
+                            handlers.onMeta?.(data);
+                        } else if (data.type === "chunk") {
+                            handlers.onChunk(data.content);
+                        } else if (data.type === "done") {
+                            handlers.onDone(data.full_content);
+                        } else if (data.type === "error") {
+                            if (data.code && data.message) {
+                                handlers.onError(`${data.code}: ${data.message}`);
+                            } else {
+                                handlers.onError(data.message || "Unknown error");
+                            }
+                        }
+                    } catch {
+                        // Ignore malformed stream rows.
+                    }
+                }
+            }
+        } catch (error) {
+            if (error instanceof UnauthorizedError) {
+                handlers.onError("Authentication required");
+                return;
+            }
+
+            if (error instanceof ApiError) {
+                handlers.onError(error.detail || `API error: ${error.status}`);
+                return;
+            }
+
+            handlers.onError(error instanceof Error ? error.message : "Unknown error");
         }
     }
 
