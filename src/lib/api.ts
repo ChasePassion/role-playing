@@ -24,6 +24,9 @@ export const getRecentChat = apiService.getRecentChat.bind(apiService);
 export const createChatInstance = apiService.createChat.bind(apiService);
 export const getChatTurns = apiService.getChatTurns.bind(apiService);
 export const streamChatMessage = apiService.streamChatMessage.bind(apiService);
+export const selectTurnCandidate = apiService.selectTurnCandidate.bind(apiService);
+export const regenAssistantTurn = apiService.regenAssistantTurn.bind(apiService);
+export const editUserTurnAndStreamReply = apiService.editUserTurnAndStreamReply.bind(apiService);
 
 // 记忆相关
 export const manageMemories = apiService.manageMemories.bind(apiService);
@@ -43,6 +46,9 @@ export type {
   ChatStreamRequest,
   ChatResponse,
   TurnResponse,
+  TurnSelectRequest,
+  TurnSelectResponse,
+  UserTurnEditStreamRequest,
   MemoryManageRequest,
   MemorySearchRequest,
   UpdateProfileRequest,

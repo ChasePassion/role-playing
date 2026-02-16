@@ -108,6 +108,8 @@ export interface ChatResponse {
     visibility: ChatVisibility;
     last_turn_at?: string | null;
     last_turn_id?: string | null;
+    last_turn_no?: number | null;
+    active_leaf_turn_id?: string | null;
     last_read_turn_no?: number | null;
     created_at: string;
     updated_at: string;
@@ -132,7 +134,10 @@ export interface TurnResponse {
     author_type: TurnAuthorType;
     state: TurnState;
     is_proactive: boolean;
+    parent_turn_id?: string | null;
+    parent_candidate_id?: string | null;
     primary_candidate: CandidateResponse;
+    candidate_count: number;
 }
 
 export interface ChatDetailResponse {
@@ -155,11 +160,28 @@ export interface TurnsPageResponse {
     chat: ChatResponse;
     character: CharacterBrief;
     turns: TurnResponse[];
-    next_before_turn_no?: number | null;
+    next_before_turn_id?: string | null;
     has_more: boolean;
 }
 
 export interface ChatStreamRequest {
+    content: string;
+}
+
+export interface TurnSelectRequest {
+    candidate_no: number;
+}
+
+export interface TurnSelectResponse {
+    chat_id: string;
+    turn_id: string;
+    primary_candidate_id: string;
+    primary_candidate_no: number;
+    candidate_count: number;
+    active_leaf_turn_id: string;
+}
+
+export interface UserTurnEditStreamRequest {
     content: string;
 }
 
@@ -389,14 +411,211 @@ export class ApiService {
 
     async getChatTurns(
         chatId: string,
-        options: { before_turn_no?: number; limit?: number } = {}
+        options: { before_turn_id?: string; limit?: number } = {}
     ): Promise<TurnsPageResponse> {
         const params = new URLSearchParams();
-        if (options.before_turn_no) params.set("before_turn_no", String(options.before_turn_no));
+        if (options.before_turn_id) params.set("before_turn_id", String(options.before_turn_id));
         params.set("limit", String(options.limit ?? 20));
         const qs = params.toString();
         const suffix = qs ? `?${qs}` : "";
         return httpClient.get<TurnsPageResponse>(`/v1/chats/${chatId}/turns${suffix}`);
+    }
+
+    async selectTurnCandidate(turnId: string, req: TurnSelectRequest): Promise<TurnSelectResponse> {
+        return httpClient.post<TurnSelectResponse, TurnSelectRequest>(`/v1/turns/${turnId}/select`, req);
+    }
+
+    async regenAssistantTurn(
+        turnId: string,
+        handlers: {
+            onChunk: (content: string) => void;
+            onDone: (fullContent: string) => void;
+            onError: (error: string) => void;
+        }
+    ): Promise<void> {
+        try {
+            const token = tokenStore.getToken();
+            const headers: Record<string, string> = {
+                "Content-Type": "application/json",
+            };
+
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`/v1/turns/${turnId}/regen/stream`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({}),
+            });
+
+            if (!response.ok) {
+                const errorData: { code?: string; message?: string; detail?: string } =
+                    await response.json().catch(() => ({}));
+                const errorMessage =
+                    errorData.message ||
+                    errorData.detail ||
+                    `HTTP error! status: ${response.status}`;
+
+                if (response.status === 401) {
+                    tokenStore.clearToken();
+                    throw new UnauthorizedError(errorMessage);
+                }
+
+                throw new ApiError(response.status, errorData.code, errorMessage);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error("No response body");
+            }
+
+            const decoder = new TextDecoder();
+            let pending = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                pending += decoder.decode(value, { stream: true });
+                const lines = pending.split("\n");
+                pending = lines.pop() ?? "";
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+
+                    const payload = trimmed.slice(5).trim();
+                    if (!payload) continue;
+
+                    try {
+                        const data = JSON.parse(payload) as StreamEvent;
+                        if (data.type === "chunk") {
+                            handlers.onChunk(data.content);
+                        } else if (data.type === "done") {
+                            handlers.onDone(data.full_content);
+                        } else if (data.type === "error") {
+                            if (data.code && data.message) {
+                                handlers.onError(`${data.code}: ${data.message}`);
+                            } else {
+                                handlers.onError(data.message || "Unknown error");
+                            }
+                        }
+                    } catch {
+                        // Ignore malformed stream rows.
+                    }
+                }
+            }
+        } catch (error) {
+            if (error instanceof UnauthorizedError) {
+                handlers.onError("Authentication required");
+                return;
+            }
+
+            if (error instanceof ApiError) {
+                handlers.onError(error.detail || `API error: ${error.status}`);
+                return;
+            }
+
+            handlers.onError(error instanceof Error ? error.message : "Unknown error");
+        }
+    }
+
+    async editUserTurnAndStreamReply(
+        turnId: string,
+        request: UserTurnEditStreamRequest,
+        handlers: {
+            onChunk: (content: string) => void;
+            onDone: (fullContent: string) => void;
+            onError: (error: string) => void;
+        }
+    ): Promise<void> {
+        try {
+            const token = tokenStore.getToken();
+            const headers: Record<string, string> = {
+                "Content-Type": "application/json",
+            };
+
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`/v1/turns/${turnId}/edit/stream`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(request),
+            });
+
+            if (!response.ok) {
+                const errorData: { code?: string; message?: string; detail?: string } =
+                    await response.json().catch(() => ({}));
+                const errorMessage =
+                    errorData.message ||
+                    errorData.detail ||
+                    `HTTP error! status: ${response.status}`;
+
+                if (response.status === 401) {
+                    tokenStore.clearToken();
+                    throw new UnauthorizedError(errorMessage);
+                }
+
+                throw new ApiError(response.status, errorData.code, errorMessage);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error("No response body");
+            }
+
+            const decoder = new TextDecoder();
+            let pending = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                pending += decoder.decode(value, { stream: true });
+                const lines = pending.split("\n");
+                pending = lines.pop() ?? "";
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+
+                    const payload = trimmed.slice(5).trim();
+                    if (!payload) continue;
+
+                    try {
+                        const data = JSON.parse(payload) as StreamEvent;
+                        if (data.type === "chunk") {
+                            handlers.onChunk(data.content);
+                        } else if (data.type === "done") {
+                            handlers.onDone(data.full_content);
+                        } else if (data.type === "error") {
+                            if (data.code && data.message) {
+                                handlers.onError(`${data.code}: ${data.message}`);
+                            } else {
+                                handlers.onError(data.message || "Unknown error");
+                            }
+                        }
+                    } catch {
+                        // Ignore malformed stream rows.
+                    }
+                }
+            }
+        } catch (error) {
+            if (error instanceof UnauthorizedError) {
+                handlers.onError("Authentication required");
+                return;
+            }
+
+            if (error instanceof ApiError) {
+                handlers.onError(error.detail || `API error: ${error.status}`);
+                return;
+            }
+
+            handlers.onError(error instanceof Error ? error.message : "Unknown error");
+        }
     }
 
     async streamChatMessage(

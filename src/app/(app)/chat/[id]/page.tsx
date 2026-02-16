@@ -3,7 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getChatTurns, streamChatMessage, TurnsPageResponse } from "@/lib/api";
+import {
+    getChatTurns,
+    streamChatMessage,
+    selectTurnCandidate,
+    regenAssistantTurn,
+    editUserTurnAndStreamReply,
+    TurnsPageResponse,
+} from "@/lib/api";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage, { Message } from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
@@ -31,6 +38,42 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    const reloadChatTurns = async () => {
+        if (!chatId || !isAuthed) return;
+
+        setError(null);
+
+        const data: TurnsPageResponse = await getChatTurns(chatId, { limit: 50 });
+
+        const c = data.character;
+        const mappedCharacter: Character = {
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
+            greeting_message: c.greeting_message,
+            tags: c.tags,
+            visibility: c.visibility,
+            creator_id: c.creator_id ?? undefined,
+        };
+
+        setCharacter(mappedCharacter);
+        setSelectedCharacterId(c.id);
+
+        const mappedMessages: Message[] = data.turns
+            .filter((t) => t.author_type === "USER" || t.author_type === "CHARACTER")
+            .filter((t) => t.primary_candidate.is_final || t.primary_candidate.content.trim() !== "")
+            .map((t) => ({
+                id: t.id,
+                role: t.author_type === "USER" ? "user" : "assistant",
+                content: t.primary_candidate.content,
+                candidateNo: t.primary_candidate.candidate_no,
+                candidateCount: t.candidate_count,
+            }));
+
+        setMessages(mappedMessages);
+    };
+
     // Load chat (character + turns)
     useEffect(() => {
         async function loadChat() {
@@ -40,33 +83,7 @@ export default function ChatPage() {
             setError(null);
 
             try {
-                const data: TurnsPageResponse = await getChatTurns(chatId, { limit: 50 });
-
-                const c = data.character;
-                const mappedCharacter: Character = {
-                    id: c.id,
-                    name: c.name,
-                    description: c.description,
-                    avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
-                    greeting_message: c.greeting_message,
-                    tags: c.tags,
-                    visibility: c.visibility,
-                    creator_id: c.creator_id ?? undefined,
-                };
-
-                setCharacter(mappedCharacter);
-                setSelectedCharacterId(c.id);
-
-                const mappedMessages: Message[] = data.turns
-                    .filter((t) => t.author_type === "USER" || t.author_type === "CHARACTER")
-                    .filter((t) => t.primary_candidate.is_final || t.primary_candidate.content.trim() !== "")
-                    .map((t) => ({
-                        id: t.id,
-                        role: t.author_type === "USER" ? "user" : "assistant",
-                        content: t.primary_candidate.content,
-                    }));
-
-                setMessages(mappedMessages);
+                await reloadChatTurns();
             } catch (err) {
                 console.error("Failed to load chat:", err);
                 setError(err instanceof Error ? err.message : "Failed to load chat");
@@ -82,6 +99,130 @@ export default function ChatPage() {
         };
     }, [chatId, isAuthed, setSelectedCharacterId]);
 
+    const handleSelectCandidate = async (turnId: string, candidateNo: number) => {
+        if (isStreaming) return;
+        try {
+            await selectTurnCandidate(turnId, { candidate_no: candidateNo });
+            await reloadChatTurns();
+        } catch (err) {
+            console.error("Failed to select candidate:", err);
+            setError(err instanceof Error ? err.message : "Failed to select candidate");
+        }
+    };
+
+    const handleRegenAssistant = async (turnId: string) => {
+        if (isStreaming) return;
+
+        // Optimistic: clear content + move to the new candidate slot.
+        setMessages((prev) =>
+            prev.map((m) => {
+                if (m.id !== turnId) return m;
+                const nextCount = Math.min(10, (m.candidateCount ?? 1) + 1);
+                return {
+                    ...m,
+                    content: "",
+                    candidateNo: nextCount,
+                    candidateCount: nextCount,
+                };
+            })
+        );
+
+        setIsStreaming(true);
+
+        await regenAssistantTurn(turnId, {
+            onChunk: (chunk) => {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === turnId ? { ...m, content: m.content + chunk } : m
+                    )
+                );
+            },
+            onDone: async (fullContent) => {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === turnId ? { ...m, content: fullContent } : m
+                    )
+                );
+                setIsStreaming(false);
+                await reloadChatTurns();
+            },
+            onError: async (errMsg) => {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === turnId ? { ...m, content: `Error: ${errMsg}` } : m
+                    )
+                );
+                setIsStreaming(false);
+                await reloadChatTurns();
+            },
+        });
+    };
+
+    const handleEditUser = async (turnId: string, newContent: string) => {
+        if (isStreaming) return;
+
+        const idx = messages.findIndex((m) => m.id === turnId);
+        if (idx < 0) return;
+
+        const tempAssistantId = `assistant-edit-${Date.now()}`;
+
+        // Optimistic: update user content, truncate later turns (branch changes), and insert streaming assistant.
+        setMessages((prev) => {
+            const next = prev.slice(0, idx + 1).map((m) => {
+                if (m.id !== turnId) return m;
+                const nextCount = Math.min(10, (m.candidateCount ?? 1) + 1);
+                return {
+                    ...m,
+                    content: newContent,
+                    candidateNo: nextCount,
+                    candidateCount: nextCount,
+                };
+            });
+            next.push({ id: tempAssistantId, role: "assistant", content: "", isTemp: true });
+            return next;
+        });
+
+        setIsStreaming(true);
+
+        await editUserTurnAndStreamReply(
+            turnId,
+            { content: newContent },
+            {
+                onChunk: (chunk) => {
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === tempAssistantId
+                                ? { ...m, content: m.content + chunk }
+                                : m
+                        )
+                    );
+                },
+                onDone: async (fullContent) => {
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === tempAssistantId
+                                ? { ...m, content: fullContent }
+                                : m
+                        )
+                    );
+                    setIsStreaming(false);
+                    await reloadChatTurns();
+                },
+                onError: async (errMsg) => {
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === tempAssistantId
+                                ? { ...m, content: `Error: ${errMsg}` }
+                                : m
+                        )
+                    );
+                    setIsStreaming(false);
+                    await reloadChatTurns();
+                },
+            }
+        );
+    };
+
     const handleSendMessage = async (content: string) => {
         if (!character || !user || isStreaming) return;
 
@@ -93,13 +234,14 @@ export default function ChatPage() {
             id: tempUserId,
             role: "user",
             content,
+            isTemp: true,
         };
         setMessages((prev) => [...prev, userMessage]);
 
         // Prepare streaming assistant message
         setMessages((prev) => [
             ...prev,
-            { id: tempAssistantId, role: "assistant", content: "" },
+            { id: tempAssistantId, role: "assistant", content: "", isTemp: true },
         ]);
 
         setIsStreaming(true);
@@ -126,6 +268,7 @@ export default function ChatPage() {
                     )
                 );
                 setIsStreaming(false);
+                reloadChatTurns();
             },
             onError: (error) => {
                 console.error("Chat error:", error);
@@ -137,6 +280,7 @@ export default function ChatPage() {
                     )
                 );
                 setIsStreaming(false);
+                reloadChatTurns();
             }
         });
     };
@@ -179,6 +323,10 @@ export default function ChatPage() {
                             message={message}
                             userAvatar={user?.avatar_url || "/default-avatar.svg"}
                             assistantAvatar={character.avatar}
+                            disabled={isStreaming}
+                            onSelectCandidate={handleSelectCandidate}
+                            onRegenAssistant={handleRegenAssistant}
+                            onEditUser={handleEditUser}
                         />
                     ))}
                     <div ref={messagesEndRef} />
