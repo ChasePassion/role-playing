@@ -67,6 +67,7 @@ export default function ChatPage() {
                 id: t.id,
                 role: t.author_type === "USER" ? "user" : "assistant",
                 content: t.primary_candidate.content,
+                isGreeting: t.author_type === "CHARACTER" && t.is_proactive && !t.parent_turn_id,
                 candidateNo: t.primary_candidate.candidate_no,
                 candidateCount: t.candidate_count,
             }));

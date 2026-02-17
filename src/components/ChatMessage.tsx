@@ -10,6 +10,7 @@ export interface Message {
     candidateNo?: number;
     candidateCount?: number;
     isTemp?: boolean;
+    isGreeting?: boolean;
 }
 
 interface ChatMessageProps {
@@ -34,7 +35,11 @@ export default function ChatMessage({
     const isUser = message.role === "user";
     const k = message.candidateNo ?? 1;
     const n = message.candidateCount ?? 1;
-    const showNav = !message.isTemp && message.candidateNo !== undefined && message.candidateCount !== undefined;
+    const showNav =
+        !message.isTemp &&
+        !message.isGreeting &&
+        message.candidateNo !== undefined &&
+        message.candidateCount !== undefined;
 
     const [isEditing, setIsEditing] = useState(false);
     const [draft, setDraft] = useState(message.content);
