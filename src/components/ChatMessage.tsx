@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import Markdown from "./Markdown";
 
 export interface Message {
     id: string;
@@ -154,9 +155,13 @@ export default function ChatMessage({
                             </div>
                         </div>
                     ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                            {message.content}
-                        </p>
+                        <div className="text-sm leading-relaxed">
+                            {isUser ? (
+                                <p className="whitespace-pre-wrap">{message.content}</p>
+                            ) : (
+                                <Markdown content={message.content} variant="assistant" />
+                            )}
+                        </div>
                     )}
                 </div>
 
