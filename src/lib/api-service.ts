@@ -315,6 +315,7 @@ export class ApiService {
             const token = tokenStore.getToken();
             const headers: Record<string, string> = {
                 "Content-Type": "application/json",
+                "Accept": "text/event-stream",
             };
 
             if (token) {
@@ -437,6 +438,7 @@ export class ApiService {
             const token = tokenStore.getToken();
             const headers: Record<string, string> = {
                 "Content-Type": "application/json",
+                "Accept": "text/event-stream",
             };
 
             if (token) {
@@ -534,6 +536,7 @@ export class ApiService {
             const token = tokenStore.getToken();
             const headers: Record<string, string> = {
                 "Content-Type": "application/json",
+                "Accept": "text/event-stream",
             };
 
             if (token) {
@@ -632,6 +635,7 @@ export class ApiService {
             const token = tokenStore.getToken();
             const headers: Record<string, string> = {
                 "Content-Type": "application/json",
+                "Accept": "text/event-stream",
             };
 
             if (token) {
