@@ -76,28 +76,34 @@ def staged_blob_bytes(path: str) -> bytes:
 
 
 def main() -> int:
-    invalid: list[str] = []
+    invalid_encoding: list[str] = []
+    invalid_bom: list[str] = []
     for path in staged_paths():
         if not is_text_candidate(path):
             continue
         blob = staged_blob_bytes(path)
         if b"\x00" in blob:
             continue
+        if blob.startswith(b"\xef\xbb\xbf"):
+            invalid_bom.append(path)
         try:
             blob.decode("utf-8")
         except UnicodeDecodeError:
-            invalid.append(path)
+            invalid_encoding.append(path)
 
-    if not invalid:
+    if not invalid_encoding and not invalid_bom:
         return 0
 
-    print("Commit blocked: staged files must be UTF-8 encoded.", file=sys.stderr)
-    for path in invalid:
-        print(f"  - {path}", file=sys.stderr)
-    print(
-        "Please convert the files to UTF-8 and stage them again.",
-        file=sys.stderr,
-    )
+    print("Commit blocked: staged text files must be UTF-8 without BOM.", file=sys.stderr)
+    if invalid_encoding:
+        print("Invalid UTF-8 encoding:", file=sys.stderr)
+        for path in invalid_encoding:
+            print(f"  - {path}", file=sys.stderr)
+    if invalid_bom:
+        print("UTF-8 BOM is not allowed:", file=sys.stderr)
+        for path in invalid_bom:
+            print(f"  - {path}", file=sys.stderr)
+    print("Please convert files to UTF-8 (no BOM), then stage again.", file=sys.stderr)
     return 1
 
 
