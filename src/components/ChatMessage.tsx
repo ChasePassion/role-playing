@@ -33,6 +33,13 @@ export default function ChatMessage({
     onRegenAssistant,
     onEditUser,
 }: ChatMessageProps) {
+    const refreshIcon = "/icons/refresh-ec66f0.svg";
+    const chevronLeftIcon = "/icons/chevron-left-8ee2e9.svg";
+    const editIcon = "/icons/edit-6d87e1.svg";
+    const branchButtonClass =
+        "hover:bg-gray-100 flex h-[30px] w-[24px] items-center justify-center rounded-md text-text-secondary disabled:opacity-50 disabled:hover:bg-transparent";
+    const actionButtonClass =
+        "text-text-secondary hover:bg-gray-100 flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-50 disabled:hover:bg-transparent";
     const isUser = message.role === "user";
     const k = message.candidateNo ?? 1;
     const n = message.candidateCount ?? 1;
@@ -41,6 +48,25 @@ export default function ChatMessage({
         !message.isGreeting &&
         message.candidateNo !== undefined &&
         message.candidateCount !== undefined;
+    const [isUserMessageHovering, setIsUserMessageHovering] = useState(false);
+    const isActionRowVisible = !isUser || isUserMessageHovering;
+    const renderActionIcon = (iconSrc: string, className = "") => (
+        <span
+            aria-hidden="true"
+            className={`inline-block h-5 w-5 shrink-0 ${className}`}
+            style={{
+                backgroundColor: "#5D5D5D",
+                WebkitMaskImage: `url(${iconSrc})`,
+                maskImage: `url(${iconSrc})`,
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+            }}
+        />
+    );
 
     const [isEditing, setIsEditing] = useState(false);
     const [draft, setDraft] = useState(message.content);
@@ -99,122 +125,142 @@ export default function ChatMessage({
     };
 
     return (
-        <div
-            className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
-        >
-            {/* Avatar */}
-            <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0">
-                {isUser ? (
-                    <Image
-                        src={userAvatar}
-                        alt="User"
-                        fill
-                        className="object-cover"
-                    />
-                ) : (
-                    <Image
-                        src={assistantAvatar}
-                        alt="Assistant"
-                        fill
-                        className="object-cover"
-                    />
-                )}
-            </div>
+        <div className="relative flex w-full min-w-0 flex-col">
+            <div
+                className={`flex max-w-full items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+            >
+                {/* Avatar */}
+                <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg">
+                    {isUser ? (
+                        <Image
+                            src={userAvatar}
+                            alt="User"
+                            fill
+                            className="object-cover"
+                        />
+                    ) : (
+                        <Image
+                            src={assistantAvatar}
+                            alt="Assistant"
+                            fill
+                            className="object-cover"
+                        />
+                    )}
+                </div>
 
-            {/* Message bubble */}
-            <div className="max-w-[70%]">
+                {/* One message block: bubble + action row */}
                 <div
-                    className={`px-4 py-2.5 ${isUser ? "bubble-user" : "bubble-assistant"}`}
+                    className={
+                        isUser
+                            ? "relative flex w-[70%] min-w-0 flex-col items-end py-[6px]"
+                            : "flex min-w-0 max-w-[70%] flex-col"
+                    }
+                    onMouseEnter={
+                        isUser ? () => setIsUserMessageHovering(true) : undefined
+                    }
+                    onMouseLeave={
+                        isUser ? () => setIsUserMessageHovering(false) : undefined
+                    }
                 >
-                    {isEditing ? (
-                        <div className="space-y-2">
-                            <textarea
-                                value={draft}
-                                onChange={(e) => setDraft(e.target.value)}
-                                rows={3}
-                                className="w-full resize-none bg-transparent text-sm leading-relaxed whitespace-pre-wrap focus:outline-none"
-                                disabled={disabled}
-                            />
-                            <div className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
-                                <button
-                                    type="button"
-                                    className="text-xs px-2 py-1 rounded border border-divider text-text-secondary hover:bg-gray-50 disabled:opacity-50"
-                                    onClick={handleEditCancel}
+                    <div
+                        className={`w-fit max-w-full px-4 py-2.5 ${isUser ? "bubble-user" : "bubble-assistant"}`}
+                    >
+                        {isEditing ? (
+                            <div className="space-y-2">
+                                <textarea
+                                    value={draft}
+                                    onChange={(e) => setDraft(e.target.value)}
+                                    rows={3}
+                                    className="w-full resize-none bg-transparent text-sm leading-relaxed whitespace-pre-wrap focus:outline-none"
                                     disabled={disabled}
-                                >
-                                    取消
-                                </button>
+                                />
+                                <div className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
+                                    <button
+                                        type="button"
+                                        className="text-xs px-2 py-1 rounded border border-divider text-text-secondary hover:bg-gray-50 disabled:opacity-50"
+                                        onClick={handleEditCancel}
+                                        disabled={disabled}
+                                    >
+                                        取消
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                        onClick={handleEditSend}
+                                        disabled={disabled || !draft.trim()}
+                                    >
+                                        发送
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-sm leading-relaxed">
+                                {isUser ? (
+                                    <p className="whitespace-pre-wrap">{message.content}</p>
+                                ) : (
+                                    <Markdown content={message.content} variant="assistant" />
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {showNav && (
+                        <div
+                            className={`mt-1 flex h-8 w-full items-center gap-1 ${isUser ? "justify-end transition-opacity duration-200 ease-out" : "justify-start"} ${isUser && !isActionRowVisible ? "pointer-events-none opacity-0" : "opacity-100"}`}
+                        >
+                            <div className="flex items-center justify-center text-text-secondary">
                                 <button
                                     type="button"
-                                    className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                                    onClick={handleEditSend}
-                                    disabled={disabled || !draft.trim()}
+                                    className={branchButtonClass}
+                                    onClick={handleLeft}
+                                    disabled={disabled || k <= 1}
+                                    aria-label="上一分支"
                                 >
-                                    发送
+                                    {renderActionIcon(chevronLeftIcon)}
+                                </button>
+                                <div className="px-0.5 text-sm font-semibold tabular-nums text-text-secondary">
+                                    {k}/{n}
+                                </div>
+                                <button
+                                    type="button"
+                                    className={branchButtonClass}
+                                    onClick={handleRight}
+                                    disabled={
+                                        disabled ||
+                                        (k >= n && (message.role !== "assistant" || n >= 10))
+                                    }
+                                    aria-label="下一分支"
+                                >
+                                    {renderActionIcon(chevronLeftIcon, "rotate-180")}
                                 </button>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="text-sm leading-relaxed">
-                            {isUser ? (
-                                <p className="whitespace-pre-wrap">{message.content}</p>
-                            ) : (
-                                <Markdown content={message.content} variant="assistant" />
+
+                            {message.role === "assistant" && (
+                                <button
+                                    type="button"
+                                    className={actionButtonClass}
+                                    onClick={handleRegen}
+                                    disabled={disabled || n >= 10}
+                                    aria-label="重新生成"
+                                >
+                                    {renderActionIcon(refreshIcon)}
+                                </button>
+                            )}
+
+                            {message.role === "user" && (
+                                <button
+                                    type="button"
+                                    className={actionButtonClass}
+                                    onClick={handleEdit}
+                                    disabled={disabled || n >= 10}
+                                    aria-label="编辑"
+                                >
+                                    {renderActionIcon(editIcon)}
+                                </button>
                             )}
                         </div>
                     )}
                 </div>
-
-                {showNav && (
-                    <div className={`mt-1 flex items-center gap-2 text-xs ${isUser ? "justify-end" : "justify-start"}`}>
-                        <button
-                            type="button"
-                            className="px-2 py-1 rounded border border-divider text-text-secondary hover:bg-gray-50 disabled:opacity-50"
-                            onClick={handleLeft}
-                            disabled={disabled || k <= 1}
-                            aria-label="上一分支"
-                        >
-                            ←
-                        </button>
-                        <span className="text-text-secondary tabular-nums">{k}/{n}</span>
-                        <button
-                            type="button"
-                            className="px-2 py-1 rounded border border-divider text-text-secondary hover:bg-gray-50 disabled:opacity-50"
-                            onClick={handleRight}
-                            disabled={
-                                disabled ||
-                                (k >= n && (message.role !== "assistant" || n >= 10))
-                            }
-                            aria-label="下一分支"
-                        >
-                            →
-                        </button>
-
-                        {message.role === "assistant" && (
-                            <button
-                                type="button"
-                                className="px-2 py-1 rounded border border-divider text-text-secondary hover:bg-gray-50 disabled:opacity-50"
-                                onClick={handleRegen}
-                                disabled={disabled || n >= 10}
-                                aria-label="重新生成"
-                            >
-                                regen
-                            </button>
-                        )}
-
-                        {message.role === "user" && (
-                            <button
-                                type="button"
-                                className="px-2 py-1 rounded border border-divider text-text-secondary hover:bg-gray-50 disabled:opacity-50"
-                                onClick={handleEdit}
-                                disabled={disabled || n >= 10}
-                                aria-label="编辑"
-                            >
-                                edit
-                            </button>
-                        )}
-                    </div>
-                )}
             </div>
         </div>
     );
