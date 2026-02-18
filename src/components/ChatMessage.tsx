@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
 
 export interface Message {
@@ -33,8 +33,9 @@ export default function ChatMessage({
     onRegenAssistant,
     onEditUser,
 }: ChatMessageProps) {
-    const refreshIcon = "/icons/refresh-ec66f0.svg";
     const chevronLeftIcon = "/icons/chevron-left-8ee2e9.svg";
+    const duplicateIcon = "/icons/duplicate-ce3544.svg";
+    const checkIcon = "/icons/check-fa1dbd.svg";
     const editIcon = "/icons/edit-6d87e1.svg";
     const branchButtonClass =
         "hover:bg-gray-100 flex h-[30px] w-[24px] items-center justify-center rounded-md text-text-secondary disabled:opacity-50 disabled:hover:bg-transparent";
@@ -65,15 +66,77 @@ export default function ChatMessage({
                 WebkitMaskSize: "contain",
                 maskSize: "contain",
             }}
+            data-icon-src={iconSrc}
         />
     );
 
     const [isEditing, setIsEditing] = useState(false);
     const [draft, setDraft] = useState(message.content);
+    const [isCopySuccess, setIsCopySuccess] = useState(false);
+    const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const copyTextToClipboard = async (text: string): Promise<boolean> => {
+        if (!text) return false;
+        if (typeof window === "undefined") return false;
+
+        if (navigator.clipboard?.writeText) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch {
+                // Fallback below for blocked clipboard permissions/runtime failures.
+            }
+        }
+
+        try {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+
+            const selection = document.getSelection();
+            const selectedRange =
+                selection && selection.rangeCount > 0
+                    ? selection.getRangeAt(0)
+                    : null;
+
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+            const copied = document.execCommand("copy");
+            document.body.removeChild(textarea);
+
+            if (selection) {
+                selection.removeAllRanges();
+                if (selectedRange) {
+                    selection.addRange(selectedRange);
+                }
+            }
+
+            return copied;
+        } catch {
+            return false;
+        }
+    };
 
     useEffect(() => {
         if (!isEditing) setDraft(message.content);
     }, [message.content, isEditing]);
+
+    useEffect(() => {
+        setIsCopySuccess(false);
+    }, [message.id, message.content]);
+
+    useEffect(() => {
+        return () => {
+            if (copyResetTimerRef.current) {
+                clearTimeout(copyResetTimerRef.current);
+            }
+        };
+    }, []);
 
     const handleLeft = () => {
         if (disabled) return;
@@ -95,14 +158,6 @@ export default function ChatMessage({
         }
     };
 
-    const handleRegen = () => {
-        if (disabled) return;
-        if (message.role !== "assistant") return;
-        if (!showNav) return;
-        if (n >= 10) return;
-        onRegenAssistant?.(message.id);
-    };
-
     const handleEdit = () => {
         if (disabled) return;
         if (message.role !== "user") return;
@@ -122,6 +177,21 @@ export default function ChatMessage({
         if (!next) return;
         onEditUser?.(message.id, next);
         setIsEditing(false);
+    };
+
+    const handleCopy = async () => {
+        if (disabled) return;
+        if (!message.content) return;
+        const copied = await copyTextToClipboard(message.content);
+        if (copied) {
+            setIsCopySuccess(true);
+            if (copyResetTimerRef.current) {
+                clearTimeout(copyResetTimerRef.current);
+            }
+            copyResetTimerRef.current = setTimeout(() => {
+                setIsCopySuccess(false);
+            }, 1500);
+        }
     };
 
     return (
@@ -235,17 +305,17 @@ export default function ChatMessage({
                                 </button>
                             </div>
 
-                            {message.role === "assistant" && (
-                                <button
-                                    type="button"
-                                    className={actionButtonClass}
-                                    onClick={handleRegen}
-                                    disabled={disabled || n >= 10}
-                                    aria-label="重新生成"
-                                >
-                                    {renderActionIcon(refreshIcon)}
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                className={actionButtonClass}
+                                onClick={() => {
+                                    void handleCopy();
+                                }}
+                                disabled={disabled || !message.content}
+                                aria-label="复制原文"
+                            >
+                                {renderActionIcon(isCopySuccess ? checkIcon : duplicateIcon)}
+                            </button>
 
                             {message.role === "user" && (
                                 <button
