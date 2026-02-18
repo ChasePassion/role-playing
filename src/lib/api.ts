@@ -19,7 +19,6 @@ export const updateCharacter = apiService.updateCharacter.bind(apiService);
 export const deleteCharacter = apiService.deleteCharacter.bind(apiService);
 
 // 聊天相关
-export const sendChatMessage = apiService.sendChatMessage.bind(apiService);
 export const getRecentChat = apiService.getRecentChat.bind(apiService);
 export const createChatInstance = apiService.createChat.bind(apiService);
 export const getChatTurns = apiService.getChatTurns.bind(apiService);
@@ -38,7 +37,6 @@ export type {
   User,
   AuthResponse,
   ChatMessage,
-  ChatRequest,
   ChatDetailResponse,
   ChatCreateRequest,
   ChatCreateResponse,

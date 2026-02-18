@@ -6,16 +6,7 @@ export interface ChatMessage {
     content: string;
 }
 
-export interface ChatRequest {
-    user_id: string;
-    character_id: string;
-    chat_id: string;
-    message: string;
-    history?: ChatMessage[];
-}
-
 export interface MemoryManageRequest {
-    user_id: string;
     character_id: string;
     chat_id: string;
     user_text: string;
@@ -23,7 +14,6 @@ export interface MemoryManageRequest {
 }
 
 export interface MemorySearchRequest {
-    user_id: string;
     character_id: string;
     query: string;
 }
@@ -303,101 +293,6 @@ export class ApiService {
 
     async deleteCharacter(id: string): Promise<void> {
         await httpClient.delete(`/v1/characters/${id}`);
-    }
-
-    async sendChatMessage(
-        request: ChatRequest,
-        onChunk: (content: string) => void,
-        onDone: (fullContent: string) => void,
-        onError: (error: string) => void
-    ): Promise<void> {
-        try {
-            const token = tokenStore.getToken();
-            const headers: Record<string, string> = {
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream",
-            };
-
-            if (token) {
-                headers["Authorization"] = `Bearer ${token}`;
-            }
-
-            const response = await fetch(`/v1/chat`, {
-                method: "POST",
-                headers,
-                body: JSON.stringify(request),
-            });
-
-            if (!response.ok) {
-                const errorData: { code?: string; message?: string; detail?: string } =
-                    await response.json().catch(() => ({}));
-                const errorMessage =
-                    errorData.message ||
-                    errorData.detail ||
-                    `HTTP error! status: ${response.status}`;
-
-                if (response.status === 401) {
-                    tokenStore.clearToken();
-                    throw new UnauthorizedError(errorMessage);
-                }
-
-                throw new ApiError(response.status, errorData.code, errorMessage);
-            }
-
-            const reader = response.body?.getReader();
-            if (!reader) {
-                throw new Error("No response body");
-            }
-
-            const decoder = new TextDecoder();
-            let pending = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                pending += decoder.decode(value, { stream: true });
-                const lines = pending.split("\n");
-                pending = lines.pop() ?? "";
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed.startsWith("data:")) continue;
-
-                    const payload = trimmed.slice(5).trim();
-                    if (!payload) continue;
-
-                    try {
-                        const data = JSON.parse(payload) as StreamEvent;
-                        if (data.type === "chunk") {
-                            onChunk(data.content);
-                        } else if (data.type === "done") {
-                            onDone(data.full_content);
-                        } else if (data.type === "error") {
-                            if (data.code && data.message) {
-                                onError(`${data.code}: ${data.message}`);
-                            } else {
-                                onError(data.message || "Unknown error");
-                            }
-                        }
-                    } catch {
-                        // Ignore malformed stream rows.
-                    }
-                }
-            }
-        } catch (error) {
-            if (error instanceof UnauthorizedError) {
-                onError("Authentication required");
-                return;
-            }
-
-            if (error instanceof ApiError) {
-                onError(error.detail || `API error: ${error.status}`);
-                return;
-            }
-
-            onError(error instanceof Error ? error.message : "Unknown error");
-        }
     }
 
     async getRecentChat(characterId: string): Promise<ChatDetailResponse | null> {
