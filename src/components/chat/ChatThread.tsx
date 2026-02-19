@@ -83,12 +83,12 @@ export default function ChatThread({
                             <h6 className="sr-only">ChatGPT said:</h6>
                         )}
                         <div
-                            className={`text-base my-auto mx-auto [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin) ${
+                            className={`text-base my-auto mx-auto px-3 sm:px-4 lg:px-0 ${
                                 isUserTurn ? "pt-3" : ""
                             }`}
                         >
                             <div
-                                className={`[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col ${
+                                className={`mx-auto w-full max-w-[44rem] lg:max-w-[calc(100%-320px)] flex-1 group/turn-messages focus-visible:outline-hidden relative flex min-w-0 flex-col ${
                                     isUserTurn ? "" : "agent-turn"
                                 }`}
                                 tabIndex={-1}

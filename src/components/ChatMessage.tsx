@@ -265,7 +265,7 @@ export default function ChatMessage({
                                     value={draft}
                                     onChange={(e) => setDraft(e.target.value)}
                                     rows={3}
-                                    className="w-full resize-none bg-transparent text-sm leading-relaxed whitespace-pre-wrap focus:outline-none"
+                                    className="w-full resize-none bg-transparent text-base leading-relaxed whitespace-pre-wrap focus:outline-none"
                                     disabled={disabled}
                                 />
                                 <div className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -288,7 +288,7 @@ export default function ChatMessage({
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-sm leading-relaxed">
+                            <div className="text-base leading-relaxed">
                                 {isUser ? (
                                     <p className="whitespace-pre-wrap">{message.content}</p>
                                 ) : (
