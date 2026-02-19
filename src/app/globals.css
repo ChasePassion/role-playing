@@ -3,7 +3,18 @@
 :root {
     /* Core colors */
     --background: #ffffff;
-    --foreground: #171717;
+    --foreground: #0d0d0d;
+    --bg-primary: #fff;
+    --text-primary: #0d0d0d;
+    --text-secondary: #5d5d5d;
+    --text-tertiary: #8f8f8f;
+    --spacing: 0.25rem;
+    --interactive-bg-secondary-hover: #0d0d0d05;
+    --interactive-bg-secondary-press: #0d0d0d0d;
+    --theme-submit-btn-bg: #0285ff;
+    --theme-submit-btn-text: #fff;
+    --shadow-color-1: #0000000a;
+    --shadow-color-2: #0000009e;
 
     /* Sidebar colors */
     --sidebar-bg: #fafafa;
@@ -14,7 +25,7 @@
     --divider: #d5d5d5;
     --input-border: #dedede;
     --placeholder: #8f8f8f;
-    --text-primary: #161616;
+    --text-primary: #0d0d0d;
     --user-bubble: #0068ff;
     --send-button: #924ff7;
 
@@ -41,9 +52,221 @@
 }
 
 body {
-    background: var(--background);
-    color: var(--foreground);
-    font-family: Arial, Helvetica, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family:
+        ui-sans-serif,
+        -apple-system,
+        system-ui,
+        "Segoe UI",
+        Helvetica,
+        "Apple Color Emoji",
+        Arial,
+        sans-serif,
+        "Segoe UI Emoji",
+        "Segoe UI Symbol";
+}
+
+.thread-content-margin {
+    --thread-content-margin: 1rem;
+}
+
+.thread-content-max-width {
+    --thread-content-max-width: 40rem;
+}
+
+@media (min-width: 640px) {
+    .thread-content-margin {
+        --thread-content-margin: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .thread-content-margin {
+        --thread-content-margin: 4rem;
+    }
+
+    .thread-content-max-width {
+        --thread-content-max-width: 48rem;
+    }
+}
+
+.bg-token-bg-primary {
+    background-color: var(--bg-primary);
+}
+
+.text-token-text-primary {
+    color: var(--text-primary);
+}
+
+.text-token-text-secondary {
+    color: var(--text-secondary);
+}
+
+.shadow-short {
+    --tw-shadow:
+        0px 4px 4px 0px var(--tw-shadow-color, var(--shadow-color-1, #0000000a)),
+        0px 0px 1px 0px var(--tw-shadow-color, var(--shadow-color-2, #0000009e));
+    box-shadow:
+        var(--tw-inset-shadow),
+        var(--tw-inset-ring-shadow),
+        var(--tw-ring-offset-shadow),
+        var(--tw-ring-shadow),
+        var(--tw-shadow);
+}
+
+@media (hover: hover) {
+    .composer-btn:where(:not(:disabled, :active)):hover {
+        background-color: var(--interactive-bg-secondary-hover);
+    }
+}
+
+@media (hover: none) {
+    .composer-btn:where(:not(:disabled, :active)) {
+        background-color: var(--interactive-bg-secondary-hover);
+    }
+}
+
+.composer-btn {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, 1.42857);
+    color: var(--text-primary);
+    z-index: 0;
+    height: calc(var(--spacing) * 9);
+    min-width: calc(var(--spacing) * 9);
+    border-radius: 340282000000000000000000000000000000000px;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    position: relative;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.composer-btn:enabled {
+    cursor: pointer;
+}
+
+.composer-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
+:is(.composer-btn > *) {
+    pointer-events: none;
+}
+
+.composer-btn:active,
+.composer-btn[data-is-open],
+.composer-btn[data-state="open"] {
+    background-color: var(--interactive-bg-secondary-press);
+}
+
+.composer-submit-button-color {
+    background-color: var(--theme-submit-btn-bg);
+    color: var(--theme-submit-btn-text);
+}
+
+.text-submit-btn-text {
+    color: var(--theme-submit-btn-text);
+}
+
+[data-composer-surface="true"] {
+    min-height: 56px;
+}
+
+.wcDTda_prosemirror-parent .ProseMirror[contenteditable] {
+    outline-width: 0;
+    outline-style: none;
+}
+
+.wcDTda_fallbackTextarea,
+.wcDTda_prosemirror-parent .ProseMirror {
+    margin-top: calc(var(--spacing, 0.25rem) * 4);
+    margin-bottom: 0;
+    padding-inline: 0;
+    padding-top: 0;
+    padding-bottom: calc(var(--spacing, 0.25rem) * 4);
+    word-wrap: break-word;
+    white-space: break-spaces;
+    font-variant-ligatures: none;
+    transform: translateY(-0.5px);
+}
+
+.wcDTda_fallbackTextarea {
+    box-sizing: content-box;
+    height: 1lh;
+    resize: none;
+    border-width: 0;
+    width: 100%;
+    padding-inline: 0;
+    color: var(--text-primary);
+    background-color: transparent;
+    display: block;
+}
+
+.wcDTda_fallbackTextarea::placeholder {
+    color: var(--text-tertiary);
+}
+
+.wcDTda_prosemirror-parent.default-browser .placeholder:after {
+    pointer-events: none;
+    cursor: text;
+    color: var(--text-tertiary);
+    content: attr(data-placeholder);
+    padding-left: 1px;
+    position: relative;
+}
+
+.wcDTda_prosemirror-parent.default-browser .placeholder .ProseMirror-trailingBreak {
+    display: none !important;
+}
+
+.wcDTda_prosemirror-parent p {
+    white-space: pre-wrap;
+}
+
+.wcDTda_prosemirror-parent p.placeholder {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.content-fade {
+    position: relative;
+}
+
+.content-fade:after {
+    --content-fade-distance: var(--content-fade-height, 55px);
+    --fade-start-color: var(--bg-primary);
+    --fade-end-color: var(--bg-primary);
+    background:
+        linear-gradient(to bottom, var(--fade-start-color), var(--fade-end-color)),
+        linear-gradient(
+            to bottom,
+            transparent var(--content-fade-distance),
+            var(--bg-primary) var(--content-fade-distance)
+        );
+    background-size: 100% var(--content-fade-distance), 100% 100%;
+    content: "";
+    pointer-events: none;
+    inset: var(--content-fade-top, 0) 0 0 0;
+    z-index: -1;
+    background-position: top, bottom;
+    background-repeat: no-repeat;
+    position: absolute;
+}
+
+.content-fade.single-line:after {
+    --single-line-fade-height: var(--content-fade-height, 28px);
+    background:
+        linear-gradient(to bottom, var(--fade-start-color), var(--fade-end-color)),
+        linear-gradient(
+            to bottom,
+            transparent var(--single-line-fade-height),
+            var(--bg-primary) var(--single-line-fade-height)
+        );
+    background-size: 100% var(--single-line-fade-height), 100% 100%;
 }
 
 /* Liquid glass card effect */

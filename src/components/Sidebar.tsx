@@ -68,7 +68,7 @@ export default function Sidebar({
     return (
         <aside className="w-64 h-full bg-sidebar-bg flex flex-col border-r border-divider relative">
             {/* Top Fixed Section */}
-            <div className="flex-none p-4">
+            <section className="flex-none p-4" aria-label="Sidebar actions">
                 <div className="flex justify-between items-center mb-6">
                     <button
                         onClick={onToggle}
@@ -89,10 +89,10 @@ export default function Sidebar({
                     </div>
                     <span className="font-medium">发现</span>
                 </Link>
-            </div>
+            </section>
 
             {/* Middle Scrollable Section - Chat History */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-2">
+            <nav className="flex-1 overflow-y-auto custom-scrollbar px-2" aria-label="角色列表">
                 <div className="space-y-1">
                     {characters.map((character) => {
                         const isSelected = character.id === selectedCharacterId;
@@ -125,10 +125,10 @@ export default function Sidebar({
                         );
                     })}
                 </div>
-            </div>
+            </nav>
 
             {/* Bottom Fixed Section - Profile */}
-            <div className="flex-none p-4 mt-auto border-t border-divider relative profile-section">
+            <section className="flex-none p-4 mt-auto border-t border-divider relative profile-section" aria-label="账户菜单">
                 <div
                     className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-hover cursor-pointer transition-colors"
                     onClick={(e) => {
@@ -156,7 +156,7 @@ export default function Sidebar({
                     isOpen={isProfileOpen}
                     onClose={() => setIsProfileOpen(false)}
                 />
-            </div>
+            </section>
         </aside>
     );
 }

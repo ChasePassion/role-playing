@@ -324,6 +324,7 @@ export class ApiService {
     async regenAssistantTurn(
         turnId: string,
         handlers: {
+            signal?: AbortSignal;
             onChunk: (content: string) => void;
             onDone: (fullContent: string) => void;
             onError: (error: string) => void;
@@ -344,6 +345,7 @@ export class ApiService {
                 method: "POST",
                 headers,
                 body: JSON.stringify({}),
+                signal: handlers.signal,
             });
 
             if (!response.ok) {
@@ -404,6 +406,13 @@ export class ApiService {
                 }
             }
         } catch (error) {
+            if (
+                (error instanceof DOMException && error.name === "AbortError") ||
+                (error instanceof Error && error.name === "AbortError")
+            ) {
+                return;
+            }
+
             if (error instanceof UnauthorizedError) {
                 handlers.onError("Authentication required");
                 return;
@@ -422,6 +431,7 @@ export class ApiService {
         turnId: string,
         request: UserTurnEditStreamRequest,
         handlers: {
+            signal?: AbortSignal;
             onChunk: (content: string) => void;
             onDone: (fullContent: string) => void;
             onError: (error: string) => void;
@@ -442,6 +452,7 @@ export class ApiService {
                 method: "POST",
                 headers,
                 body: JSON.stringify(request),
+                signal: handlers.signal,
             });
 
             if (!response.ok) {
@@ -502,6 +513,13 @@ export class ApiService {
                 }
             }
         } catch (error) {
+            if (
+                (error instanceof DOMException && error.name === "AbortError") ||
+                (error instanceof Error && error.name === "AbortError")
+            ) {
+                return;
+            }
+
             if (error instanceof UnauthorizedError) {
                 handlers.onError("Authentication required");
                 return;
@@ -520,6 +538,7 @@ export class ApiService {
         chatId: string,
         request: ChatStreamRequest,
         handlers: {
+            signal?: AbortSignal;
             onMeta?: (meta: ChatStreamMetaEvent) => void;
             onChunk: (content: string) => void;
             onDone: (fullContent: string) => void;
@@ -541,6 +560,7 @@ export class ApiService {
                 method: "POST",
                 headers,
                 body: JSON.stringify(request),
+                signal: handlers.signal,
             });
 
             if (!response.ok) {
@@ -603,6 +623,13 @@ export class ApiService {
                 }
             }
         } catch (error) {
+            if (
+                (error instanceof DOMException && error.name === "AbortError") ||
+                (error instanceof Error && error.name === "AbortError")
+            ) {
+                return;
+            }
+
             if (error instanceof UnauthorizedError) {
                 handlers.onError("Authentication required");
                 return;

@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import CharacterCard from "@/components/CharacterCard";
 import CreateCharacterModal from "@/components/CreateCharacterModal";
-import { getMarketCharacters, CharacterResponse, getRecentChat, createChatInstance } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
 import { useSidebar } from "./layout";
 import { Character } from "@/components/Sidebar";
+import { getOrCreateChatId } from "@/lib/chat-helpers";
 
 export default function DiscoverPage() {
     const { user } = useAuth();
     const router = useRouter();
-    const { setSelectedCharacterId, refreshSidebarCharacters } = useSidebar();
-
-    const [characters, setCharacters] = useState<Character[]>([]);
+    const {
+        setSelectedCharacterId,
+        refreshSidebarCharacters,
+        sidebarCharacters,
+    } = useSidebar();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     // Clear selected character when on discover page
@@ -22,40 +25,25 @@ export default function DiscoverPage() {
         setSelectedCharacterId(null);
     }, [setSelectedCharacterId]);
 
-    // Load characters from API
-    const loadCharacters = useCallback(async () => {
-        try {
-            const apiCharacters = await getMarketCharacters();
-            // Map API response to Character interface
-            const mapped: Character[] = apiCharacters.map((c: CharacterResponse) => ({
-                id: c.id,
-                name: c.name,
-                description: c.description,
-                avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
-                system_prompt: c.system_prompt,
-                tags: c.tags,
-                visibility: c.visibility,
-                creator_id: c.creator_id,
-                creator_username: c.creator_id === user?.id ? user?.username : "Creator",
-            }));
-            setCharacters(mapped);
-        } catch (err) {
-            console.error("Failed to load characters from API:", err);
-        }
-    }, [user]);
+    const characters = useMemo(
+        () =>
+            sidebarCharacters.map((character) => ({
+                ...character,
+                creator_username:
+                    character.creator_id === user?.id ? user?.username : "Creator",
+            })),
+        [sidebarCharacters, user?.id, user?.username]
+    );
 
     useEffect(() => {
-        if (user) {
-            loadCharacters();
+        if (user && sidebarCharacters.length === 0) {
+            refreshSidebarCharacters();
         }
-    }, [user, loadCharacters]);
+    }, [user, sidebarCharacters.length, refreshSidebarCharacters]);
 
     const handleSelectCharacter = async (character: Character) => {
         try {
-            const recent = await getRecentChat(character.id);
-            const chatId =
-                recent?.chat?.id ||
-                (await createChatInstance({ character_id: character.id })).chat.id;
+            const chatId = await getOrCreateChatId(character.id);
             router.push(`/chat/${chatId}`);
         } catch (err) {
             console.error("Failed to open chat:", err);
@@ -63,12 +51,10 @@ export default function DiscoverPage() {
     };
 
     return (
-        <>
-            {/* Content Area - Completely Scrollable */}
+        <WorkspaceFrame>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                 <div className="max-w-7xl mx-auto pl-8">
-                    {/* Header removed as requested */}
-                    <div className="flex flex-wrap gap-6 mt-8">
+                    <div className="mt-8 flex flex-wrap gap-6">
                         {characters.map((character) => (
                             <CharacterCard
                                 key={character.id}
@@ -80,10 +66,9 @@ export default function DiscoverPage() {
                 </div>
             </div>
 
-            {/* Create Character FAB Button */}
             <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#3964FE] text-white shadow-lg hover:bg-[#2a4fd6] hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center z-40"
+                className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#3964FE] text-white shadow-lg transition-all duration-200 hover:scale-105 hover:bg-[#2a4fd6] hover:shadow-xl"
                 aria-label="创建角色"
             >
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,11 +80,10 @@ export default function DiscoverPage() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={() => {
-                    loadCharacters(); // Refresh list
-                    refreshSidebarCharacters(); // Refresh sidebar
+                    refreshSidebarCharacters();
                     setIsCreateModalOpen(false);
                 }}
             />
-        </>
+        </WorkspaceFrame>
     );
 }

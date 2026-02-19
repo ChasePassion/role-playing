@@ -7,8 +7,10 @@ import CreateCharacterModal from "@/components/CreateCharacterModal";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getUserCharacters, deleteCharacter, CharacterResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
 import { useSidebar } from "../layout";
 import { Character } from "@/components/Sidebar";
+import { mapCharacterToSidebar } from "@/lib/character-adapter";
 
 export default function ProfilePage() {
     const { user, isAuthed } = useAuth();
@@ -36,17 +38,9 @@ export default function ProfilePage() {
         if (!user || !isAuthed) return;
         try {
             const apiCharacters = await getUserCharacters(user.id);
-            const mapped: Character[] = apiCharacters.map((c: CharacterResponse) => ({
-                id: c.id,
-                name: c.name,
-                description: c.description,
-                avatar: c.avatar_file_name ? `${c.avatar_file_name}` : "/default-avatar.svg",
-                system_prompt: c.system_prompt,
-                tags: c.tags,
-                visibility: c.visibility,
-                creator_id: c.creator_id,
-                creator_username: user.username,
-            }));
+            const mapped: Character[] = apiCharacters.map((c: CharacterResponse) =>
+                mapCharacterToSidebar(c, { creatorUsername: user.username })
+            );
             setCharacters(mapped);
         } catch (err) {
             console.error("Failed to load user characters:", err);
@@ -100,12 +94,11 @@ export default function ProfilePage() {
     };
 
     return (
-        <>
+        <WorkspaceFrame>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-8 pl-12">
                 <div className="max-w-7xl mx-auto">
-                    {/* Profile Header */}
-                    <div className="flex items-center gap-6 mb-12 mt-4 ml-2">
-                        <div className="relative w-24 h-24 rounded-2xl overflow-hidden shrink-0">
+                    <div className="mb-12 ml-2 mt-4 flex items-center gap-6">
+                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl">
                             <Image
                                 src={user?.avatar_url || "/default-avatar.svg"}
                                 alt={user?.username || "User"}
@@ -114,53 +107,51 @@ export default function ProfilePage() {
                             />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-1">{user?.username}</h1>
-                            <p className="text-gray-400 text-sm">{user?.email || "user@example.com"}</p>
+                            <h1 className="mb-1 text-3xl font-bold text-gray-900">{user?.username}</h1>
+                            <p className="text-sm text-gray-400">{user?.email || "user@example.com"}</p>
                         </div>
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex gap-8 border-b border-gray-200 mb-8 w-[80%]">
+                    <div className="mb-8 flex w-[80%] gap-8 border-b border-gray-200">
                         <button
                             onClick={() => setActiveTab('works')}
-                            className={`pb-3 px-1 text-lg font-medium transition-colors relative ${activeTab === 'works' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
+                            className={`relative px-1 pb-3 text-lg font-medium transition-colors ${activeTab === 'works' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
                             作品
                             {activeTab === 'works' && (
-                                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-full" />
+                                <div className="absolute bottom-0 left-0 h-0.5 w-full rounded-full bg-blue-600" />
                             )}
                         </button>
                         <button
                             onClick={() => setActiveTab('likes')}
-                            className={`pb-3 px-1 text-lg font-medium transition-colors relative ${activeTab === 'likes' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
+                            className={`relative px-1 pb-3 text-lg font-medium transition-colors ${activeTab === 'likes' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
                             喜欢
                             {activeTab === 'likes' && (
-                                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-full" />
+                                <div className="absolute bottom-0 left-0 h-0.5 w-full rounded-full bg-blue-600" />
                             )}
                         </button>
                         <button
                             onClick={() => setActiveTab('favorites')}
-                            className={`pb-3 px-1 text-lg font-medium transition-colors relative ${activeTab === 'favorites' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
+                            className={`relative px-1 pb-3 text-lg font-medium transition-colors ${activeTab === 'favorites' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
                             收藏
                             {activeTab === 'favorites' && (
-                                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-full" />
+                                <div className="absolute bottom-0 left-0 h-0.5 w-full rounded-full bg-blue-600" />
                             )}
                         </button>
                     </div>
 
-                    {/* Content Grid */}
                     {activeTab === 'works' && (
-                        <div className="flex flex-wrap gap-6 mb-10">
+                        <div className="mb-10 flex flex-wrap gap-6">
                             {characters.map((character) => (
                                 <CharacterCard
                                     key={character.id}
                                     character={character}
-                                    onClick={() => handleEdit(character)} // Click to edit ? or maybe just view details
+                                    onClick={() => handleEdit(character)}
                                     showMenu={true}
                                     onEdit={handleEdit}
                                     onDelete={handleDeleteClick}
@@ -174,11 +165,9 @@ export default function ProfilePage() {
                             暂无内容
                         </div>
                     )}
-
                 </div>
             </div>
 
-            {/* Modals */}
             <CreateCharacterModal
                 isOpen={isCreateModalOpen}
                 onClose={handleModalClose}
@@ -197,6 +186,6 @@ export default function ProfilePage() {
                 }}
                 isDeleting={isDeleting}
             />
-        </>
+        </WorkspaceFrame>
     );
 }

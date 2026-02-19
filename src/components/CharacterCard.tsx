@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { Character } from "./Sidebar";
 
@@ -18,6 +19,23 @@ export default function CharacterCard({
     onEdit,
     onDelete
 }: CharacterCardProps) {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!showMenu || !isMenuOpen) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (menuRef.current && !menuRef.current.contains(target)) {
+                setIsMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [showMenu, isMenuOpen]);
+
     return (
         <div
             onClick={() => onClick(character)}
@@ -90,29 +108,40 @@ export default function CharacterCard({
                     <span className="text-xs text-gray-400">上次活跃: 刚刚</span>
 
                     {showMenu ? (
-                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <div
+                            ref={menuRef}
+                            className="relative"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <button
                                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    const menu = e.currentTarget.nextElementSibling;
-                                    menu?.classList.toggle('hidden');
+                                    setIsMenuOpen((prev) => !prev);
                                 }}
                             >
                                 <Image src="/vertical dots.svg" alt="Menu" width={20} height={20} />
                             </button>
                             {/* Dropdown Menu */}
-                            <div className="hidden absolute right-0 bottom-full mb-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-20">
+                            <div
+                                className={`${isMenuOpen ? "block" : "hidden"} absolute right-0 bottom-full mb-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-20`}
+                            >
                                 <button
-                                    onClick={() => onEdit?.(character)}
+                                    onClick={() => {
+                                        setIsMenuOpen(false);
+                                        onEdit?.(character);
+                                    }}
                                     className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-gray-50 text-left transition-colors"
                                 >
                                     <Image src="/edit.svg" alt="Edit" width={16} height={16} />
                                     <span className="text-sm text-gray-700">编辑</span>
                                 </button>
                                 <button
-                                    onClick={() => onDelete?.(character)}
+                                    onClick={() => {
+                                        setIsMenuOpen(false);
+                                        onDelete?.(character);
+                                    }}
                                     className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-red-50 text-left transition-colors"
                                 >
                                     <Image
