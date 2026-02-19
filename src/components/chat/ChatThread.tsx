@@ -67,8 +67,8 @@ export default function ChatThread({
                         key={message.id}
                         className={
                             isUserTurn
-                                ? "text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&:has([data-writing-block])>*]:pointer-events-auto scroll-mt-(--header-height)"
-                                : "text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&:has([data-writing-block])>*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
+                                ? "text-token-text-primary w-full focus:outline-none [--shadow-height:45px] scroll-mt-(--header-height)"
+                                : "text-token-text-primary w-full focus:outline-none [--shadow-height:45px] [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
                         }
                         tabIndex={-1}
                         dir="auto"
@@ -123,4 +123,3 @@ export default function ChatThread({
         </>
     );
 }
-

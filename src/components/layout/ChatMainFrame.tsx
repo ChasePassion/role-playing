@@ -38,7 +38,7 @@ export default function ChatMainFrame({
                     {header}
                 </header>
 
-                <main id="main" className="min-h-0 flex-1" style={{ zIndex: -1 }}>
+                <main id="main" className="min-h-0 flex-1">
                     <div id="thread" className="group/thread flex min-h-full flex-col">
                         <div role="presentation" className="composer-parent flex flex-1 flex-col focus-visible:outline-0">
                             <div className="relative basis-auto flex-col -mb-(--composer-overlap-px) [--composer-overlap-px:28px] grow flex">

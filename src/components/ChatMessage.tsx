@@ -33,6 +33,7 @@ export default function ChatMessage({
     onRegenAssistant,
     onEditUser,
 }: ChatMessageProps) {
+    const userActionRowHideDelayMs = 500;
     const chevronLeftIcon = "/icons/chevron-left-8ee2e9.svg";
     const duplicateIcon = "/icons/duplicate-ce3544.svg";
     const checkIcon = "/icons/check-fa1dbd.svg";
@@ -74,6 +75,7 @@ export default function ChatMessage({
     const [draft, setDraft] = useState(message.content);
     const [isCopySuccess, setIsCopySuccess] = useState(false);
     const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const copyTextToClipboard = async (text: string): Promise<boolean> => {
         if (!text) return false;
@@ -135,8 +137,30 @@ export default function ChatMessage({
             if (copyResetTimerRef.current) {
                 clearTimeout(copyResetTimerRef.current);
             }
+            if (hoverLeaveTimerRef.current) {
+                clearTimeout(hoverLeaveTimerRef.current);
+            }
         };
     }, []);
+
+    const clearHoverLeaveTimer = () => {
+        if (!hoverLeaveTimerRef.current) return;
+        clearTimeout(hoverLeaveTimerRef.current);
+        hoverLeaveTimerRef.current = null;
+    };
+
+    const handleUserMessageMouseEnter = () => {
+        clearHoverLeaveTimer();
+        setIsUserMessageHovering(true);
+    };
+
+    const handleUserMessageMouseLeave = () => {
+        clearHoverLeaveTimer();
+        hoverLeaveTimerRef.current = setTimeout(() => {
+            setIsUserMessageHovering(false);
+            hoverLeaveTimerRef.current = null;
+        }, userActionRowHideDelayMs);
+    };
 
     const handleLeft = () => {
         if (disabled) return;
@@ -226,10 +250,10 @@ export default function ChatMessage({
                             : "flex min-w-0 max-w-[70%] flex-col"
                     }
                     onMouseEnter={
-                        isUser ? () => setIsUserMessageHovering(true) : undefined
+                        isUser ? handleUserMessageMouseEnter : undefined
                     }
                     onMouseLeave={
-                        isUser ? () => setIsUserMessageHovering(false) : undefined
+                        isUser ? handleUserMessageMouseLeave : undefined
                     }
                 >
                     <div
