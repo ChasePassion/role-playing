@@ -1,15 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const inter = localFont({
+  src: [
+    {
+      path: "./fonts/Inter-VariableFont_opsz,wght.ttf",
+      style: "normal",
+      weight: "100 900",
+    },
+    {
+      path: "./fonts/Inter-Italic-VariableFont_opsz,wght.ttf",
+      style: "italic",
+      weight: "100 900",
+    },
+  ],
+  variable: "--font-inter",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const notoSerifSC = localFont({
+  src: [
+    {
+      path: "./fonts/NotoSerifSC-VariableFont_wght.ttf",
+      style: "normal",
+      weight: "200 900",
+    },
+  ],
+  variable: "--font-noto-serif-sc",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -26,9 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${inter.variable} ${notoSerifSC.variable} antialiased`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
