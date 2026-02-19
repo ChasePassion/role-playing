@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
+import {
+  PHASE_DEVELOPMENT_SERVER,
+  PHASE_PRODUCTION_BUILD,
+  PHASE_PRODUCTION_SERVER,
+} from "next/constants";
 
-const nextConfig: NextConfig = {
+const baseConfig: NextConfig = {
   // Disable compression so SSE responses aren't buffered by the proxy layer.
   // (Streaming endpoints rely on incremental flush of chunks.)
   compress: false,
@@ -32,4 +37,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default function nextConfig(phase: string): NextConfig {
+  const distDir =
+    phase === PHASE_DEVELOPMENT_SERVER
+      ? ".next-dev"
+      : phase === PHASE_PRODUCTION_BUILD || phase === PHASE_PRODUCTION_SERVER
+        ? ".next-prod"
+        : ".next";
+
+  return {
+    ...baseConfig,
+    distDir,
+  };
+}
