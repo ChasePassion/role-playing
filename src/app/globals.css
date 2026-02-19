@@ -56,7 +56,7 @@ body {
     color: var(--text-primary);
     font-family:
         var(--font-inter),
-        var(--font-noto-serif-sc),
+        var(--font-noto-sans-sc),
         -apple-system,
         system-ui,
         "Segoe UI",

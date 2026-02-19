@@ -19,15 +19,15 @@ const inter = localFont({
   display: "swap",
 });
 
-const notoSerifSC = localFont({
+const notoSansSC = localFont({
   src: [
     {
-      path: "./fonts/NotoSerifSC-VariableFont_wght.ttf",
+      path: "./fonts/NotoSansSC-VariableFont_wght.ttf",
       style: "normal",
-      weight: "200 900",
+      weight: "100 900",
     },
   ],
-  variable: "--font-noto-serif-sc",
+  variable: "--font-noto-sans-sc",
   display: "swap",
 });
 
@@ -45,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${notoSerifSC.variable} antialiased`}>
+      <body className={`${inter.variable} ${notoSansSC.variable} antialiased`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
