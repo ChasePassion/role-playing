@@ -9,6 +9,7 @@ import AppFrame from "@/components/layout/AppFrame";
 import { useSidebarShell } from "@/hooks/useSidebarShell";
 import { mapCharacterToSidebar } from "@/lib/character-adapter";
 import { getOrCreateChatId } from "@/lib/chat-helpers";
+import { UserSettingsProvider } from "@/lib/user-settings-context";
 
 // Context for sidebar state
 interface SidebarContextType {
@@ -91,33 +92,35 @@ export default function AppLayout({
     }
 
     return (
-        <SidebarContext.Provider
-            value={{
-                isSidebarOpen,
-                isOverlay,
-                toggleSidebar,
-                sidebarCharacters,
-                selectedCharacterId,
-                setSelectedCharacterId,
-                refreshSidebarCharacters,
-            }}
-        >
-            <AppFrame
-                sidebar={
-                    <Sidebar
-                        characters={sidebarCharacters}
-                        selectedCharacterId={selectedCharacterId}
-                        onSelectCharacter={handleSelectCharacter}
-                        onToggle={toggleSidebar}
-                    />
-                }
-                isSidebarOpen={isSidebarOpen}
-                isOverlay={isOverlay}
-                onCloseSidebar={closeSidebar}
-                onToggleSidebar={toggleSidebar}
+        <UserSettingsProvider>
+            <SidebarContext.Provider
+                value={{
+                    isSidebarOpen,
+                    isOverlay,
+                    toggleSidebar,
+                    sidebarCharacters,
+                    selectedCharacterId,
+                    setSelectedCharacterId,
+                    refreshSidebarCharacters,
+                }}
             >
-                {children}
-            </AppFrame>
-        </SidebarContext.Provider>
+                <AppFrame
+                    sidebar={
+                        <Sidebar
+                            characters={sidebarCharacters}
+                            selectedCharacterId={selectedCharacterId}
+                            onSelectCharacter={handleSelectCharacter}
+                            onToggle={toggleSidebar}
+                        />
+                    }
+                    isSidebarOpen={isSidebarOpen}
+                    isOverlay={isOverlay}
+                    onCloseSidebar={closeSidebar}
+                    onToggleSidebar={toggleSidebar}
+                >
+                    {children}
+                </AppFrame>
+            </SidebarContext.Provider>
+        </UserSettingsProvider>
     );
 }

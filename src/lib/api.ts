@@ -9,6 +9,8 @@ export const getCurrentUser = apiService.getCurrentUser.bind(apiService);
 // 用户相关
 export const uploadFile = apiService.uploadFile.bind(apiService);
 export const updateUserProfile = apiService.updateUserProfile.bind(apiService);
+export const getMySettings = apiService.getMySettings.bind(apiService);
+export const updateMySettings = apiService.updateMySettings.bind(apiService);
 
 // 角色相关
 export const createCharacter = apiService.createCharacter.bind(apiService);
@@ -50,6 +52,8 @@ export type {
   MemoryManageRequest,
   MemorySearchRequest,
   UpdateProfileRequest,
+  UserSettingsResponse,
+  UpdateUserSettingsRequest,
   CreateCharacterRequest,
   CharacterResponse,
   UpdateCharacterRequest,

@@ -46,6 +46,15 @@ export interface UpdateProfileRequest {
     avatar_url?: string;
 }
 
+export interface UserSettingsResponse {
+    message_font_size: number;
+    updated_at: string;
+}
+
+export interface UpdateUserSettingsRequest {
+    message_font_size?: number;
+}
+
 export type CharacterVisibility = "PUBLIC" | "PRIVATE" | "UNLISTED";
 export type ChatVisibility = CharacterVisibility;
 export type ChatState = "ACTIVE" | "ARCHIVED";
@@ -258,6 +267,17 @@ export class ApiService {
 
     async updateUserProfile(data: UpdateProfileRequest): Promise<User> {
         return httpClient.put<User>("/v1/users/me", data);
+    }
+
+    async getMySettings(): Promise<UserSettingsResponse> {
+        return httpClient.get<UserSettingsResponse>("/v1/users/me/settings");
+    }
+
+    async updateMySettings(data: UpdateUserSettingsRequest): Promise<UserSettingsResponse> {
+        return httpClient.patch<UserSettingsResponse, UpdateUserSettingsRequest>(
+            "/v1/users/me/settings",
+            data
+        );
     }
 
     async createCharacter(data: CreateCharacterRequest): Promise<CharacterResponse> {

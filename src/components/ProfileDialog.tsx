@@ -9,7 +9,10 @@ interface ProfileDialogProps {
     onClose: () => void;
 }
 
-export default function ProfileDialog({ isOpen, onClose }: ProfileDialogProps) {
+export default function ProfileDialog({
+    isOpen,
+    onClose,
+}: ProfileDialogProps) {
     const router = useRouter();
     const { logout } = useAuth();
 
@@ -26,6 +29,11 @@ export default function ProfileDialog({ isOpen, onClose }: ProfileDialogProps) {
         router.push("/login");
     };
 
+    const handleOpenSettings = () => {
+        router.push("/settings");
+        onClose();
+    };
+
     return (
         <div
             className="absolute bottom-16 left-2 w-[90%] bg-white rounded-xl shadow-xl z-50 py-2 animate-modal-in"
@@ -40,13 +48,12 @@ export default function ProfileDialog({ isOpen, onClose }: ProfileDialogProps) {
                 <span className="text-sm font-medium text-gray-700">个人资料</span>
             </button>
 
-            {/* Settings (placeholder) */}
             <button
+                onClick={handleOpenSettings}
                 className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
-                disabled
             >
                 <Image src="/setting.svg" alt="Settings" width={20} height={20} className="shrink-0" />
-                <span className="text-sm font-medium text-gray-400">设置</span>
+                <span className="text-sm font-medium text-gray-700">设置</span>
             </button>
 
             {/* Divider */}

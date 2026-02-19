@@ -105,6 +105,13 @@ class HttpClient {
         });
     }
 
+    async patch<T, B = unknown>(endpoint: string, data?: B): Promise<T> {
+        return this.request<T>(endpoint, {
+            method: "PATCH",
+            body: data ? JSON.stringify(data) : undefined,
+        });
+    }
+
     async delete<T>(endpoint: string): Promise<T> {
         return this.request<T>(endpoint, { method: "DELETE" });
     }

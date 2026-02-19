@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { useRouter } from "next/navigation";
 import ChatMessage, { type Message } from "@/components/ChatMessage";
 import type { Character } from "@/components/Sidebar";
+import { useUserSettings } from "@/lib/user-settings-context";
 
 interface ChatThreadProps {
     character: Character | null;
@@ -31,6 +32,7 @@ export default function ChatThread({
     onEditUser,
 }: ChatThreadProps) {
     const router = useRouter();
+    const { messageFontSize } = useUserSettings();
 
     if (isLoading) {
         return (
@@ -104,6 +106,7 @@ export default function ChatThread({
                                             message={message}
                                             userAvatar={userAvatar}
                                             assistantAvatar={character.avatar}
+                                            messageFontSize={messageFontSize}
                                             disabled={isStreaming}
                                             onSelectCandidate={onSelectCandidate}
                                             onRegenAssistant={onRegenAssistant}

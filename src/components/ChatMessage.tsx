@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Markdown from "./Markdown";
 
 export interface Message {
@@ -18,6 +18,7 @@ interface ChatMessageProps {
     message: Message;
     userAvatar: string;
     assistantAvatar: string;
+    messageFontSize: number;
     disabled?: boolean;
     onSelectCandidate?: (turnId: string, candidateNo: number) => void;
     onRegenAssistant?: (turnId: string) => void;
@@ -28,6 +29,7 @@ export default function ChatMessage({
     message,
     userAvatar,
     assistantAvatar,
+    messageFontSize,
     disabled = false,
     onSelectCandidate,
     onRegenAssistant,
@@ -76,6 +78,7 @@ export default function ChatMessage({
     const [isCopySuccess, setIsCopySuccess] = useState(false);
     const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const messageTextStyle: CSSProperties = { fontSize: `${messageFontSize}px` };
 
     const copyTextToClipboard = async (text: string): Promise<boolean> => {
         if (!text) return false;
@@ -265,7 +268,8 @@ export default function ChatMessage({
                                     value={draft}
                                     onChange={(e) => setDraft(e.target.value)}
                                     rows={3}
-                                    className="w-full resize-none bg-transparent text-base leading-relaxed whitespace-pre-wrap focus:outline-none"
+                                    className="w-full resize-none bg-transparent leading-relaxed whitespace-pre-wrap focus:outline-none"
+                                    style={messageTextStyle}
                                     disabled={disabled}
                                 />
                                 <div className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -288,7 +292,7 @@ export default function ChatMessage({
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-base leading-relaxed">
+                            <div className="leading-relaxed" style={messageTextStyle}>
                                 {isUser ? (
                                     <p className="whitespace-pre-wrap">{message.content}</p>
                                 ) : (
