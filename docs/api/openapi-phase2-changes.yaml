@@ -1,0 +1,433 @@
+openapi: 3.1.0
+info:
+  title: NeuraChar Phase 2 Incremental API
+  version: 2.0.0
+  description: |
+    Includes only APIs changed in Phase 2 (added/modified/removed).
+    APIs unchanged from Phase 1 are intentionally omitted.
+x-phase2-change-log:
+  modified:
+    - GET /v1/users/me/settings
+    - PATCH /v1/users/me/settings
+    - POST /v1/chats/{chat_id}/stream
+  added:
+    - POST /v1/voice/stt/transcriptions
+    - GET /v1/voice/tts/messages/{assistant_candidate_id}/audio
+  removed: []
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+
+tags:
+  - name: users
+  - name: chats
+  - name: voice
+
+paths:
+  /v1/users/me/settings:
+    get:
+      tags: [users]
+      summary: "[MODIFIED] Get current user settings (adds auto_read_aloud_enabled)"
+      operationId: getMySettingsPhase2
+      x-change-type: modified
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_UserSettingsResponsePhase2"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+    patch:
+      tags: [users]
+      summary: "[MODIFIED] Patch current user settings (supports auto_read_aloud_enabled)"
+      operationId: patchMySettingsPhase2
+      x-change-type: modified
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserSettingsUpdatePhase2"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_UserSettingsResponsePhase2"
+        "400":
+          description: Empty patch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/chats/{chat_id}/stream:
+    post:
+      tags: [chats]
+      summary: "[MODIFIED] Chat stream SSE (adds realtime TTS audio events)"
+      operationId: streamChatPhase2
+      x-change-type: modified
+      description: |
+        Keeps existing SSE events (meta/chunk/done/reply_suggestions/sentence_card/...).
+        Adds new optional TTS events for realtime read-aloud:
+        - tts_audio_delta: incremental audio chunk (base64)
+        - tts_audio_done: read-aloud finished for this assistant message
+        - tts_error: tts failure, does not break text chat stream
+
+        When user setting `auto_read_aloud_enabled=true`, server emits tts_* events.
+        When false, no tts_* events are emitted.
+      parameters:
+        - name: chat_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatStreamRequest"
+      responses:
+        "200":
+          description: text/event-stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE frame payload with `data: <json>\n\n`
+              examples:
+                textChunk:
+                  summary: Existing text chunk event (unchanged)
+                  value: |
+                    data: {"type":"chunk","content":"Hello"}
+
+                ttsDelta:
+                  summary: New audio chunk event
+                  value: |
+                    data: {"type":"tts_audio_delta","assistant_candidate_id":"9f25a3e7-1d64-4ea2-a182-58e2cb2fe6f7","seq":1,"audio_b64":"<base64>","mime_type":"audio/pcm;rate=24000"}
+
+                ttsDone:
+                  summary: New audio completion event
+                  value: |
+                    data: {"type":"tts_audio_done","assistant_candidate_id":"9f25a3e7-1d64-4ea2-a182-58e2cb2fe6f7"}
+
+                ttsError:
+                  summary: New audio error event
+                  value: |
+                    data: {"type":"tts_error","code":"tts_upstream_error","message":"qwen tts failed"}
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Chat not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Chat state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/voice/stt/transcriptions:
+    post:
+      tags: [voice]
+      summary: "[NEW] Speech-to-text for compose box append flow"
+      operationId: createSttTranscription
+      x-change-type: added
+      description: |
+        Called when user taps checkmark in recording state.
+        Returns transcript text for appending to input box. No auto-send.
+        Backend model target: fun-asr-realtime.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [audio]
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: Recorded audio binary payload
+                audio_format:
+                  type: string
+                  enum: [pcm, wav, opus, speex, aac, amr]
+                  default: wav
+                sample_rate:
+                  type: integer
+                  enum: [8000, 16000]
+                  default: 16000
+      responses:
+        "200":
+          description: Transcription success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_STTTranscriptionResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "413":
+          description: Audio too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "415":
+          description: Unsupported audio format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: No speech detected or invalid audio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: STT upstream failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/voice/tts/messages/{assistant_candidate_id}/audio:
+    get:
+      tags: [voice]
+      summary: "[NEW] Manual single-message read-aloud for assistant bubble"
+      operationId: streamTtsForAssistantMessage
+      x-change-type: added
+      description: |
+        Used by the speaker button under an assistant bubble.
+        Backend validates ownership and ensures candidate belongs to assistant.
+        Backend model target: qwen3-tts-instruct-flash-realtime.
+      parameters:
+        - name: assistant_candidate_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: audio_format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [opus, mp3]
+            default: opus
+      responses:
+        "200":
+          description: Audio stream bytes
+          content:
+            audio/opus:
+              schema:
+                type: string
+                format: binary
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Candidate not accessible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Candidate not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Candidate is not assistant-authored content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: TTS upstream failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [code, message, status]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        status:
+          type: integer
+
+    ChatStreamRequest:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          description: User message content
+        client_message_id:
+          type: string
+          nullable: true
+          description: Optional idempotency key
+
+    UserSettingsResponsePhase2:
+      type: object
+      required:
+        - display_mode
+        - knowledge_card_enabled
+        - mixed_input_auto_translate_enabled
+        - auto_read_aloud_enabled
+        - message_font_size
+        - updated_at
+      properties:
+        display_mode:
+          type: string
+          enum: [concise, detailed]
+        knowledge_card_enabled:
+          type: boolean
+        mixed_input_auto_translate_enabled:
+          type: boolean
+        auto_read_aloud_enabled:
+          type: boolean
+          default: true
+          description: Added in Phase 2.
+        message_font_size:
+          type: integer
+          minimum: 14
+          maximum: 24
+        updated_at:
+          type: string
+          format: date-time
+
+    UserSettingsUpdatePhase2:
+      type: object
+      additionalProperties: false
+      properties:
+        display_mode:
+          type: string
+          enum: [concise, detailed]
+        knowledge_card_enabled:
+          type: boolean
+        mixed_input_auto_translate_enabled:
+          type: boolean
+        auto_read_aloud_enabled:
+          type: boolean
+          description: Added in Phase 2.
+        message_font_size:
+          type: integer
+          minimum: 14
+          maximum: 24
+
+    SuccessEnvelope_UserSettingsResponsePhase2:
+      type: object
+      required: [code, message, status, data]
+      properties:
+        code:
+          type: string
+          example: ok
+        message:
+          type: string
+          example: ok
+        status:
+          type: integer
+          example: 200
+        data:
+          $ref: "#/components/schemas/UserSettingsResponsePhase2"
+
+    STTTranscriptionResult:
+      type: object
+      required: [text, model]
+      properties:
+        text:
+          type: string
+          description: Transcript text to append into compose input.
+        model:
+          type: string
+          example: fun-asr-realtime
+        request_id:
+          type: string
+          nullable: true
+
+    SuccessEnvelope_STTTranscriptionResult:
+      type: object
+      required: [code, message, status, data]
+      properties:
+        code:
+          type: string
+          example: ok
+        message:
+          type: string
+          example: ok
+        status:
+          type: integer
+          example: 200
+        data:
+          $ref: "#/components/schemas/STTTranscriptionResult"
