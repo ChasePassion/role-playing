@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import type { CharacterVisibility } from "@/lib/api";
 import ProfileDialog from "./ProfileDialog";
+import { SettingsModal } from "./SettingsModal";
 
 export interface Character {
     id: string;
@@ -51,6 +52,7 @@ export default function Sidebar({
 }: SidebarProps) {
     const { user } = useAuth();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Close profile dialog when clicking outside
     useEffect(() => {
@@ -68,7 +70,7 @@ export default function Sidebar({
     return (
         <aside className="w-64 h-full bg-sidebar-bg flex flex-col border-r border-divider relative">
             {/* Top Fixed Section */}
-            <section className="flex-none p-4" aria-label="Sidebar actions">
+            <section className="flex-none p-2" aria-label="Sidebar actions">
                 <div className="flex justify-between items-center mb-6">
                     <button
                         onClick={onToggle}
@@ -82,7 +84,7 @@ export default function Sidebar({
                 {/* Discover Link */}
                 <Link
                     href="/"
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-sidebar-hover text-text-primary transition-colors"
+                    className="flex items-center gap-3 py-3 px-2 rounded-xl hover:bg-sidebar-hover text-text-primary transition-colors"
                 >
                     <div className="w-5 h-5 flex items-center justify-center">
                         <Image src="/find.svg" alt="Discover" width={20} height={20} />
@@ -155,6 +157,12 @@ export default function Sidebar({
                 <ProfileDialog
                     isOpen={isProfileOpen}
                     onClose={() => setIsProfileOpen(false)}
+                    onOpenSettings={() => setIsSettingsOpen(true)}
+                />
+
+                <SettingsModal
+                    open={isSettingsOpen}
+                    onOpenChange={setIsSettingsOpen}
                 />
             </section>
         </aside>

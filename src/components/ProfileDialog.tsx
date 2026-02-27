@@ -7,11 +7,13 @@ import Image from "next/image";
 interface ProfileDialogProps {
     isOpen: boolean;
     onClose: () => void;
+    onOpenSettings: () => void;
 }
 
 export default function ProfileDialog({
     isOpen,
     onClose,
+    onOpenSettings,
 }: ProfileDialogProps) {
     const router = useRouter();
     const { logout } = useAuth();
@@ -30,7 +32,7 @@ export default function ProfileDialog({
     };
 
     const handleOpenSettings = () => {
-        router.push("/settings");
+        onOpenSettings();
         onClose();
     };
 
