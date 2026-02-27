@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Markdown from "./Markdown";
 import MixedInputTransformBox from "./MixedInputTransformBox";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import type { InputTransform, SentenceCard, ReplySuggestion, DisplayMode } from "@/lib/api";
 
 export interface Message {
@@ -328,35 +330,44 @@ export default function ChatMessage({
                     }
                 >
                     <div
-                        className={`w-fit max-w-full px-4 py-1.5 min-h-9 flex items-center ${isUser ? "bubble-user" : "bubble-assistant"}`}
+                        className={`w-fit max-w-full min-h-9 flex items-center ${
+                            isEditing
+                                ? "bg-background shadow-md ring-1 ring-border rounded-2xl w-full min-w-[280px] sm:min-w-[400px]"
+                                : `px-4 py-1.5 ${isUser ? "bubble-user" : "bubble-assistant"}`
+                        }`}
                     >
                         {isEditing ? (
-                            <div className="space-y-2">
-                                <textarea
+                            <div className="flex flex-col w-full py-1.5 px-3">
+                                <Textarea
                                     value={draft}
                                     onChange={(e) => setDraft(e.target.value)}
                                     rows={3}
-                                    className="w-full resize-none bg-transparent leading-normal whitespace-pre-wrap focus:outline-none"
+                                    className="min-h-[100px] max-h-[250px] overflow-y-auto w-full resize-none border-0 bg-transparent px-1 py-0 leading-normal focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
                                     style={messageTextStyle}
                                     disabled={actionsDisabled}
+                                    placeholder="输入修改后的内容..."
                                 />
-                                <div className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
-                                    <button
+                                <div className="flex items-center justify-end gap-3 mt-3">
+                                    <Button
                                         type="button"
-                                        className="text-xs px-2 py-1 rounded border border-divider text-text-secondary hover:bg-gray-50 disabled:opacity-50"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 px-4 rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                                         onClick={handleEditCancel}
                                         disabled={actionsDisabled}
                                     >
                                         取消
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
                                         type="button"
-                                        className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                        variant="default"
+                                        size="sm"
+                                        className="h-9 px-4 rounded-full bg-[#0285ff] hover:bg-[#0285ff]/90 text-white shadow-md transition-all active:scale-95"
                                         onClick={handleEditSend}
                                         disabled={actionsDisabled || !draft.trim()}
                                     >
                                         发送
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ) : (
