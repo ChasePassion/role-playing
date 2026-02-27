@@ -41,13 +41,13 @@ export default function ProfileDialog({
 
     return (
         <div
-            className="absolute bottom-16 left-2 w-[90%] bg-white rounded-xl shadow-xl z-50 py-2 animate-modal-in"
+            className="absolute bottom-16 left-2 w-[90%] bg-white rounded-xl shadow-xl z-50 p-2 flex flex-col gap-0.5 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
         >
             {/* Personal Profile */}
             <button
                 onClick={handleNavigateToProfile}
-                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
             >
                 <Image src="/me.svg" alt="Profile" width={20} height={20} className="shrink-0" />
                 <span className="text-sm font-medium text-gray-700">个人资料</span>
@@ -55,7 +55,7 @@ export default function ProfileDialog({
 
             <button
                 onClick={handleOpenSettings}
-                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
             >
                 <Image src="/setting.svg" alt="Settings" width={20} height={20} className="shrink-0" />
                 <span className="text-sm font-medium text-gray-700">设置</span>
@@ -63,19 +63,19 @@ export default function ProfileDialog({
 
             <button
                 onClick={handleOpenFavorites}
-                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
             >
                 <Image src="/mark.svg" alt="Favorites" width={20} height={20} className="shrink-0" />
                 <span className="text-sm font-medium text-gray-700">收藏夹</span>
             </button>
 
             {/* Divider */}
-            <div role="separator" aria-orientation="horizontal" className="bg-gray-200 h-px mx-4 my-1" />
+            <div role="separator" aria-orientation="horizontal" className="bg-gray-100 h-px mx-2 my-1" />
 
             {/* Logout */}
             <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
             >
                 <Image src="/out.svg" alt="Logout" width={20} height={20} className="shrink-0" />
                 <span className="text-sm font-medium text-gray-700">退出登录</span>

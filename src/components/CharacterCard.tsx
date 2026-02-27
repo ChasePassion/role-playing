@@ -125,14 +125,14 @@ export default function CharacterCard({
                             </button>
                             {/* Dropdown Menu */}
                             <div
-                                className={`${isMenuOpen ? "block" : "hidden"} absolute right-0 bottom-full mb-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-20`}
+                                className={`${isMenuOpen ? "flex" : "hidden"} flex-col gap-0.5 absolute right-0 bottom-full mb-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 z-20 p-1.5`}
                             >
                                 <button
                                     onClick={() => {
                                         setIsMenuOpen(false);
                                         onEdit?.(character);
                                     }}
-                                    className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-gray-50 text-left transition-colors"
+                                    className="w-full px-2.5 py-2 flex items-center gap-2 hover:bg-sidebar-hover rounded-lg text-left transition-colors"
                                 >
                                     <Image src="/edit.svg" alt="Edit" width={16} height={16} />
                                     <span className="text-sm text-gray-700">编辑</span>
@@ -142,7 +142,7 @@ export default function CharacterCard({
                                         setIsMenuOpen(false);
                                         onDelete?.(character);
                                     }}
-                                    className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-red-50 text-left transition-colors"
+                                    className="w-full px-2.5 py-2 flex items-center gap-2 hover:bg-red-100 rounded-lg text-left transition-colors"
                                 >
                                     <Image
                                         src="/delete.svg"
