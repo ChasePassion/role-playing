@@ -13,7 +13,7 @@ export default function MixedInputTransformBox({
 
     return (
         <div className="mt-1 px-1 max-w-full">
-            <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap wrap-break-word">
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {transformedContent}
                 {isStreaming && (
                     <span className="inline-block w-0.5 h-4 bg-blue-400 ml-0.5 animate-pulse align-text-bottom" />

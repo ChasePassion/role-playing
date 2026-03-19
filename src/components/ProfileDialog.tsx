@@ -3,6 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Image from "next/image";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ProfileDialogProps {
     isOpen: boolean;
@@ -17,8 +24,6 @@ export default function ProfileDialog({
 }: ProfileDialogProps) {
     const router = useRouter();
     const { logout } = useAuth();
-
-    if (!isOpen) return null;
 
     const handleNavigateToProfile = () => {
         router.push("/profile");
@@ -42,46 +47,50 @@ export default function ProfileDialog({
     };
 
     return (
-        <div
-            className="absolute bottom-16 left-2 w-[90%] bg-white rounded-xl shadow-xl z-50 p-2 flex flex-col gap-0.5 animate-modal-in"
-            onClick={(e) => e.stopPropagation()}
-        >
-            {/* Personal Profile */}
-            <button
-                onClick={handleNavigateToProfile}
-                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
+        <DropdownMenu open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DropdownMenuTrigger asChild>
+                <div />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+                side="top"
+                align="start"
+                className="w-[200px] p-1.5 rounded-xl shadow-xl"
+                sideOffset={8}
             >
-                <Image src="/me.svg" alt="Profile" width={20} height={20} className="shrink-0" />
-                <span className="text-sm font-medium text-gray-700">个人资料</span>
-            </button>
+                <DropdownMenuItem
+                    onClick={handleNavigateToProfile}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
+                >
+                    <Image src="/me.svg" alt="Profile" width={20} height={20} className="shrink-0" />
+                    <span className="text-sm font-medium text-gray-700">个人资料</span>
+                </DropdownMenuItem>
 
-            <button
-                onClick={handleOpenSettings}
-                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
-            >
-                <Image src="/setting.svg" alt="Settings" width={20} height={20} className="shrink-0" />
-                <span className="text-sm font-medium text-gray-700">设置</span>
-            </button>
+                <DropdownMenuItem
+                    onClick={handleOpenSettings}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
+                >
+                    <Image src="/setting.svg" alt="Settings" width={20} height={20} className="shrink-0" />
+                    <span className="text-sm font-medium text-gray-700">设置</span>
+                </DropdownMenuItem>
 
-            <button
-                onClick={handleOpenFavorites}
-                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
-            >
-                <Image src="/mark.svg" alt="Favorites" width={20} height={20} className="shrink-0" />
-                <span className="text-sm font-medium text-gray-700">收藏夹</span>
-            </button>
+                <DropdownMenuItem
+                    onClick={handleOpenFavorites}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
+                >
+                    <Image src="/mark.svg" alt="Favorites" width={20} height={20} className="shrink-0" />
+                    <span className="text-sm font-medium text-gray-700">收藏夹</span>
+                </DropdownMenuItem>
 
-            {/* Divider */}
-            <div role="separator" aria-orientation="horizontal" className="bg-gray-100 h-px mx-2 my-1" />
+                <DropdownMenuSeparator className="bg-gray-100 h-px mx-2 my-1" />
 
-            {/* Logout */}
-            <button
-                onClick={handleLogout}
-                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-sidebar-hover rounded-lg transition-colors text-left"
-            >
-                <Image src="/out.svg" alt="Logout" width={20} height={20} className="shrink-0" />
-                <span className="text-sm font-medium text-gray-700">退出登录</span>
-            </button>
-        </div>
+                <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent text-destructive"
+                >
+                    <Image src="/out.svg" alt="Logout" width={20} height={20} className="shrink-0" />
+                    <span className="text-sm font-medium">退出登录</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }

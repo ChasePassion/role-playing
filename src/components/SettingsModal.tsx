@@ -38,7 +38,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                 <VisuallyHidden>
                     <DialogTitle>设置</DialogTitle>
                 </VisuallyHidden>
-                {/* 左侧导航栏 */}
                 <div className="w-[240px] bg-[#f9f9f9] p-4 border-r border-gray-100 flex flex-col pt-6 shrink-0 h-full">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6 px-3">设置</h2>
 
@@ -68,7 +67,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                         </button>
                     </nav>
 
-                    {/* 底部同步状态 */}
                     <div className="mt-auto px-1 pb-4">
                         {isLoading ? (
                             <Badge variant="secondary" className="gap-1.5 bg-gray-100 text-gray-600 shadow-none border-transparent w-full justify-center py-1.5 font-normal">
@@ -103,7 +101,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                     </div>
                 </div>
 
-                {/* 右侧内容区 */}
                 <div className="flex-1 overflow-y-auto px-10 pb-10 pt-6 custom-scrollbar relative h-full">
                     {activeTab === "appearance" && (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
@@ -122,7 +119,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                                     </div>
 
                                     <Slider
-                                        defaultValue={[16]}
                                         max={maxMessageFontSize}
                                         min={minMessageFontSize}
                                         step={1}
@@ -150,7 +146,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                             <h3 className="text-xl font-semibold text-gray-900 mb-8 pb-4 border-b border-gray-100">学习辅助</h3>
 
                             <div className="flex flex-col">
-                                {/* 详细模式 */}
                                 <div className="flex items-center justify-between pb-5 pt-0">
                                     <div className="space-y-0.5 pr-6">
                                         <h4 className="font-medium text-gray-900 text-[15px]">详细模式</h4>
@@ -163,7 +158,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                                 </div>
                                 <Separator className="opacity-60" />
 
-                                {/* 知识卡 */}
                                 <div className="flex items-center justify-between py-5">
                                     <div className="space-y-0.5 pr-6">
                                         <h4 className="font-medium text-gray-900 text-[15px]">知识卡</h4>
@@ -176,7 +170,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                                 </div>
                                 <Separator className="opacity-60" />
 
-                                {/* 混输自动转英文 */}
                                 <div className="flex items-center justify-between py-5">
                                     <div className="space-y-0.5 pr-6">
                                         <h4 className="font-medium text-gray-900 text-[15px]">混输自动转英文</h4>
@@ -189,7 +182,6 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                                 </div>
                                 <Separator className="opacity-60" />
 
-                                {/* 自动朗读 */}
                                 <div className="flex items-center justify-between py-5">
                                     <div className="space-y-0.5 pr-6">
                                         <h4 className="font-medium text-gray-900 text-[15px]">自动朗读</h4>

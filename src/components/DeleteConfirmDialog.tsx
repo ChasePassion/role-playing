@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 interface DeleteConfirmDialogProps {
     isOpen: boolean;
     characterName: string;
@@ -15,35 +26,26 @@ export default function DeleteConfirmDialog({
     onCancel,
     isDeleting = false,
 }: DeleteConfirmDialogProps) {
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Overlay */}
-            <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-                onClick={!isDeleting ? onCancel : undefined}
-            />
-
-            {/* Dialog */}
-            <div
-                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 animate-modal-in"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <h2 className="text-xl font-bold text-gray-900 mb-3">确认删除</h2>
-                <p className="text-gray-600 mb-6">
-                    确定要删除角色 <span className="font-semibold text-gray-900">&quot;{characterName}&quot;</span> 吗？此操作无法撤销。
-                </p>
-
-                <div className="flex gap-3">
-                    <button
+        <AlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+            <AlertDialogContent className="max-w-md rounded-2xl p-6">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-xl font-bold text-gray-900">
+                        确认删除
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-gray-600">
+                        确定要删除角色 <span className="font-semibold text-gray-900">&quot;{characterName}&quot;</span> 吗？此操作无法撤销。
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-3">
+                    <AlertDialogCancel
                         onClick={onCancel}
                         disabled={isDeleting}
                         className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                     >
                         取消
-                    </button>
-                    <button
+                    </AlertDialogCancel>
+                    <AlertDialogAction
                         onClick={onConfirm}
                         disabled={isDeleting}
                         className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
@@ -56,9 +58,9 @@ export default function DeleteConfirmDialog({
                         ) : (
                             "确认删除"
                         )}
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }

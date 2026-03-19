@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Markdown from "./Markdown";
 import MixedInputTransformBox from "./MixedInputTransformBox";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { InputTransform, SentenceCard, ReplySuggestion, DisplayMode } from "@/lib/api";
 
 export interface Message {
@@ -297,23 +297,19 @@ export default function ChatMessage({
                 className={`flex max-w-full items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
             >
                 {/* Avatar */}
-                <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg">
+                <Avatar className="h-9 w-9 rounded-lg overflow-hidden shrink-0">
                     {isUser ? (
-                        <Image
-                            src={userAvatar}
-                            alt="User"
-                            fill
-                            className="object-cover"
-                        />
+                        <>
+                            <AvatarImage src={userAvatar} alt="User" />
+                            <AvatarFallback className="bg-gray-200 text-gray-600 text-xs">U</AvatarFallback>
+                        </>
                     ) : (
-                        <Image
-                            src={assistantAvatar}
-                            alt="Assistant"
-                            fill
-                            className="object-cover"
-                        />
+                        <>
+                            <AvatarImage src={assistantAvatar} alt="Assistant" />
+                            <AvatarFallback className="bg-gray-200 text-gray-600 text-xs">AI</AvatarFallback>
+                        </>
                     )}
-                </div>
+                </Avatar>
 
                 {/* One message block: bubble + action row */}
                 <div
