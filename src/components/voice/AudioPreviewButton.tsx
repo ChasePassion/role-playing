@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useId, useSyncExternalStore } from "react";
 import { Play, Pause, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { audioPreviewManager } from "@/lib/voice/audio-preview-manager";
 
 interface AudioPreviewButtonProps {
   audioUrl: string | null;
@@ -15,77 +16,37 @@ export default function AudioPreviewButton({
   disabled = false,
   size = "md",
 }: AudioPreviewButtonProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
+  const buttonId = useId();
+  const snapshot = useSyncExternalStore(
+    audioPreviewManager.subscribe,
+    audioPreviewManager.getSnapshot,
+    audioPreviewManager.getSnapshot,
+  );
+  const isPlaying =
+    snapshot.activeId === buttonId && snapshot.phase === "playing";
+  const isLoading =
+    snapshot.activeId === buttonId && snapshot.phase === "loading";
 
   useEffect(() => {
     return () => {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-      }
+      audioPreviewManager.release(buttonId);
     };
-  }, []);
-
-  const stopAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    setIsPlaying(false);
-  }, []);
+  }, [buttonId]);
 
   const handlePlayPause = async () => {
     if (!audioUrl) return;
 
     if (isPlaying) {
-      stopAudio();
+      audioPreviewManager.stop(buttonId);
       return;
     }
 
-    setIsLoading(true);
     try {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-
-      const response = await fetch(audioUrl);
-      const blob = await response.blob();
-
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-      }
-      objectUrlRef.current = URL.createObjectURL(blob);
-
-      const audio = new Audio(objectUrlRef.current);
-      audioRef.current = audio;
-
-      audio.onended = () => {
-        setIsPlaying(false);
-      };
-
-      audio.onerror = () => {
-        setIsPlaying(false);
-        setIsLoading(false);
-      };
-
-      await audio.play();
-      setIsPlaying(true);
+      await audioPreviewManager.play(buttonId, audioUrl);
     } catch {
-      setIsPlaying(false);
-    } finally {
-      setIsLoading(false);
+      // The manager already resets shared playback state on failure.
     }
   };
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, []);
 
   const sizeClasses = {
     sm: "h-7 w-7",

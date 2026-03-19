@@ -112,7 +112,7 @@ export default function VoiceSelector({
                     })
                   }
                   disabled={disabled}
-                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                  className={`flex items-center gap-3 rounded-xl border-[0.4px] p-3 text-left transition-all ${
                     isSelected
                       ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
