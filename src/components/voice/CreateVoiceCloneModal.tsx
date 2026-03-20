@@ -159,7 +159,7 @@ export default function CreateVoiceCloneModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden bg-white border-none shadow-2xl">
+      <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden bg-white border-none shadow-2xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-none flex items-center justify-between p-5 border-b border-gray-100 bg-white z-10">
           <DialogTitle className="text-xl font-bold text-gray-900">
             克隆音色
