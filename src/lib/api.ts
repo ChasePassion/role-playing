@@ -57,6 +57,8 @@ export const createVoiceClone = apiService.createVoiceClone.bind(apiService);
 export const getVoiceById = apiService.getVoiceById.bind(apiService);
 export const patchVoiceById = apiService.patchVoiceById.bind(apiService);
 export const deleteVoiceById = apiService.deleteVoiceById.bind(apiService);
+export const getVoicePreviewAudioStream =
+  apiService.getVoicePreviewAudioStream.bind(apiService);
 
 // 导出类型和错误类
 export * from "./token-store";

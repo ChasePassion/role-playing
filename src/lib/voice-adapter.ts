@@ -13,6 +13,7 @@ export interface VoiceDisplayInfo {
   providerModel: string | null;
   providerVoiceId: string;
   sourceType: VoiceSourceType;
+  previewText: string | null;
   previewAudioUrl: string | null;
   isSystem: boolean;
   status: VoiceStatus | null;
@@ -61,6 +62,7 @@ export function mapVoiceSelectableToDisplay(
     provider: item.provider,
     providerModel: item.provider_model,
     providerVoiceId: item.provider_voice_id,
+    previewText: item.preview_text ?? null,
     sourceType: item.source_type,
     previewAudioUrl: item.preview_audio_url,
     isSystem: item.source_type === "system",
@@ -78,6 +80,7 @@ export function mapVoiceProfileToDisplay(
     provider: profile.provider,
     providerModel: profile.provider_model,
     providerVoiceId: profile.provider_voice_id,
+    previewText: profile.preview_text ?? null,
     sourceType: profile.source_type,
     previewAudioUrl: profile.preview_audio_url,
     isSystem: profile.source_type === "system",
@@ -120,6 +123,8 @@ export interface VoiceCardDisplay {
   description: string;
   status: VoiceStatus;
   statusText: string;
+  previewText: string | null;
+  sourceType: VoiceSourceType;
   previewAudioUrl: string | null;
   canPreview: boolean;
   canDelete: boolean;
@@ -134,8 +139,12 @@ export function mapVoiceProfileToCardDisplay(
     description: profile.description || "",
     status: profile.status,
     statusText: getStatusText(profile.status),
+    previewText: profile.preview_text ?? null,
+    sourceType: profile.source_type,
     previewAudioUrl: profile.preview_audio_url,
-    canPreview: canUseVoice(profile.status),
+    canPreview:
+      canUseVoice(profile.status) &&
+      Boolean(profile.preview_audio_url || profile.preview_text),
     canDelete: canDeleteVoice(profile.status),
   };
 }

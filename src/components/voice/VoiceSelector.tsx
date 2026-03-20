@@ -107,6 +107,7 @@ export default function VoiceSelector({
                       provider: voice.provider,
                       provider_model: voice.providerModel,
                       provider_voice_id: voice.providerVoiceId,
+                      preview_text: voice.previewText,
                       preview_audio_url: voice.previewAudioUrl,
                       usage_hint: voice.description || null,
                     })
@@ -141,10 +142,15 @@ export default function VoiceSelector({
                     )}
                   </div>
 
-                  {voice.previewAudioUrl && (
+                  {(voice.previewAudioUrl || voice.previewText) && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <AudioPreviewButton
                         audioUrl={voice.previewAudioUrl}
+                        previewVoiceId={
+                          voice.sourceType === "clone" && voice.previewText
+                            ? voice.id
+                            : null
+                        }
                         size="sm"
                       />
                     </div>

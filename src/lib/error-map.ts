@@ -80,6 +80,18 @@ const ERROR_MESSAGE_MAP: Record<string, ErrorMapping> = {
     message: "当前所选克隆音色不可用，请重新选择你的可用音色",
     severity: "error",
   },
+  voice_profile_not_ready: {
+    message: "音色尚未就绪，请稍后再试听",
+    severity: "warning",
+  },
+  voice_preview_text_missing: {
+    message: "该音色还没有试听文本，请先编辑补充",
+    severity: "warning",
+  },
+  voice_preview_not_supported: {
+    message: "当前音色不支持这种试听方式",
+    severity: "error",
+  },
   voice_not_found: {
     message: "当前所选音色不存在或与模型不匹配，请重新选择",
     severity: "error",

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { patchVoiceById } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-map";
 import type { VoiceCardDisplay } from "@/lib/voice-adapter";
@@ -27,6 +28,7 @@ export default function EditVoiceModal({
 }: EditVoiceModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [previewText, setPreviewText] = useState("");
   const [fetchState, setFetchState] = useState<FetchState>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +36,7 @@ export default function EditVoiceModal({
     if (isOpen && voice) {
       setName(voice.displayName);
       setDescription(voice.description || "");
+      setPreviewText(voice.previewText || "");
     }
   }, [isOpen, voice]);
 
@@ -46,6 +49,12 @@ export default function EditVoiceModal({
     }
     if (description.length > 160) {
       return "描述不能超过160个字符";
+    }
+    if (!previewText.trim()) {
+      return "请输入试听文本";
+    }
+    if (previewText.trim().length > 120) {
+      return "试听文本不能超过120个字符";
     }
     return null;
   };
@@ -66,6 +75,7 @@ export default function EditVoiceModal({
       await patchVoiceById(voice.id, {
         display_name: name.trim(),
         description: description.trim() || null,
+        preview_text: previewText.trim(),
       });
       setFetchState("success");
       onSuccess();
@@ -133,6 +143,22 @@ export default function EditVoiceModal({
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:!border-gray-200 [&::selection]:bg-blue-500 [&::selection]:text-white"
             />
             <p className="text-xs text-gray-500 mt-1">{description.length}/160 字符</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="editPreviewText" className="text-sm font-medium text-gray-700">
+              试听文本 <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="editPreviewText"
+              value={previewText}
+              onChange={(e) => setPreviewText(e.target.value)}
+              placeholder="输入试听时要朗读的文字"
+              maxLength={120}
+              disabled={fetchState === "loading"}
+              className="min-h-[92px] w-full resize-none border border-gray-200 rounded-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:!border-gray-200 [&::selection]:bg-blue-500 [&::selection]:text-white"
+            />
+            <p className="text-xs text-gray-500 mt-1">{previewText.length}/120 字符</p>
           </div>
         </div>
 

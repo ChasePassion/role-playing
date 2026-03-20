@@ -8,9 +8,13 @@ export interface AudioPreviewSnapshot {
 }
 
 type Listener = () => void;
+type AudioPreviewSource =
+  | { kind: "url"; url: string }
+  | { kind: "blob"; load: () => Promise<Blob> };
 
 class AudioPreviewManager {
   private audio: HTMLAudioElement | null = null;
+  private managedObjectUrl: string | null = null;
   private listeners = new Set<Listener>();
   private requestId = 0;
   private snapshot: AudioPreviewSnapshot = {
@@ -27,9 +31,7 @@ class AudioPreviewManager {
 
   getSnapshot = (): AudioPreviewSnapshot => this.snapshot;
 
-  async play(id: string, url: string): Promise<void> {
-    if (!url) return;
-
+  async play(id: string, source: AudioPreviewSource): Promise<void> {
     const audio = this.getOrCreateAudio();
     const currentRequestId = ++this.requestId;
 
@@ -39,9 +41,24 @@ class AudioPreviewManager {
       phase: "loading",
     });
 
-    audio.src = url;
-
     try {
+      let resolvedUrl = "";
+      if (source.kind === "url") {
+        if (!source.url) {
+          this.stop();
+          return;
+        }
+        resolvedUrl = source.url;
+      } else {
+        const blob = await source.load();
+        if (currentRequestId !== this.requestId || this.snapshot.activeId !== id) {
+          return;
+        }
+        this.managedObjectUrl = URL.createObjectURL(blob);
+        resolvedUrl = this.managedObjectUrl;
+      }
+
+      audio.src = resolvedUrl;
       await audio.play();
 
       if (
@@ -114,6 +131,7 @@ class AudioPreviewManager {
     audio.currentTime = 0;
     audio.removeAttribute("src");
     audio.load();
+    this.revokeManagedObjectUrl();
   }
 
   private setSnapshot(nextSnapshot: AudioPreviewSnapshot): void {
@@ -126,6 +144,14 @@ class AudioPreviewManager {
 
     this.snapshot = nextSnapshot;
     this.listeners.forEach((listener) => listener());
+  }
+
+  private revokeManagedObjectUrl(): void {
+    if (!this.managedObjectUrl) {
+      return;
+    }
+    URL.revokeObjectURL(this.managedObjectUrl);
+    this.managedObjectUrl = null;
   }
 }
 

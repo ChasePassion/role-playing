@@ -83,6 +83,7 @@ export interface VoiceSelectableItem {
   provider: string;
   provider_model: string | null;
   provider_voice_id: string;
+  preview_text?: string | null;
   preview_audio_url: string | null;
   usage_hint: string | null;
 }
@@ -98,6 +99,7 @@ export interface VoiceProfile {
   description: string | null;
   status: VoiceStatus;
   provider_status: string | null;
+  preview_text?: string | null;
   preview_audio_url: string | null;
   language_tags: string[] | null;
   metadata: Record<string, unknown> | null;
@@ -118,6 +120,7 @@ export interface VoiceCatalogResponse {
 export interface VoiceProfileUpdate {
   display_name?: string;
   description?: string | null;
+  preview_text?: string | null;
 }
 
 export interface CreateCharacterRequest {
@@ -1191,7 +1194,11 @@ export class ApiService {
 
     const payload = await response.json();
     if (payload && typeof payload === "object" && "data" in payload) {
-      return (payload as { data: VoiceProfile }).data;
+      const data = (payload as { data: VoiceProfile | { voice?: VoiceProfile } }).data;
+      if (data && typeof data === "object" && "voice" in data && data.voice) {
+        return data.voice;
+      }
+      return data as VoiceProfile;
     }
     return payload as VoiceProfile;
   }
@@ -1206,6 +1213,44 @@ export class ApiService {
 
   async deleteVoiceById(voiceId: string): Promise<void> {
     await httpClient.delete(`/v1/voices/${voiceId}`);
+  }
+
+  async getVoicePreviewAudioStream(
+    voiceId: string,
+    options?: { audio_format?: "opus" | "mp3"; signal?: AbortSignal },
+  ): Promise<ArrayBuffer> {
+    const token = tokenStore.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const format = options?.audio_format ?? "mp3";
+    const response = await fetch(
+      `/v1/voices/${voiceId}/preview/audio?audio_format=${format}`,
+      {
+        method: "GET",
+        headers,
+        signal: options?.signal,
+      },
+    );
+
+    if (!response.ok) {
+      const errorData: { code?: string; message?: string; detail?: string } =
+        await response.json().catch(() => ({}));
+      const errorMessage =
+        errorData.message ||
+        errorData.detail ||
+        `HTTP error! status: ${response.status}`;
+
+      if (response.status === 401) {
+        tokenStore.clearToken();
+        throw new UnauthorizedError(errorMessage);
+      }
+      throw new ApiError(response.status, errorData.code, errorMessage);
+    }
+
+    return response.arrayBuffer();
   }
 }
 

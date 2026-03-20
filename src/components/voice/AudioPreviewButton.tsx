@@ -3,16 +3,19 @@
 import { useEffect, useId, useSyncExternalStore } from "react";
 import { Play, Pause, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getVoicePreviewAudioStream } from "@/lib/api";
 import { audioPreviewManager } from "@/lib/voice/audio-preview-manager";
 
 interface AudioPreviewButtonProps {
   audioUrl: string | null;
+  previewVoiceId?: string | null;
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
 }
 
 export default function AudioPreviewButton({
   audioUrl,
+  previewVoiceId = null,
   disabled = false,
   size = "md",
 }: AudioPreviewButtonProps) {
@@ -34,7 +37,7 @@ export default function AudioPreviewButton({
   }, [buttonId]);
 
   const handlePlayPause = async () => {
-    if (!audioUrl) return;
+    if (!audioUrl && !previewVoiceId) return;
 
     if (isPlaying) {
       audioPreviewManager.stop(buttonId);
@@ -42,7 +45,24 @@ export default function AudioPreviewButton({
     }
 
     try {
-      await audioPreviewManager.play(buttonId, audioUrl);
+      if (audioUrl) {
+        await audioPreviewManager.play(buttonId, {
+          kind: "url",
+          url: audioUrl,
+        });
+        return;
+      }
+      if (previewVoiceId) {
+        await audioPreviewManager.play(buttonId, {
+          kind: "blob",
+          load: async () => {
+            const audioBuffer = await getVoicePreviewAudioStream(previewVoiceId, {
+              audio_format: "mp3",
+            });
+            return new Blob([audioBuffer], { type: "audio/mpeg" });
+          },
+        });
+      }
     } catch {
       // The manager already resets shared playback state on failure.
     }
@@ -60,7 +80,7 @@ export default function AudioPreviewButton({
     lg: "w-5 h-5",
   };
 
-  if (!audioUrl) {
+  if (!audioUrl && !previewVoiceId) {
     return (
       <Button
         variant="outline"

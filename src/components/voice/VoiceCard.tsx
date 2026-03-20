@@ -100,6 +100,9 @@ export default function VoiceCard({ voice, onDelete, onEdit }: VoiceCardProps) {
 
         <AudioPreviewButton
           audioUrl={voice.previewAudioUrl}
+          previewVoiceId={
+            voice.sourceType === "clone" && voice.previewText ? voice.id : null
+          }
           disabled={!voice.canPreview}
           size="sm"
         />
