@@ -77,7 +77,7 @@ export default function ChatMessage({
     const userActionRowHideDelayMs = 500;
     const chevronLeftIcon = "/icons/chevron-left-8ee2e9.svg";
     const duplicateIcon = "/icons/duplicate-ce3544.svg";
-    const checkIcon = "/icons/check-fa1dbd.svg";
+    const checkIcon = "/icons/check-recording-fa1dbd.svg";
     const editIcon = "/icons/edit-6d87e1.svg";
     const ideaIcon = "/icons/os-icon-idea.svg";
     const knowledgeCardIcon = "/book.svg";
