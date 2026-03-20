@@ -41,6 +41,7 @@ interface ChatMessageProps {
     knowledgeCardEnabled?: boolean;
     // Phase 2: TTS
     playingCandidateId?: string | null;
+    ttsLoadingCandidateId?: string | null;
     isRecording?: boolean;
     onPlayTts?: (candidateId: string) => void;
     onStopTts?: (candidateId: string) => void;
@@ -63,6 +64,7 @@ export default function ChatMessage({
     displayMode = "concise",
     knowledgeCardEnabled = false,
     playingCandidateId,
+    ttsLoadingCandidateId,
     isRecording = false,
     onPlayTts,
     onStopTts,
@@ -79,7 +81,7 @@ export default function ChatMessage({
     const editIcon = "/icons/edit-6d87e1.svg";
     const ideaIcon = "/icons/os-icon-idea.svg";
     const knowledgeCardIcon = "/book.svg";
-    const volumeIcon = "/icons/volume-54f145.svg";
+    
     const branchButtonClass =
         "text-token-text-secondary hover:bg-token-bg-secondary rounded-md disabled:opacity-50";
     const actionButtonClass =
@@ -327,6 +329,7 @@ export default function ChatMessage({
     // Phase 2: Whether to show speaker button
     const showSpeakerBtn = !isUser && !message.isTemp && !!message.assistantCandidateId;
     const isSpeakerPlaying = showSpeakerBtn && playingCandidateId === message.assistantCandidateId;
+    const isSpeakerLoading = showSpeakerBtn && ttsLoadingCandidateId === message.assistantCandidateId;
     // Phase 3: Whether to show feedback button (for user messages)
     const showFeedbackBtn = isUser && !message.isTemp && !isEditing && !!onRequestFeedback;
     const showActionRow = showNav || showKnowledgeCardBtn || showSpeakerBtn || showFeedbackBtn;
@@ -540,9 +543,58 @@ export default function ChatMessage({
                                         }
                                     }}
                                     disabled={isRecording}
-                                    aria-label={isSpeakerPlaying ? "停止朗读" : "朗读"}
+                                    aria-label={isSpeakerPlaying ? "停止朗读" : isSpeakerLoading ? "加载中" : "朗读"}
                                 >
-                                    {renderActionIcon(volumeIcon, isSpeakerPlaying ? "tts-playing" : "")}
+                                    <span className="flex h-8 w-8 items-center justify-center">
+                                        {isSpeakerLoading ? (
+                                            <svg
+                                                className="animate-spin h-4 w-4 text-blue-600"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                />
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                />
+                                            </svg>
+                                        ) : (
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="none"
+                                                aria-hidden="true"
+                                                className={`h-5 w-5 shrink-0${isSpeakerPlaying ? " speaker-playing" : ""}`}
+                                            >
+                                                <path
+                                                    className="speaker-body"
+                                                    d="M9.751 4.092a.585.585 0 0 0-.907-.49l-.072.058-2.218 2.033a3.06 3.06 0 0 1-1.785.792l-.286.013c-.958 0-1.735.778-1.735 1.736v3.533c0 .958.777 1.734 1.735 1.734.766 0 1.506.288 2.071.806l2.218 2.033.072.057a.585.585 0 0 0 .907-.489zM11.081 15.908c0 1.615-1.859 2.483-3.091 1.512l-.118-.1-2.216-2.033a1.74 1.74 0 0 0-1.173-.456 3.065 3.065 0 0 1-3.065-3.064V8.234a3.065 3.065 0 0 1 3.065-3.066l.162-.008c.375-.035.73-.191 1.01-.448L7.873 2.68l.117-.1c1.233-.971 3.092-.102 3.092 1.512z"
+                                                    fill="currentColor"
+                                                />
+                                                <path
+                                                    className="speaker-wave wave1"
+                                                    d="M12.5 7.5Q14.5 10 12.5 12.5"
+                                                />
+                                                <path
+                                                    className="speaker-wave wave2"
+                                                    d="M14.0 6.0Q17.0 10 14.0 14.0"
+                                                />
+                                                <path
+                                                    className="speaker-wave wave3"
+                                                    d="M15.5 4.5Q19.5 10 15.5 15.5"
+                                                />
+                                            </svg>
+                                        )}
+                                    </span>
                                 </button>
                             )}
                         </div>

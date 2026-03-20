@@ -22,13 +22,18 @@ export default function ChatPage() {
     // Phase 2: TTS playback manager
     const ttsManagerRef = useRef<TtsPlaybackManager | null>(null);
     const [playingCandidateId, setPlayingCandidateId] = useState<string | null>(null);
+    const [ttsLoadingCandidateId, setTtsLoadingCandidateId] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
 
     useEffect(() => {
         const manager = new TtsPlaybackManager();
         manager.onPlayStateChange = (candidateId) => {
             setPlayingCandidateId(candidateId);
+            if (candidateId !== null) {
+                setTtsLoadingCandidateId(null);
+            }
         };
+        manager.onAudioReady = () => {};
         ttsManagerRef.current = manager;
 
         return () => {
@@ -102,15 +107,18 @@ export default function ChatPage() {
     // Phase 2: Speaker button handlers
     const handlePlayTts = useCallback(async (candidateId: string) => {
         if (isRecording) return;
+        setTtsLoadingCandidateId(candidateId);
         try {
             await ttsManagerRef.current?.playMessage(candidateId);
         } catch (err) {
             console.error("TTS playback failed:", err);
+            setTtsLoadingCandidateId(null);
         }
     }, [isRecording]);
 
     const handleStopTts = useCallback((candidateId: string) => {
         ttsManagerRef.current?.stopMessage(candidateId);
+        setTtsLoadingCandidateId(null);
     }, []);
 
     const headerContent = (
@@ -133,6 +141,7 @@ export default function ChatPage() {
             onRegenAssistant={handleRegenAssistant}
             onEditUser={handleEditUser}
             playingCandidateId={playingCandidateId}
+            ttsLoadingCandidateId={ttsLoadingCandidateId}
             isRecording={isRecording}
             onPlayTts={handlePlayTts}
             onStopTts={handleStopTts}

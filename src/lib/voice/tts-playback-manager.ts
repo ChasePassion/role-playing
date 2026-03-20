@@ -1,6 +1,7 @@
 import { getTtsAudioStream } from "@/lib/api";
 
 type PlayStateCallback = (candidateId: string | null) => void;
+type AudioReadyCallback = (candidateId: string) => void;
 
 /**
  * TtsPlaybackManager
@@ -31,6 +32,7 @@ export class TtsPlaybackManager {
 
   // External callback
   onPlayStateChange: PlayStateCallback = () => {};
+  onAudioReady: AudioReadyCallback = () => {};
 
   // ── AudioContext management ──
 
@@ -230,8 +232,6 @@ export class TtsPlaybackManager {
     const abortController = new AbortController();
     this.singleAbort = abortController;
 
-    this.setPlayingId(candidateId);
-
     try {
       const arrayBuffer = await getTtsAudioStream(candidateId, {
         audio_format: "mp3",
@@ -260,6 +260,8 @@ export class TtsPlaybackManager {
       };
 
       source.start(0);
+      this.setPlayingId(candidateId);
+      this.onAudioReady(candidateId);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         return;

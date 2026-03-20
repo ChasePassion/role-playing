@@ -53,6 +53,7 @@ interface ChatThreadProps {
     onEditUser: (turnId: string, newContent: string) => void;
     // Phase 2: TTS
     playingCandidateId?: string | null;
+    ttsLoadingCandidateId?: string | null;
     isRecording?: boolean;
     onPlayTts?: (candidateId: string) => void;
     onStopTts?: (candidateId: string) => void;
@@ -71,6 +72,7 @@ export default function ChatThread({
     onRegenAssistant,
     onEditUser,
     playingCandidateId,
+    ttsLoadingCandidateId,
     isRecording,
     onPlayTts,
     onStopTts,
@@ -930,6 +932,7 @@ export default function ChatThread({
                                             displayMode={displayMode}
                                             knowledgeCardEnabled={knowledgeCardEnabled}
                                             playingCandidateId={playingCandidateId}
+                                            ttsLoadingCandidateId={ttsLoadingCandidateId}
                                             isRecording={isRecording}
                                             onPlayTts={onPlayTts}
                                             onStopTts={onStopTts}
