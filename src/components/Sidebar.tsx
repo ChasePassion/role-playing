@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import type { CharacterVisibility } from "@/lib/api";
+import type { CharacterVisibility, LLMProvider } from "@/lib/api";
 
 import { SettingsModal } from "./SettingsModal";
 import {
@@ -28,6 +28,11 @@ export interface Character {
     visibility?: CharacterVisibility;
     creator_id?: string;
     creator_username?: string;
+    llm_provider?: LLMProvider | null;
+    llm_model?: string | null;
+    uses_system_default_llm?: boolean;
+    effective_llm_provider?: LLMProvider;
+    effective_llm_model?: string;
     voice_provider?: string;
     voice_model?: string;
     voice_provider_voice_id?: string;

@@ -78,6 +78,31 @@ export type TurnState = "OK" | "FILTERED" | "DELETED" | "ERROR";
 export type VoiceSourceType = "system" | "clone" | "designed" | "imported";
 export type VoiceStatus = "creating" | "processing" | "ready" | "failed" | "deleting" | "deleted";
 
+// Phase 4: LLM Model types
+export type LLMProvider = "deepseek" | "openrouter";
+
+export interface CharacterLLMRoute {
+  provider: LLMProvider;
+  model: string;
+}
+
+export interface LLMModelCatalogItem {
+  provider: LLMProvider;
+  model: string;
+  label: string;
+  description: string | null;
+  is_default: boolean;
+}
+
+export interface LLMModelCatalogResponse {
+  default_route: CharacterLLMRoute;
+  items: LLMModelCatalogItem[];
+}
+
+export interface LLMModelSearchResponse {
+  items: LLMModelCatalogItem[];
+}
+
 export interface VoiceSelectableItem {
   id: string;
   display_name: string;
@@ -137,6 +162,8 @@ export interface CreateCharacterRequest {
   voice_model: string;
   voice_provider_voice_id: string;
   voice_source_type: VoiceSourceType;
+  llm_provider?: LLMProvider | null;
+  llm_model?: string | null;
 }
 
 export interface CharacterResponse {
@@ -151,6 +178,11 @@ export interface CharacterResponse {
   voice_provider_voice_id: string;
   voice_source_type: VoiceSourceType;
   voice?: VoiceSelectableItem | null;
+  llm_provider?: LLMProvider | null;
+  llm_model?: string | null;
+  uses_system_default_llm?: boolean;
+  effective_llm_provider?: LLMProvider;
+  effective_llm_model?: string;
   tags?: string[];
   creator_id: string;
   visibility: CharacterVisibility;
@@ -347,6 +379,8 @@ export interface UpdateCharacterRequest {
   voice_source_type?: VoiceSourceType;
   tags?: string[];
   visibility?: CharacterVisibility;
+  llm_provider?: LLMProvider | null;
+  llm_model?: string | null;
 }
 
 interface StreamChunkEvent {
@@ -367,12 +401,51 @@ interface StreamErrorEvent {
 
 type StreamEvent = StreamChunkEvent | StreamDoneEvent | StreamErrorEvent;
 
+interface TurnStreamMetaEvent {
+  type: "meta";
+  user_turn?: {
+    id: string;
+    candidate_id: string;
+    candidate_no?: number;
+  };
+  assistant_turn: {
+    id: string;
+    candidate_id: string;
+    turn_no?: number;
+    candidate_no?: number;
+  };
+}
+
 interface TurnStreamReplySuggestionsEvent {
   type: "reply_suggestions";
   suggestions: ReplySuggestion[];
 }
 
-type TurnStreamEvent = StreamEvent | TurnStreamReplySuggestionsEvent;
+interface TurnStreamSentenceCardStartedEvent {
+  type: "sentence_card_started";
+  assistant_candidate_id: string;
+}
+
+interface TurnStreamSentenceCardEvent {
+  type: "sentence_card";
+  assistant_candidate_id: string;
+  sentence_card: SentenceCard;
+}
+
+interface TurnStreamSentenceCardErrorEvent {
+  type: "sentence_card_error";
+  assistant_candidate_id: string;
+  code: string;
+  message: string;
+}
+
+type TurnStreamEvent =
+  | StreamEvent
+  | TurnStreamMetaEvent
+  | TurnStreamReplySuggestionsEvent
+  | TurnStreamSentenceCardStartedEvent
+  | TurnStreamSentenceCardEvent
+  | TurnStreamSentenceCardErrorEvent;
 
 interface ChatStreamMetaEvent {
   type: "meta";
@@ -409,10 +482,22 @@ interface ChatStreamReplySuggestionsEvent {
   suggestions: ReplySuggestion[];
 }
 
+interface ChatStreamSentenceCardStartedEvent {
+  type: "sentence_card_started";
+  assistant_candidate_id: string;
+}
+
 interface ChatStreamSentenceCardEvent {
   type: "sentence_card";
-  message_id: string;
+  assistant_candidate_id: string;
   sentence_card: SentenceCard;
+}
+
+interface ChatStreamSentenceCardErrorEvent {
+  type: "sentence_card_error";
+  assistant_candidate_id: string;
+  code: string;
+  message: string;
 }
 
 interface ChatStreamMemoryQueuedEvent {
@@ -544,7 +629,9 @@ type ChatStreamEvent =
   | ChatStreamChunkEvent
   | ChatStreamDoneEvent
   | ChatStreamReplySuggestionsEvent
+  | ChatStreamSentenceCardStartedEvent
   | ChatStreamSentenceCardEvent
+  | ChatStreamSentenceCardErrorEvent
   | ChatStreamMemoryQueuedEvent
   | ChatStreamErrorEvent
   | ChatStreamTtsAudioDeltaEvent
@@ -697,9 +784,20 @@ export class ApiService {
     turnId: string,
     handlers: {
       signal?: AbortSignal;
+      onMeta?: (meta: TurnStreamMetaEvent) => void;
       onChunk: (content: string) => void;
       onDone: (fullContent: string) => void;
       onReplySuggestions?: (suggestions: ReplySuggestion[]) => void;
+      onSentenceCardStarted?: (data: { assistant_candidate_id: string }) => void;
+      onSentenceCard?: (data: {
+        assistant_candidate_id: string;
+        sentence_card: SentenceCard;
+      }) => void;
+      onSentenceCardError?: (data: {
+        assistant_candidate_id: string;
+        code: string;
+        message: string;
+      }) => void;
       onError: (error: string) => void;
     },
   ): Promise<void> {
@@ -762,12 +860,29 @@ export class ApiService {
 
           try {
             const data = JSON.parse(payload) as TurnStreamEvent;
-            if (data.type === "chunk") {
+            if (data.type === "meta") {
+              handlers.onMeta?.(data);
+            } else if (data.type === "chunk") {
               handlers.onChunk(data.content);
             } else if (data.type === "done") {
               handlers.onDone(data.full_content);
             } else if (data.type === "reply_suggestions") {
               handlers.onReplySuggestions?.(data.suggestions);
+            } else if (data.type === "sentence_card_started") {
+              handlers.onSentenceCardStarted?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+              });
+            } else if (data.type === "sentence_card") {
+              handlers.onSentenceCard?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+                sentence_card: data.sentence_card,
+              });
+            } else if (data.type === "sentence_card_error") {
+              handlers.onSentenceCardError?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+                code: data.code,
+                message: data.message,
+              });
             } else if (data.type === "error") {
               if (data.code && data.message) {
                 handlers.onError(`${data.code}: ${data.message}`);
@@ -809,9 +924,20 @@ export class ApiService {
     request: UserTurnEditStreamRequest,
     handlers: {
       signal?: AbortSignal;
+      onMeta?: (meta: TurnStreamMetaEvent) => void;
       onChunk: (content: string) => void;
       onDone: (fullContent: string) => void;
       onReplySuggestions?: (suggestions: ReplySuggestion[]) => void;
+      onSentenceCardStarted?: (data: { assistant_candidate_id: string }) => void;
+      onSentenceCard?: (data: {
+        assistant_candidate_id: string;
+        sentence_card: SentenceCard;
+      }) => void;
+      onSentenceCardError?: (data: {
+        assistant_candidate_id: string;
+        code: string;
+        message: string;
+      }) => void;
       onError: (error: string) => void;
     },
   ): Promise<void> {
@@ -874,12 +1000,29 @@ export class ApiService {
 
           try {
             const data = JSON.parse(payload) as TurnStreamEvent;
-            if (data.type === "chunk") {
+            if (data.type === "meta") {
+              handlers.onMeta?.(data);
+            } else if (data.type === "chunk") {
               handlers.onChunk(data.content);
             } else if (data.type === "done") {
               handlers.onDone(data.full_content);
             } else if (data.type === "reply_suggestions") {
               handlers.onReplySuggestions?.(data.suggestions);
+            } else if (data.type === "sentence_card_started") {
+              handlers.onSentenceCardStarted?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+              });
+            } else if (data.type === "sentence_card") {
+              handlers.onSentenceCard?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+                sentence_card: data.sentence_card,
+              });
+            } else if (data.type === "sentence_card_error") {
+              handlers.onSentenceCardError?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+                code: data.code,
+                message: data.message,
+              });
             } else if (data.type === "error") {
               if (data.code && data.message) {
                 handlers.onError(`${data.code}: ${data.message}`);
@@ -935,9 +1078,17 @@ export class ApiService {
         assistantCandidateId?: string,
       ) => void;
       onReplySuggestions?: (suggestions: ReplySuggestion[]) => void;
+      onSentenceCardStarted?: (data: {
+        assistant_candidate_id: string;
+      }) => void;
       onSentenceCard?: (data: {
-        message_id: string;
+        assistant_candidate_id: string;
         sentence_card: SentenceCard;
+      }) => void;
+      onSentenceCardError?: (data: {
+        assistant_candidate_id: string;
+        code: string;
+        message: string;
       }) => void;
       // Phase 2: TTS realtime callbacks
       onTtsAudioDelta?: (data: {
@@ -1030,10 +1181,20 @@ export class ApiService {
               );
             } else if (data.type === "reply_suggestions") {
               handlers.onReplySuggestions?.(data.suggestions);
+            } else if (data.type === "sentence_card_started") {
+              handlers.onSentenceCardStarted?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+              });
             } else if (data.type === "sentence_card") {
               handlers.onSentenceCard?.({
-                message_id: data.message_id,
+                assistant_candidate_id: data.assistant_candidate_id,
                 sentence_card: data.sentence_card,
+              });
+            } else if (data.type === "sentence_card_error") {
+              handlers.onSentenceCardError?.({
+                assistant_candidate_id: data.assistant_candidate_id,
+                code: data.code,
+                message: data.message,
               });
             } else if (data.type === "error") {
               if (data.code && data.message) {
@@ -1347,6 +1508,15 @@ export class ApiService {
     return httpClient.post<{ word_card: WordCard }>("/v1/learning/word-card", request);
   }
 
+  async createSentenceCard(
+    candidateId: string,
+  ): Promise<{ sentence_card: SentenceCard }> {
+    return httpClient.post<{ sentence_card: SentenceCard }>(
+      `/v1/learning/sentence-card/candidates/${candidateId}`,
+      {},
+    );
+  }
+
   async createFeedbackCard(
     turnId: string,
   ): Promise<{ feedback_card: FeedbackCard }> {
@@ -1379,6 +1549,16 @@ export class ApiService {
     if (params?.limit) qs.set("limit", String(params.limit));
     const suffix = qs.toString() ? `?${qs}` : "";
     return httpClient.get<SavedItemsPagePhase3>(`/v1/saved-items${suffix}`);
+  }
+
+  async getLLMModelCatalog(): Promise<LLMModelCatalogResponse> {
+    return httpClient.get<LLMModelCatalogResponse>("/v1/llm-models/catalog");
+  }
+
+  async searchLLMModels(modelId: string): Promise<LLMModelSearchResponse> {
+    return httpClient.get<LLMModelSearchResponse>(
+      `/v1/llm-models/search?model_id=${encodeURIComponent(modelId)}`
+    );
   }
 }
 

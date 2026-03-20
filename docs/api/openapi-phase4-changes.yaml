@@ -1,0 +1,941 @@
+openapi: 3.1.0
+info:
+  title: NeuraChar Phase 4 Incremental API
+  version: 4.0.0-draft
+  description: |
+    Incremental API contract for Phase 4.
+    Scope is backend-only and focused on character-level LLM binding.
+    - character create/edit may optionally bind one LLM route
+    - supported providers in this phase: `deepseek`, `openrouter`
+    - if no binding is selected, backend uses the system default route
+    - character main reply generation resolves the effective model per character
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+
+x-phase4-change-log:
+  modified:
+    - POST /v1/characters
+    - GET /v1/characters
+    - GET /v1/characters/market
+    - GET /v1/characters/{character_id}
+    - PUT /v1/characters/{character_id}
+    - GET /v1/users/{creator_id}/characters
+    - POST /v1/chats/{chat_id}/stream
+    - POST /v1/turns/{turn_id}/regen/stream
+    - POST /v1/turns/{turn_id}/edit/stream
+  added:
+    - GET /v1/llm-models/catalog
+    - GET /v1/llm-models/search
+  removed: []
+
+x-db-delta:
+  modified_tables:
+    - table: characters
+      added_fields:
+        - llm_provider
+        - llm_model
+      semantics:
+        - both NULL means "use system default LLM route"
+        - do not persist system default as a fake explicit binding
+
+x-phase4-llm-routing:
+  system_default_route:
+    provider: deepseek
+    model: deepseek-chat
+  request_rules:
+    - create: both omitted/null => use system default
+    - create: one provided and the other missing/null => reject
+    - update: both omitted => keep current binding unchanged
+    - update: both null => clear explicit binding and revert to system default
+    - update: both non-null => replace explicit binding
+  runtime_rules:
+    - applies only to main assistant reply generation
+    - `candidates.model_type` stores `provider:model`
+    - backend may retry transport errors but must not silently switch an explicit route to another catalog item
+
+x-phase4-excluded-scope:
+  - no frontend UX contract
+  - no per-chat override
+  - no per-user global preferred model
+  - no temperature / top_p / reasoning settings
+  - no provider passthrough for arbitrary unregistered models
+  - no requirement to move memory / learning / suggestion flows to character-selected model
+
+tags:
+  - name: characters
+  - name: llm-models
+  - name: chats
+  - name: turns
+  - name: users
+
+paths:
+  /v1/llm-models/catalog:
+    get:
+      tags: [llm-models]
+      summary: "[NEW] List selectable character LLM models"
+      operationId: listCharacterLlmModelsPhase4
+      x-change-type: added
+      description: |
+        Returns the backend allowlist of character-selectable LLM routes.
+        Only configured and enabled providers/models appear in `items`.
+        `default_route` is the route used when a character has no explicit binding.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_LLMModelCatalogResponsePhase4"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Default route or provider credentials are misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/llm-models/search:
+    get:
+      tags: [llm-models]
+      summary: "[NEW] Search selectable character LLM models by model id"
+      operationId: searchCharacterLlmModelsPhase4
+      x-change-type: added
+      description: |
+        Searches the backend allowlist of character-selectable LLM routes by model id.
+
+        Hard rules:
+        - only one query parameter is supported: `model_id`
+        - backend searches only the `model` field, not `provider` or `label`
+        - search scope is still restricted to the backend allowlist
+        - matching is case-insensitive
+        - response order should prefer exact match first, then prefix match, then substring match
+      parameters:
+        - name: model_id
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+          description: Model id keyword entered by the user.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_LLMModelSearchResponsePhase4"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Validation failed, including empty `model_id`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Provider credentials or default route are misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/characters:
+    post:
+      tags: [characters]
+      summary: "[MODIFIED] Create character (optional LLM binding)"
+      operationId: createCharacterPhase4
+      x-change-type: modified
+      description: |
+        Voice binding behavior is unchanged from Phase 2.1.
+        New Phase 4 fields:
+        - `llm_provider`
+        - `llm_model`
+
+        Rules:
+        - both omitted/null => system default
+        - both present => explicit binding
+        - partial binding => 422
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CharacterCreatePhase4"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_CharacterResponsePhase4"
+        "400":
+          description: Unsupported LLM or voice provider/model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Voice resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Clone voice not selectable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Validation failed, including partial LLM binding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+    get:
+      tags: [characters]
+      summary: "[MODIFIED] List my characters (includes LLM fields)"
+      operationId: listMyCharactersPhase4
+      x-change-type: modified
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_CharacterListPhase4"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/characters/market:
+    get:
+      tags: [characters]
+      summary: "[MODIFIED] List market characters (includes effective LLM fields)"
+      operationId: listMarketCharactersPhase4
+      x-change-type: modified
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_CharacterListPhase4"
+
+  /v1/characters/{character_id}:
+    get:
+      tags: [characters]
+      summary: "[MODIFIED] Get character detail (includes effective LLM fields)"
+      operationId: getCharacterPhase4
+      x-change-type: modified
+      parameters:
+        - name: character_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_CharacterResponsePhase4"
+        "401":
+          description: Invalid token for optional auth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Private character forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Character not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+    put:
+      tags: [characters]
+      summary: "[MODIFIED] Update character (supports LLM rebinding / clear)"
+      operationId: updateCharacterPhase4
+      x-change-type: modified
+      description: |
+        Update keeps current partial-update semantics.
+        - omit both `llm_provider` and `llm_model`: keep current binding
+        - set both to null: clear binding and use system default
+        - set both to strings: replace binding
+        - set only one side: reject
+      parameters:
+        - name: character_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CharacterUpdatePhase4"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_CharacterResponsePhase4"
+        "400":
+          description: Unsupported LLM or voice provider/model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Only creator can modify
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Character or system voice not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Clone voice not selectable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Validation failed, including partial LLM binding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/users/{creator_id}/characters:
+    get:
+      tags: [users]
+      summary: "[MODIFIED] List creator characters (includes effective LLM fields)"
+      operationId: listCreatorCharactersPhase4
+      x-change-type: modified
+      parameters:
+        - name: creator_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope_CharacterListPhase4"
+
+  /v1/chats/{chat_id}/stream:
+    post:
+      tags: [chats]
+      summary: "[MODIFIED] Stream chat with character-resolved LLM route"
+      operationId: streamChatPhase4
+      x-change-type: modified
+      description: |
+        SSE payload shape is unchanged.
+        Backend resolves the effective route from character binding or system default,
+        then uses that route for the main assistant reply.
+        Persisted `candidate.model_type` stores `provider:model`.
+      parameters:
+        - name: chat_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatStreamRequest"
+      responses:
+        "200":
+          description: text/event-stream; event schema is unchanged
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Chat or character not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Chat state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Effective LLM route unavailable or misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/turns/{turn_id}/regen/stream:
+    post:
+      tags: [turns]
+      summary: "[MODIFIED] Regen stream with character-resolved LLM route"
+      operationId: regenTurnPhase4
+      x-change-type: modified
+      description: |
+        SSE payload shape is unchanged.
+        Assistant regeneration uses the effective route resolved from the turn's character.
+      parameters:
+        - name: turn_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: text/event-stream; event schema is unchanged
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Turn or character not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Turn state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Effective LLM route unavailable or misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /v1/turns/{turn_id}/edit/stream:
+    post:
+      tags: [turns]
+      summary: "[MODIFIED] User-edit stream with character-resolved LLM route"
+      operationId: editUserTurnPhase4
+      x-change-type: modified
+      description: |
+        SSE payload shape is unchanged.
+        After user edits a historical user turn, backend regenerates the assistant reply
+        with the effective route resolved from the turn's character.
+      parameters:
+        - name: turn_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserTurnEditStreamRequest"
+      responses:
+        "200":
+          description: text/event-stream; event schema is unchanged
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Turn or character not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Turn state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Effective LLM route unavailable or misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [code, message, status]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        status:
+          type: integer
+
+    VisibilityEnum:
+      type: string
+      enum: [PUBLIC, PRIVATE, UNLISTED]
+
+    VoiceSourceType:
+      type: string
+      enum: [system, clone, designed, imported]
+
+    LLMProvider:
+      type: string
+      enum: [deepseek, openrouter]
+
+    CharacterLLMRoute:
+      type: object
+      required: [provider, model]
+      properties:
+        provider:
+          $ref: "#/components/schemas/LLMProvider"
+        model:
+          type: string
+          minLength: 1
+          maxLength: 120
+
+    LLMModelCatalogItem:
+      type: object
+      required: [provider, model, label, is_default]
+      properties:
+        provider:
+          $ref: "#/components/schemas/LLMProvider"
+        model:
+          type: string
+          minLength: 1
+          maxLength: 120
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_default:
+          type: boolean
+
+    LLMModelCatalogResponsePhase4:
+      type: object
+      required: [default_route, items]
+      properties:
+        default_route:
+          $ref: "#/components/schemas/CharacterLLMRoute"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LLMModelCatalogItem"
+
+    LLMModelSearchResponsePhase4:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LLMModelCatalogItem"
+
+    CharacterCreatePhase4:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - description
+        - system_prompt
+        - voice_model
+        - voice_provider_voice_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 10
+        description:
+          type: string
+          minLength: 1
+          maxLength: 35
+        system_prompt:
+          type: string
+          minLength: 1
+        greeting_message:
+          type: string
+          nullable: true
+        avatar_file_name:
+          type: string
+          nullable: true
+        voice_provider:
+          type: string
+          default: dashscope
+          minLength: 1
+          maxLength: 40
+        voice_model:
+          type: string
+          minLength: 1
+          maxLength: 120
+        voice_provider_voice_id:
+          type: string
+          minLength: 1
+          maxLength: 191
+        voice_source_type:
+          $ref: "#/components/schemas/VoiceSourceType"
+        llm_provider:
+          allOf:
+            - $ref: "#/components/schemas/LLMProvider"
+          nullable: true
+        llm_model:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 120
+        tags:
+          type: array
+          nullable: true
+          maxItems: 3
+          items:
+            type: string
+            minLength: 1
+            maxLength: 4
+        visibility:
+          $ref: "#/components/schemas/VisibilityEnum"
+
+    CharacterUpdatePhase4:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          minLength: 5
+          maxLength: 35
+        system_prompt:
+          type: string
+          minLength: 10
+        greeting_message:
+          type: string
+          nullable: true
+        avatar_file_name:
+          type: string
+          nullable: true
+        voice_provider:
+          type: string
+          minLength: 1
+          maxLength: 40
+        voice_model:
+          type: string
+          minLength: 1
+          maxLength: 120
+        voice_provider_voice_id:
+          type: string
+          minLength: 1
+          maxLength: 191
+        voice_source_type:
+          $ref: "#/components/schemas/VoiceSourceType"
+        llm_provider:
+          allOf:
+            - $ref: "#/components/schemas/LLMProvider"
+          nullable: true
+        llm_model:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 120
+        tags:
+          type: array
+          nullable: true
+          items:
+            type: string
+        visibility:
+          $ref: "#/components/schemas/VisibilityEnum"
+
+    CharacterResponsePhase4:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - system_prompt
+        - voice_provider
+        - voice_model
+        - voice_provider_voice_id
+        - voice_source_type
+        - uses_system_default_llm
+        - effective_llm_provider
+        - effective_llm_model
+        - visibility
+        - interaction_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        system_prompt:
+          type: string
+        greeting_message:
+          type: string
+          nullable: true
+        avatar_file_name:
+          type: string
+          nullable: true
+        voice_provider:
+          type: string
+        voice_model:
+          type: string
+        voice_provider_voice_id:
+          type: string
+        voice_source_type:
+          $ref: "#/components/schemas/VoiceSourceType"
+        llm_provider:
+          allOf:
+            - $ref: "#/components/schemas/LLMProvider"
+          nullable: true
+        llm_model:
+          type: string
+          nullable: true
+        uses_system_default_llm:
+          type: boolean
+        effective_llm_provider:
+          $ref: "#/components/schemas/LLMProvider"
+        effective_llm_model:
+          type: string
+        tags:
+          type: array
+          nullable: true
+          items:
+            type: string
+        creator_id:
+          type: string
+          nullable: true
+        visibility:
+          type: string
+        identifier:
+          type: string
+          nullable: true
+        interaction_count:
+          type: integer
+
+    SuccessEnvelope_CharacterResponsePhase4:
+      type: object
+      required: [code, message, status, data]
+      properties:
+        code:
+          type: string
+          example: ok
+        message:
+          type: string
+          example: ok
+        status:
+          type: integer
+          example: 200
+        data:
+          $ref: "#/components/schemas/CharacterResponsePhase4"
+
+    SuccessEnvelope_CharacterListPhase4:
+      type: object
+      required: [code, message, status, data]
+      properties:
+        code:
+          type: string
+          example: ok
+        message:
+          type: string
+          example: ok
+        status:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterResponsePhase4"
+
+    SuccessEnvelope_LLMModelCatalogResponsePhase4:
+      type: object
+      required: [code, message, status, data]
+      properties:
+        code:
+          type: string
+          example: ok
+        message:
+          type: string
+          example: ok
+        status:
+          type: integer
+          example: 200
+        data:
+          $ref: "#/components/schemas/LLMModelCatalogResponsePhase4"
+
+    SuccessEnvelope_LLMModelSearchResponsePhase4:
+      type: object
+      required: [code, message, status, data]
+      properties:
+        code:
+          type: string
+          example: ok
+        message:
+          type: string
+          example: ok
+        status:
+          type: integer
+          example: 200
+        data:
+          $ref: "#/components/schemas/LLMModelSearchResponsePhase4"
+
+    ChatStreamRequest:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+        client_message_id:
+          type: string
+          nullable: true
+
+    UserTurnEditStreamRequest:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1

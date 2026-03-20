@@ -60,8 +60,13 @@ export const deleteVoiceById = apiService.deleteVoiceById.bind(apiService);
 export const getVoicePreviewAudioStream =
   apiService.getVoicePreviewAudioStream.bind(apiService);
 
+// Phase 4: LLM模型相关
+export const getLLMModelCatalog = apiService.getLLMModelCatalog.bind(apiService);
+export const searchLLMModels = apiService.searchLLMModels.bind(apiService);
+
 // Phase 3: Learning相关
 export const createWordCard = apiService.createWordCard.bind(apiService);
+export const createSentenceCard = apiService.createSentenceCard.bind(apiService);
 export const createFeedbackCard = apiService.createFeedbackCard.bind(apiService);
 export const createSavedItemPhase3 = apiService.createSavedItemPhase3.bind(apiService);
 export const listSavedItemsPhase3 = apiService.listSavedItemsPhase3.bind(apiService);
@@ -116,6 +121,12 @@ export type {
   VoiceProfilesPage,
   VoiceCatalogResponse,
   VoiceProfileUpdate,
+  // Phase 4 types
+  LLMProvider,
+  CharacterLLMRoute,
+  LLMModelCatalogItem,
+  LLMModelCatalogResponse,
+  LLMModelSearchResponse,
   // Phase 3 types
   WordCard,
   WordCardGenerateRequest,

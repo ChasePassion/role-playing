@@ -11,9 +11,11 @@ import {
     UpdateCharacterRequest,
     CharacterVisibility,
     VoiceSelectableItem,
+    LLMProvider,
 } from "@/lib/api";
 import AvatarCropper from "./AvatarCropper";
 import VoiceSelector from "./voice/VoiceSelector";
+import ModelSelector from "./ModelSelector";
 import { getErrorMessage } from "@/lib/error-map";
 import type { Character } from "./Sidebar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -81,13 +83,15 @@ export default function CreateCharacterModal({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedVoice, setSelectedVoice] = useState<VoiceSelectableItem | null>(null);
+    const [selectedLLMProvider, setSelectedLLMProvider] = useState<LLMProvider | null | undefined>(undefined);
+    const [selectedLLMModel, setSelectedLLMModel] = useState<string | null | undefined>(undefined);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen && mode === 'edit' && character) {
             let fallbackVoice: VoiceSelectableItem | null = null;
-            
+
             if (character.voice) {
                 fallbackVoice = character.voice;
             } else if (character.voice_provider && character.voice_model && character.voice_provider_voice_id && character.voice_source_type) {
@@ -105,7 +109,7 @@ export default function CreateCharacterModal({
                     usage_hint: null,
                 };
             }
-            
+
             setName(character.name);
             setDescription(character.description);
             setGreetingMessage(character.greeting_message || "");
@@ -118,6 +122,8 @@ export default function CreateCharacterModal({
             setAvatarFileName(character.avatar);
             setAvatarPreview(character.avatar);
             setSelectedVoice(fallbackVoice);
+            setSelectedLLMProvider(character.llm_provider ?? null);
+            setSelectedLLMModel(character.llm_model ?? null);
 
             if (character.tags && character.tags.length > 0) {
                 const mappedTags = character.tags.map((tag, index) => ({
@@ -138,6 +144,8 @@ export default function CreateCharacterModal({
             setAvatarFileName(null);
             setAvatarPreview(null);
             setSelectedVoice(null);
+            setSelectedLLMProvider(undefined);
+            setSelectedLLMModel(undefined);
         }
     }, [isOpen, mode, character]);
 
@@ -277,6 +285,8 @@ export default function CreateCharacterModal({
                 voice_model: voiceModel,
                 voice_provider_voice_id: voiceProviderVoiceId,
                 voice_source_type: voiceSourceType,
+                llm_provider: selectedLLMProvider,
+                llm_model: selectedLLMModel,
             };
 
             if (mode === 'edit' && character) {
@@ -297,6 +307,8 @@ export default function CreateCharacterModal({
                 setAvatarFileName(null);
                 setAvatarPreview(null);
                 setSelectedVoice(null);
+                setSelectedLLMProvider(undefined);
+                setSelectedLLMModel(undefined);
             }
 
             onSuccess();
@@ -518,6 +530,28 @@ export default function CreateCharacterModal({
                             {visibility === "PUBLIC" && "将显示在市场中，任何人可访问"}
                             {visibility === "UNLISTED" && "不在市场中显示，但可通过链接访问"}
                             {visibility === "PRIVATE" && "仅自己可见，用于编辑草稿"}
+                        </p>
+                    </div>
+
+                    <div className="py-2 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium text-gray-700">模型选择</Label>
+                        </div>
+                        <ModelSelector
+                            selectedProvider={selectedLLMProvider}
+                            selectedModel={selectedLLMModel}
+                            onSelectModel={(provider, model) => {
+                                setSelectedLLMProvider(provider);
+                                setSelectedLLMModel(model);
+                            }}
+                            onSelectSystemDefault={() => {
+                                setSelectedLLMProvider(null);
+                                setSelectedLLMModel(null);
+                            }}
+                            disabled={isSubmitting}
+                        />
+                        <p className="text-xs text-gray-500">
+                            选择角色使用的AI模型，默认使用系统配置
                         </p>
                     </div>
 
