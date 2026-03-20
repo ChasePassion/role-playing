@@ -495,15 +495,17 @@ export function useChatSession({
       let resolvedAssistantMessageId = tempAssistantId;
       let resolvedAssistantCandidateId: string | undefined;
 
+      const userMessage = messages[idx];
+      const nextCandidateNo = Math.min(10, (userMessage.candidateCount ?? 1) + 1);
+
       setMessages((prev) => {
         const next = prev.slice(0, idx + 1).map((message) => {
           if (message.id !== turnId) return message;
-          const nextCount = Math.min(10, (message.candidateCount ?? 1) + 1);
           return {
             ...message,
             content: newContent,
-            candidateNo: nextCount,
-            candidateCount: nextCount,
+            candidateNo: nextCandidateNo,
+            candidateCount: nextCandidateNo,
           };
         });
         next.push({
@@ -511,6 +513,8 @@ export function useChatSession({
           role: "assistant",
           content: "",
           isTemp: true,
+          candidateNo: nextCandidateNo,
+          candidateCount: nextCandidateNo,
           messageStreamStatus: "streaming",
           sentenceCardStatus: "idle",
           sentenceCardErrorCode: null,
