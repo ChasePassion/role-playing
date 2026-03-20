@@ -96,9 +96,10 @@ export default function VoiceSelector({
             {group.voices.map((voice: VoiceDisplayInfo) => {
               const isSelected = selectedVoiceId === voice.id;
               return (
-                <button
+                <div
                   key={voice.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() =>
                     onSelectVoice({
                       id: voice.id,
@@ -112,7 +113,22 @@ export default function VoiceSelector({
                       usage_hint: voice.description || null,
                     })
                   }
-                  disabled={disabled}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectVoice({
+                        id: voice.id,
+                        display_name: voice.displayName,
+                        source_type: voice.sourceType,
+                        provider: voice.provider,
+                        provider_model: voice.providerModel,
+                        provider_voice_id: voice.providerVoiceId,
+                        preview_text: voice.previewText,
+                        preview_audio_url: voice.previewAudioUrl,
+                        usage_hint: voice.description || null,
+                      });
+                    }
+                  }}
                   className={`flex items-center gap-3 rounded-xl border-[0.4px] p-3 text-left transition-all ${
                     isSelected
                       ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
@@ -155,7 +171,7 @@ export default function VoiceSelector({
                       />
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
