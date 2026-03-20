@@ -1,135 +1,180 @@
 # NeuraChar 项目说明（当前实现）
 
-更新时间：2026-02-26
+更新时间：2026-03-20
 
 ## 1. 项目边界
 
-NeuraChar 由两个仓库组成：
+NeuraChar 当前由两个代码仓库组成：
 
-1. 后端：`E:\code\NeuraChar`（FastAPI + PostgreSQL + Milvus）
-2. 前端：`E:\code\role-playing`（Next.js App Router）
+1. 后端：`E:\code\NeuraChar`
+2. 前端：`E:\code\role-playing`
 
-核心产品形态：文本聊天 + 可选语音能力（STT/TTS），不做实时双向语音通话。
+当前产品定位：
 
-## 2. 运行链路
+- 面向 C 端的 AI 角色扮演英语学习应用
+- 文本聊天是主链路
+- 语音输入、自动朗读、音色管理是增强能力
+- 学习辅助已经进入 Phase 3：句子卡、单词卡、更好表达、收藏表达偏置
 
-`Browser -> Next.js -> /v1,/uploads rewrite -> FastAPI -> PostgreSQL/Milvus/LLM/DashScope/SMTP`
+## 2. 技术栈
 
-## 3. 后端架构
+### 2.1 后端
 
-### 3.1 启动与装配
+- Python `3.11+`
+- FastAPI
+- SQLAlchemy 2 + SQLModel
+- Alembic
+- PostgreSQL
+- Milvus
+- LiteLLM
+- DashScope（STT / TTS / Voice Clone）
 
-入口：`src/main.py`，装配：`src/bootstrap/app_factory.py`。
+### 2.2 前端
 
-启动阶段关键动作：
+- Next.js `15`
+- React `19`
+- TypeScript `5`
+- Tailwind CSS `4`
+- shadcn/ui + Radix
+- `react-markdown`
 
-1. 数据库连通性检查
-2. Schema 兼容检查（`src/db/schema_guard.py`，默认开启）
-3. Langfuse 初始化（可选，不阻塞）
-4. Memory 预热（失败仅告警）
-5. 语义归并 scheduler 启动（可配置开关）
+## 3. 当前运行链路
 
-已注册路由：
+```text
+Browser
+  -> Next.js App Router (3001)
+  -> rewrite /v1/* and /uploads/*
+  -> FastAPI (8000)
+  -> PostgreSQL / Milvus / LiteLLM / DashScope / SMTP
+```
 
-- `/v1/auth`
-- `/v1/users`
-- `/v1/upload`
-- `/v1/memories`
-- `/v1/characters`
-- `/v1/chats`
-- `/v1/turns`
-- `/v1/saved-items`
-- `/v1/voice`
+补充说明：
 
-### 3.2 服务分层
+- 前端通过 `next.config.ts` 代理 `/v1/*` 和 `/uploads/*`
+- 为了保证 SSE 正常增量刷出，前端代理层禁用了压缩
 
-- Router：HTTP 入参校验、鉴权依赖注入
-- Service：业务编排（chat/turn/learning/voice）
-- Repository：数据库和上游依赖访问
-- Core：配置、依赖管理、异常规范、UoW
+## 4. 后端结构
 
-### 3.3 Voice 子系统
+### 4.1 启动与装配
 
-新增组件：
+- 入口：`src/main.py`
+- App Factory：`src/bootstrap/app_factory.py`
 
-- `src/api/routers/voice.py`
-- `src/services/voice_service.py`
-- `src/repositories/voice_gateway_repository.py`
+启动阶段当前会做：
 
-能力：
+1. 数据库连接检查
+2. Schema Guard 检查
+3. Langfuse 初始化（可选）
+4. Memory 子系统预热
+5. 语义归并 scheduler 启动（可配置）
 
-1. STT：`POST /v1/voice/stt/transcriptions`
-2. TTS 单条播放：`GET /v1/voice/tts/messages/{assistant_candidate_id}/audio`
-3. Chat 流中实时 TTS 事件：`tts_audio_delta` / `tts_audio_done` / `tts_error`
+### 4.2 当前路由模块
 
-当前模型默认值：
+- `auth`
+- `users`
+- `upload`
+- `memories`
+- `characters`
+- `chats`
+- `turns`
+- `learning`
+- `saved_items`
+- `voice`
+- `voices`
 
-- STT：`qwen3-asr-flash-realtime`
-- TTS：`qwen3-tts-instruct-flash-realtime`
+### 4.3 分层方式
 
-兼容策略：
+- Router：HTTP 协议与依赖注入
+- Service：业务编排
+- Repository：数据库 / 上游网关访问
+- Schema：API Contract
+- Core / Bootstrap：配置、UoW、依赖装配、异常与启动逻辑
 
-- STT 网关按模型分流协议：
-  - `fun-asr-*` 走 `/api-ws/v1/inference` 任务协议
-  - `qwen3-asr-flash-realtime*` 走 `/api-ws/v1/realtime` 协议
+## 5. 前端结构
 
-## 4. 前端对接边界
-
-前端通过 `next.config.ts` 重写 `/v1/*` 与 `/uploads/*` 到后端。
-
-关键页面：
+### 5.1 App Router 页面
 
 - `/login`
 - `/setup`
-- `/`（market）
+- `/`
 - `/chat/[id]`
+- `/favorites`
 - `/profile`
 
-语音输入链路：
+### 5.2 当前关键模块
 
-1. 麦克风录音
-2. 录音转 `wav(16k, mono)`
-3. 调用 `/v1/voice/stt/transcriptions`
-4. 转写结果追加到输入框，不自动发送
+- `src/hooks/useChatSession.ts`
+  - 聊天加载、流式消息、候选切换、regen、edit、TTS feed
+- `src/components/chat/ChatThread.tsx`
+  - 聊天气泡列表、Word Card、Feedback Card、Knowledge Card、收藏与 loading 状态
+- `src/lib/user-settings-context.tsx`
+  - 用户设置本地缓存 + 云端同步
+- `src/components/voice/*`
+  - 音色卡片、克隆、编辑、试听
 
-## 5. 当前阶段能力（已落地）
+## 6. 当前已落地能力
 
-### 5.1 聊天与学习
+### 6.1 账号与个人资料
 
-- 主聊天 SSE
-- 混输转写（中文混输转英文）
-- 回复建议
-- 知识卡与收藏
-- turn 分支（select / regen / edit）
+- 邮箱验证码登录
+- 用户资料编辑
+- 用户设置持久化
 
-### 5.2 语音（Phase 2）
+### 6.2 角色与会话
 
-- 自动朗读开关（`auto_read_aloud_enabled`）
-- 实时 TTS 事件随聊天流返回
-- 单条气泡手动 TTS
-- STT 转写接口用于输入框追加
+- 创建 / 编辑 / 删除角色
+- 角色市场
+- 最近会话恢复
+- 基于 turn tree 的分支聊天
+- select / regen / user-edit
 
-## 6. 数据与安全
+### 6.3 学习辅助（Phase 1 ~ 3）
 
-- PostgreSQL + Milvus 双存储，最终一致
-- 通过 `app.current_user_id` + RLS 做数据隔离
-- `saved_items`、`user_settings` 已启用 RLS
-- 启动时 schema guard 防止“代码字段存在但 DB 缺列”导致运行期崩溃
+- mixed-input 自动转英文
+- reply suggestions
+- sentence card
+- word card
+- feedback card（Better Expression）
+- saved items / favorites
+- `preferred_expression_bias_enabled` 控制收藏表达注入
 
-## 7. 重要配置（`src/core/config.py`）
+### 6.4 语音
 
-- 用户设置默认值与范围
-- Memory/LLM/Milvus 配置
-- DashScope 语音配置：
-  - `DASHSCOPE_API_KEY`
-  - `DASHSCOPE_BASE_WEBSOCKET_API_URL`
-  - `DASHSCOPE_STT_REALTIME_WEBSOCKET_API_URL`
-  - `DASHSCOPE_TTS_WEBSOCKET_API_URL`
-  - `DASHSCOPE_STT_MODEL`
-  - `DASHSCOPE_TTS_MODEL`
+- STT：录音转文字并回填输入框
+- TTS：assistant 单条播放
+- Chat 流中实时自动朗读
+- 音色目录
+- 克隆音色
+- 编辑 / 删除音色
 
-## 8. 已知边界
+## 7. 开发与验证命令
 
-1. PostgreSQL 与 Milvus 无分布式事务
-2. TTS 为“可点可关”能力，不强制
-3. 语音链路默认面向聊天输入/播放，不包含实时通话
+### 7.1 后端
+
+常用命令：
+
+```text
+alembic upgrade head
+pytest
+python -m compileall src
+python src/main.py
+```
+
+### 7.2 前端
+
+常用命令：
+
+```text
+npm run dev
+npx tsc --noEmit
+npx eslint <files> --max-warnings 0
+npm run build
+```
+
+## 8. 当前系统边界
+
+1. PostgreSQL 与 Milvus 没有分布式事务
+2. `sentence_card` 会随聊天 SSE 异步返回，不保证和 `done` 同时到达
+3. `word_card` / `feedback_card` 目前按需生成，不做独立持久化
+4. 音色克隆是异步能力，`POST /v1/voices/clones` 返回 `202 Accepted`
+5. `docs/dev/*` 是规划记录，不应视为运行时事实来源

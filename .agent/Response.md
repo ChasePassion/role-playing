@@ -1,4 +1,4 @@
-﻿## 1）固定成功响应体结构
+## 1）固定成功响应体结构
 
 ```json
 {
@@ -10,155 +10,196 @@
 ```
 
 要求：
-- HTTP status = body.status（必须一致）
-- status：必须是整数，且 等于 HTTP 状态码
-- code：成功固定 "ok"（snake_case，小写，稳定）
-- message：默认 "ok"（成功尽量别塞业务文案，保持稳定）
-- data：业务数据（对象/数组/分页对象等）
-- 204 No Content：不返回 body（或者返回也行，但不推荐；既然用 204 就干净点）
 
-## 2) 固定错误响应体结构
+- HTTP status 必须与 `body.status` 一致
+- `code`：成功固定为 `ok`
+- `message`：默认 `ok`
+- `data`：业务数据
+- `204 No Content`：不返回 body
+- `202 Accepted`：仍使用成功包裹，但 `status=202`，当前允许 `message=accepted`
+
+## 2）固定错误响应体结构
 
 ```json
-{ "code": "xxx", "message": "xxx", "status": 400 }
+{
+  "code": "xxx",
+  "message": "xxx",
+  "status": 400
+}
 ```
 
 要求：
-- HTTP status = body.status（必须一致）
-- `code`：snake_case 字符串
-- `status`：整数（标准 HTTP 状态码）
-- `message`：字符串，格式：`主题:说明;关键信息1=…;关键信息2=…`
 
----
+- HTTP status 必须与 `body.status` 一致
+- `code`：`snake_case`
+- `status`：标准 HTTP 状态码
+- `message`：面向开发排障，格式尽量保持：
 
-## 3) HTTP Status 语义表（NeuraChar）
+```text
+summary: detail; key1=value1; key2=value2
+```
 
-| Status | 语义 | 典型场景 | code |
-|--------|------|----------|------|
-| 400 | 请求不合法（业务规则） | 验证码错误、更新资料未提供字段 | `invalid_param` |
-| 401 | 未认证 | token 缺失、无效、过期 | `unauthorized` |
-| 403 | 已认证但无权限 | 访问私有角色、`user_id` 与登录用户不一致 | `forbidden` |
-| 404 | 资源不存在 | `character_id`/`memory_id` 不存在 | `{entity}_not_found` |
-| 409 | 资源冲突 | 唯一键冲突、幂等冲突、状态冲突 | `{entity}_{field}_duplicate` / `{entity}_conflict` |
-| 413 | 请求体过大 | 上传文件超过 5MB | `upload_file_too_large` |
-| 415 | 媒体类型不支持 | 上传了非允许图片类型 | `upload_file_type_not_allowed` |
-| 422 | 结构化参数校验失败 | Pydantic 字段校验失败、枚举值非法 | `validation_failed` |
-| 429 | 频率或配额限制 | 登录验证码发送过频、聊天请求过频 | `too_many_requests` |
-| 500 | 内部错误 | 未捕获异常 | `internal_error` |
-| 502 | 上游依赖异常 | LLM 调用失败 | `llm_service_error` / `external_error` |
-| 503 | 依赖不可用 | DB/Milvus 不可连接 | `db_connection_error` |
-| 504 | 上游超时 | LLM / 向量库调用超时 | `external_timeout` |
+## 3）HTTP Status 语义约定
 
-约束：
-- HTTP status 必须与 `body.status` 一致。
-- `204 No Content` 不返回 body。
-- `422` 用于模型层字段校验错误，`400` 用于业务规则校验错误。
-- `/v1/chat` 为 SSE；流式过程中出错时返回 `type=error` 事件，建议携带 `code`。
+| Status | 语义 | 当前典型场景 |
+| --- | --- | --- |
+| 400 | 业务规则不满足 | 验证码无效、空 patch、空更新 |
+| 401 | 未认证或 token 无效 | `auth_token_invalid` |
+| 403 | 已认证但无权限 | 私有角色、他人 chat / voice / candidate |
+| 404 | 资源不存在 | `character_not_found`、`voice_profile_not_found` |
+| 409 | 状态冲突 / 资源冲突 | turn 状态冲突、候选上限、音色被占用 |
+| 413 | 负载过大 | 上传图片过大、音频过大 |
+| 415 | 媒体类型不支持 | 上传图片类型非法 |
+| 422 | 结构化校验失败 | Pydantic 校验、枚举值非法、sample_rate 非法 |
+| 429 | 频率或配额限制 | 保留 |
+| 500 | 内部错误 | 未知内部异常 |
+| 502 | 上游依赖异常 | LLM / DashScope / 外部服务错误 |
+| 503 | 依赖不可用 | DB / Voice provider 不可用 |
+| 504 | 上游超时 | LLM / Voice provider timeout |
 
----
+补充：
 
-## 4) 项目错误码表
+- `POST /v1/chats/{chat_id}/stream`
+- `POST /v1/turns/{turn_id}/regen/stream`
+- `POST /v1/turns/{turn_id}/edit/stream`
 
-### 4.1 通用错误码
+这些 SSE 接口在流式过程中出错时，通过：
 
-| code | status | 含义 | 触发位置 |
-|------|--------|------|----------|
-| `invalid_param` | 400 | 业务参数不合法 | routers/services |
-| `validation_failed` | 422 | 请求参数结构校验失败 | FastAPI/Pydantic |
-| `unauthorized` | 401 | 未登录或凭证无效 | auth deps |
-| `forbidden` | 403 | 无权限访问或操作 | routers/services |
-| `too_many_requests` | 429 | 触发限流或配额 | gateway/service |
-| `internal_error` | 500 | 未知内部异常 | global exception handler |
+```text
+data: {"type":"error","code":"...","message":"..."}
+```
 
-### 4.2 认证与用户（auth/users）
+返回错误，而不是重新包一层 `ErrorEnvelope`。
 
-| code | status | 含义 | API |
-|------|--------|------|-----|
-| `auth_send_code_failed` | 500 | 验证码发送失败 | `POST /v1/auth/send_code` |
-| `auth_code_invalid_or_expired` | 400 | 验证码无效或过期 | `POST /v1/auth/login` |
-| `auth_token_invalid` | 401 | token 解析失败或用户不存在 | auth deps |
-| `user_profile_update_empty` | 400 | 更新资料时未提供任何字段 | `PUT /v1/users/me` |
-| `user_username_invalid` | 422 | 用户名不满足长度约束 | `PUT /v1/users/me` |
+## 4）当前错误码清单（按领域归类）
 
-### 4.3 角色（characters）
+### 4.1 通用 / 鉴权 / 用户
 
-| code | status | 含义 | API |
-|------|--------|------|-----|
-| `character_not_found` | 404 | 角色不存在 | `GET/PUT/DELETE /v1/characters/{character_id}` |
-| `character_private_forbidden` | 403 | 非创建者访问私有角色 | `GET /v1/characters/{character_id}` |
-| `character_modify_forbidden` | 403 | 非创建者修改角色 | `PUT /v1/characters/{character_id}` |
-| `character_delete_forbidden` | 403 | 非创建者删除角色 | `DELETE /v1/characters/{character_id}` |
-| `character_tags_invalid` | 422 | tags 数量或长度不合法 | `POST/PUT /v1/characters` |
-| `character_visibility_invalid` | 422 | visibility 枚举非法 | `POST/PUT /v1/characters` |
-| `character_identifier_duplicate` | 409 | 角色唯一标识冲突（预留） | characters domain |
+| code | status | 说明 |
+| --- | --- | --- |
+| `invalid_param` | 400 | 通用业务参数非法 |
+| `validation_failed` | 422 | 请求结构或字段校验失败 |
+| `auth_send_code_failed` | 500 | 发送验证码失败 |
+| `auth_code_invalid_or_expired` | 400 | 验证码无效或过期 |
+| `auth_token_invalid` | 401 | token 无效或用户不存在 |
+| `user_profile_update_empty` | 400 | 用户资料更新为空 |
+| `user_settings_update_empty` | 400 | 用户设置 patch 为空 |
+| `user_settings_updated_at_missing` | 500 | 用户设置更新时间缺失 |
 
-### 4.4 文件上传（upload）
+### 4.2 角色 / 音色绑定
 
-| code | status | 含义 | API |
-|------|--------|------|-----|
-| `upload_file_too_large` | 413 | 文件超过 5MB 限制 | `POST /v1/upload` |
-| `upload_file_type_not_allowed` | 415 | 文件 MIME 类型不允许 | `POST /v1/upload` |
-| `upload_failed` | 500 | 存储层上传失败 | `POST /v1/upload` |
+| code | status | 说明 |
+| --- | --- | --- |
+| `character_not_found` | 404 | 角色不存在 |
+| `character_private_forbidden` | 403 | 非创建者访问私有角色 |
+| `character_modify_forbidden` | 403 | 非创建者修改角色 |
+| `character_delete_forbidden` | 403 | 非创建者删除角色 |
+| `voice_not_found` | 404 | 绑定到角色的音色不存在 |
+| `voice_profile_not_selectable` | 409 | 音色不可用于当前角色 |
+| `voice_source_type_unsupported` | 409 | 角色音色来源类型不支持 |
 
-### 4.5 聊天与记忆（chat/memories）
+### 4.3 Chat / Turn / 学习卡片 / 收藏
 
-| code | status | 含义 | API |
-|------|--------|------|-----|
-| `chat_user_mismatch_forbidden` | 403 | 请求 `user_id` 与登录用户不一致 | `POST /v1/chat` |
-| `chat_stream_failed` | 500 | 流式对话内部异常 | `POST /v1/chat` |
-| `memory_not_found` | 404 | 指定记忆不存在 | `DELETE /v1/memories/{memory_id}` |
-| `memory_manage_failed` | 500 | 记忆管理流程失败 | `POST /v1/memories/manage` |
-| `memory_search_failed` | 500 | 记忆检索失败 | `POST /v1/memories/search` |
-| `memory_reset_failed` | 500 | 记忆重置失败 | `DELETE /v1/memories/reset` |
-| `memory_consolidate_failed` | 500 | 记忆归并失败 | `POST /v1/memories/consolidate` |
+| code | status | 说明 |
+| --- | --- | --- |
+| `chat_not_found` | 404 | 会话不存在 |
+| `chat_forbidden` | 403 | 无权访问会话 |
+| `chat_state_conflict` | 409 | 会话状态不允许当前操作 |
+| `chat_stream_failed` | 500 | 主聊天流异常 |
+| `turn_not_found` | 404 | turn 不存在 |
+| `turn_author_conflict` | 409 | turn 作者类型不符合操作要求 |
+| `turn_candidate_limit_reached` | 409 | 候选数达到上限 |
+| `turn_state_conflict` | 409 | turn parent / candidate 状态不合法 |
+| `candidate_not_found` | 404 | 指定候选不存在 |
+| `greeting_turn_locked` | 409 | greeting turn 不支持该操作 |
+| `regen_stream_failed` | 500 | regen 流异常 |
+| `user_edit_stream_failed` | 500 | user edit 流异常 |
+| `feedback_target_invalid` | 409 | feedback 目标不是用户 turn |
+| `feedback_target_not_on_active_branch` | 409 | feedback 目标不在 active branch |
+| `feedback_target_missing_candidate` | 409 | feedback 目标缺少主候选 |
+| `feedback_target_missing_content` | 409 | feedback 目标没有内容 |
+| `word_card_selection_invalid` | 400 | 划词输入不合法 |
+| `saved_item_kind_invalid` | 400 | 收藏 kind 非法 |
+| `saved_item_card_invalid` | 400 | 收藏 card 数据不合法 |
+| `saved_item_filter_invalid` | 400 | 收藏筛选参数非法 |
+| `saved_item_cursor_invalid` | 400 | 收藏分页 cursor 非法 |
+| `saved_item_id_invalid` | 400 | 收藏 id 非法 |
+| `saved_item_duplicate` | 409 | 收藏按 surface 去重后冲突 |
+| `saved_item_not_found` | 404 | 收藏不存在 |
+| `saved_item_created_at_missing` | 500 | 收藏创建时间缺失 |
 
-### 4.6 基础设施与外部依赖（infra/external）
+### 4.4 上传 / 记忆
 
-| code | status | 含义 | 触发位置 |
-|------|--------|------|----------|
-| `db_connection_error` | 503 | 数据库或 Milvus 连接失败 | db/milvus init |
-| `llm_service_error` | 502 | LLM 服务调用失败 | llm client |
-| `external_error` | 502 | 外部依赖调用异常 | integrations |
-| `external_timeout` | 504 | 外部依赖调用超时 | integrations |
+| code | status | 说明 |
+| --- | --- | --- |
+| `upload_file_too_large` | 413 | 图片超过限制 |
+| `upload_file_type_not_allowed` | 415 | 图片类型不允许 |
+| `upload_failed` | 500 | 上传失败 |
+| `memory_not_found` | 404 | 记忆不存在 |
+| `memory_manage_failed` | 500 | 记忆写入失败 |
+| `memory_search_failed` | 500 | 记忆检索失败 |
+| `memory_reset_failed` | 500 | 记忆重置失败 |
+| `memory_consolidate_failed` | 500 | 语义归并失败 |
+| `memory_delete_failed` | 500 | 删除记忆失败 |
 
----
+### 4.5 语音运行时 / 上游网关
 
-## 5) 命名空间和命名规则（NeuraChar）
+| code | status | 说明 |
+| --- | --- | --- |
+| `stt_audio_empty` | 422 | STT 音频为空 |
+| `stt_audio_too_large` | 413 | STT 音频过大 |
+| `stt_invalid_audio` | 422 | STT 音频格式不合法 |
+| `stt_no_speech_detected` | 422 | 未检测到有效语音 |
+| `stt_upstream_error` | 502 | STT 上游失败 |
+| `tts_text_empty` | 422 | TTS 输入文本为空 |
+| `tts_candidate_forbidden` | 403 | 无权访问该 assistant candidate |
+| `tts_candidate_invalid_author` | 409 | candidate 不是 assistant 作者 |
+| `tts_upstream_error` | 502 | TTS 上游失败 |
+| `voice_api_key_missing` | 503 | Voice API key 缺失 |
+| `voice_dependency_missing` | 503 | 语音依赖不可用 |
+| `voice_provider_unavailable` | 503 | 语音 provider 不可用 |
+| `voice_provider_unsupported` | 400/409 | provider 不支持当前请求 |
+| `voice_provider_invalid_response` | 502 | provider 返回格式非法 |
+| `voice_provider_upstream_error` | 502 | provider 上游错误 |
+| `voice_model_unsupported` | 400 | 语音模型不支持 |
+| `external_timeout` | 504 | 外部调用超时 |
 
-命名空间建议：
-- `common`
-- `auth`
-- `user`
-- `character`
-- `upload`
-- `chat`
-- `memory`
-- `infra`
+### 4.6 音色资料（voice_profiles）
 
-`code` 命名规则：
-- 全小写，`snake_case`，发布后尽量稳定不改。
-- 优先使用业务语义，不直接绑定具体实现细节。
-- 建议模式：
-  - 资源不存在：`{entity}_not_found`
-  - 权限不足：`{entity}_{action}_forbidden` 或 `forbidden`
-  - 参数非法：`{entity}_{field}_invalid` 或 `invalid_param`
-  - 冲突类错误：`{entity}_{field}_duplicate` / `{entity}_conflict`
-  - 外部依赖：`llm_service_error` / `db_connection_error` / `external_timeout`
+| code | status | 说明 |
+| --- | --- | --- |
+| `voice_clone_audio_empty` | 400/422 | 克隆音频为空 |
+| `voice_clone_audio_too_large` | 413 | 克隆音频过大 |
+| `voice_profile_not_found` | 404 | 音色不存在 |
+| `voice_profile_not_ready` | 409 | 音色尚未 ready |
+| `voice_profile_patch_empty` | 400 | 音色 patch 为空 |
+| `voice_preview_not_supported` | 409 | 当前音色不支持试听 |
+| `voice_preview_text_missing` | 409 | 缺少试听文案 |
+| `voice_profile_in_use` | 409 | 有角色仍绑定该音色，不能删除 |
 
-禁止：
-- 在 `code` 中带动态值（ID、邮箱、文件名、异常文本）。
-- 同一个业务错误在不同接口使用多个 `code`。
-- 直接暴露底层库异常类名。
+## 5）命名约束
 
----
+- 全小写 `snake_case`
+- 尽量稳定，避免同一业务错误出现多个别名
+- 优先使用业务含义，不暴露底层异常类名
 
-## 6) Message 格式（面向开发者）
+推荐模式：
+
+- 资源不存在：`{entity}_not_found`
+- 权限不足：`{entity}_{action}_forbidden` 或 `{entity}_forbidden`
+- 参数非法：`{entity}_{field}_invalid` / `validation_failed`
+- 状态冲突：`{entity}_conflict` / `{entity}_state_conflict`
+- 外部依赖：`*_upstream_error` / `external_timeout`
+
+## 6）Message 编写约定
 
 建议格式：
-- `<summary>:<detail>; key1=<value>; key2=<value>; request_id=<id>`
-- 分隔符统一为英文 `;`，键值统一为 `key=value`。
 
-HTTP 错误响应示例：
+```text
+summary: detail; key1=value1; key2=value2
+```
+
+示例：
 
 ```json
 {
@@ -170,20 +211,20 @@ HTTP 错误响应示例：
 
 ```json
 {
-  "code": "auth_code_invalid_or_expired",
-  "message": "authorization failed: verification code invalid or expired; email=u***@example.com",
-  "status": 400
+  "code": "feedback_target_not_on_active_branch",
+  "message": "resource conflict: feedback target must be on the active branch; turn_id=...; chat_id=...",
+  "status": 409
 }
 ```
 
-SSE 错误事件示例（`POST /v1/chat`）：
+SSE 错误事件示例：
 
 ```text
-data: {"type":"error","code":"llm_service_error","message":"upstream error: llm request failed; provider=deepseek"}
-
+data: {"type":"error","code":"llm_service_error","message":"upstream error: llm request failed after retries; model=deepseek/deepseek-chat; attempts=3"}
 ```
 
 安全要求：
-- `message` 面向开发排查，不直接作为最终用户展示文案。
-- 不暴露敏感信息：token、验证码、完整邮箱、密钥、完整文件路径、堆栈。
-- 前端应基于 `code` 做文案映射，`message` 仅用于日志和调试。
+
+- `message` 只用于开发与日志排查
+- 不要暴露 token、验证码、完整邮箱、密钥、堆栈、完整本地路径
+- 前端展示文案应基于 `code` 自己做映射
