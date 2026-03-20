@@ -131,7 +131,7 @@ export default function VoiceSelector({
                   }}
                   className={`flex items-center gap-3 rounded-xl border-[0.4px] p-3 text-left transition-all ${
                     isSelected
-                      ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
+                      ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                 >
