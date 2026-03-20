@@ -624,3 +624,20 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     @apply bg-background text-foreground;
   }
 }
+
+/* Character Card Grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 340px);
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+  align-content: start;
+  justify-content: start;
+}
+
+@media (max-width: 380px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -54,7 +54,7 @@ export default function DiscoverPage() {
         <WorkspaceFrame>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                 <div className="max-w-7xl mx-auto pl-8">
-                    <div className="mt-8 flex flex-wrap gap-6">
+                    <div className="card-grid mt-8">
                         {characters.map((character) => (
                             <CharacterCard
                                 key={character.id}

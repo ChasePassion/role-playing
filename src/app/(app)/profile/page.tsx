@@ -247,7 +247,7 @@ export default function ProfilePage() {
                     </div>
 
                     {activeTab === 'works' && (
-                        <div className="mb-10 flex flex-wrap gap-6">
+                        <div className="card-grid mb-10">
                             {characters.map((character) => (
                                 <CharacterCard
                                     key={character.id}
