@@ -19,6 +19,7 @@ import {
   type TurnsPageResponse,
 } from "@/lib/api";
 import { mapCharacterToSidebar } from "@/lib/character-adapter";
+import { getErrorMessage } from "@/lib/error-map";
 import type { TtsPlaybackManager } from "@/lib/voice/tts-playback-manager";
 
 interface UseChatSessionArgs {
@@ -216,7 +217,7 @@ export function useChatSession({
         await reloadChatTurns();
       } catch (err) {
         console.error("Failed to load chat:", err);
-        setError(err instanceof Error ? err.message : "Failed to load chat");
+        setError(getErrorMessage(err));
       } finally {
         setIsLoading(false);
       }
@@ -246,9 +247,7 @@ export function useChatSession({
         applyTurnsPage(result.snapshot);
       } catch (err) {
         console.error("Failed to select candidate:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to select candidate",
-        );
+        setError(getErrorMessage(err));
       } finally {
         selectCandidateInFlightRef.current = false;
       }
@@ -474,15 +473,16 @@ export function useChatSession({
             if (controller.signal.aborted) return;
             ttsPlaybackManager?.handleTtsError(data.code, data.message);
           },
-          onError: async (errMsg) => {
+          onError: async (err) => {
             if (controller.signal.aborted) return;
             hasStreamError = true;
+            const errorMessage = getErrorMessage(err);
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === turnId
                   ? {
                       ...message,
-                      content: `Error: ${errMsg}`,
+                      content: `Error: ${errorMessage}`,
                       messageStreamStatus: "error",
                       replyCardStatus:
                         deriveReplyCardStatus(message) === "loading"
@@ -733,9 +733,10 @@ export function useChatSession({
             if (controller.signal.aborted) return;
             ttsPlaybackManager?.handleTtsError(data.code, data.message);
           },
-          onError: async (errMsg) => {
+          onError: async (err) => {
             if (controller.signal.aborted) return;
             hasStreamError = true;
+            const errorMessage = getErrorMessage(err);
               setMessages((prev) =>
                 prev.map((message) =>
                   message.id === tempAssistantId ||
@@ -743,7 +744,7 @@ export function useChatSession({
                     ? {
                         ...message,
                         id: resolvedAssistantMessageId,
-                        content: `Error: ${errMsg}`,
+                        content: `Error: ${errorMessage}`,
                         messageStreamStatus: "error",
                         replyCardStatus:
                           deriveReplyCardStatus(message) === "loading"
@@ -1053,17 +1054,18 @@ export function useChatSession({
               if (controller.signal.aborted) return;
               ttsPlaybackManager?.handleTtsError(data.code, data.message);
             },
-            onError: async (streamError) => {
+            onError: async (err) => {
               if (controller.signal.aborted) return;
               hasStreamError = true;
-              console.error("Chat error:", streamError);
+              const errorMessage = getErrorMessage(err);
+              console.error("Chat error:", err);
               setMessages((prev) =>
                 prev.map((message) =>
                   message.id === tempAssistantId ||
                   message.id === resolvedAssistantMessageId
                     ? {
                         ...message,
-                        content: `Error: ${streamError}`,
+                        content: `Error: ${errorMessage}`,
                         messageStreamStatus: "error",
                         replyCardStatus:
                           deriveReplyCardStatus(message) === "loading"

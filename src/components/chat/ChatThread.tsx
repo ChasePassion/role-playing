@@ -873,7 +873,7 @@ export default function ChatThread({
         return (
             <div className="flex min-h-[40vh] items-center justify-center">
                 <div className="text-center">
-                    <p className="text-red-500 mb-4">{error || "Chat not found"}</p>
+                    <p className="text-red-500 mb-4">{error || "聊天未找到"}</p>
                     <button
                         onClick={() => router.push("/")}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

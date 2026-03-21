@@ -842,7 +842,7 @@ export class ApiService {
       }) => void;
       onTtsAudioDone?: (data: { assistant_candidate_id: string }) => void;
       onTtsError?: (data: { code: string; message: string }) => void;
-      onError: (error: string) => void;
+      onError: (error: Error) => void;
     },
   ): Promise<void> {
     try {
@@ -949,9 +949,9 @@ export class ApiService {
               });
             } else if (data.type === "error") {
               if (data.code && data.message) {
-                handlers.onError(`${data.code}: ${data.message}`);
+                handlers.onError(new Error(`${data.code}: ${data.message}`));
               } else {
-                handlers.onError(data.message || "Unknown error");
+                handlers.onError(new Error(data.message || "Unknown error"));
               }
             }
           } catch {
@@ -968,17 +968,17 @@ export class ApiService {
       }
 
       if (error instanceof UnauthorizedError) {
-        handlers.onError("Authentication required");
+        handlers.onError(new Error("Authentication required"));
         return;
       }
 
       if (error instanceof ApiError) {
-        handlers.onError(error.detail || `API error: ${error.status}`);
+        handlers.onError(new Error(error.detail || `API error: ${error.status}`));
         return;
       }
 
       handlers.onError(
-        error instanceof Error ? error.message : "Unknown error",
+        error instanceof Error ? error : new Error("Unknown error"),
       );
     }
   }
@@ -1019,7 +1019,7 @@ export class ApiService {
       }) => void;
       onTtsAudioDone?: (data: { assistant_candidate_id: string }) => void;
       onTtsError?: (data: { code: string; message: string }) => void;
-      onError: (error: string) => void;
+      onError: (error: Error) => void;
     },
   ): Promise<void> {
     try {
@@ -1132,9 +1132,9 @@ export class ApiService {
               });
             } else if (data.type === "error") {
               if (data.code && data.message) {
-                handlers.onError(`${data.code}: ${data.message}`);
+                handlers.onError(new Error(`${data.code}: ${data.message}`));
               } else {
-                handlers.onError(data.message || "Unknown error");
+                handlers.onError(new Error(data.message || "Unknown error"));
               }
             }
           } catch {
@@ -1151,17 +1151,17 @@ export class ApiService {
       }
 
       if (error instanceof UnauthorizedError) {
-        handlers.onError("Authentication required");
+        handlers.onError(new Error("Authentication required"));
         return;
       }
 
       if (error instanceof ApiError) {
-        handlers.onError(error.detail || `API error: ${error.status}`);
+        handlers.onError(new Error(error.detail || `API error: ${error.status}`));
         return;
       }
 
       handlers.onError(
-        error instanceof Error ? error.message : "Unknown error",
+        error instanceof Error ? error : new Error("Unknown error"),
       );
     }
   }
@@ -1206,7 +1206,7 @@ export class ApiService {
       }) => void;
       onTtsAudioDone?: (data: { assistant_candidate_id: string }) => void;
       onTtsError?: (data: { code: string; message: string }) => void;
-      onError: (error: string) => void;
+      onError: (error: Error) => void;
     },
   ): Promise<void> {
     try {
@@ -1305,9 +1305,9 @@ export class ApiService {
               });
             } else if (data.type === "error") {
               if (data.code && data.message) {
-                handlers.onError(`${data.code}: ${data.message}`);
+                handlers.onError(new Error(`${data.code}: ${data.message}`));
               } else {
-                handlers.onError(data.message || "Unknown error");
+                handlers.onError(new Error(data.message || "Unknown error"));
               }
             } else if (data.type === "tts_audio_delta") {
               handlers.onTtsAudioDelta?.({
@@ -1341,17 +1341,17 @@ export class ApiService {
       }
 
       if (error instanceof UnauthorizedError) {
-        handlers.onError("Authentication required");
+        handlers.onError(new Error("Authentication required"));
         return;
       }
 
       if (error instanceof ApiError) {
-        handlers.onError(error.detail || `API error: ${error.status}`);
+        handlers.onError(new Error(error.detail || `API error: ${error.status}`));
         return;
       }
 
       handlers.onError(
-        error instanceof Error ? error.message : "Unknown error",
+        error instanceof Error ? error : new Error("Unknown error"),
       );
     }
   }
