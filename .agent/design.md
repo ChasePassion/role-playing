@@ -329,3 +329,131 @@ The three waves have increasing arc sizes:
    - Idle: Static waves (not playing)
 
 ---
+
+好的，下面是英文版，可直接追加到 `design.md` 末尾：
+
+````markdown
+## Fixing the "Jumpy" Hover Expansion: CSS Grid Instead of `max-height`
+
+### Problem
+
+When a card expands on hover, using a `max-height` transition often causes a jumpy / unsmooth effect.
+
+**Root cause:** `max-height` requires a value much larger than the actual content height (for example, 150px), but the real content may only be 80px tall. The browser calculates the animation speed based on 40→150px (110px), while the actual content reaches its final height at 40→80px (the first 36% of the duration). The remaining 64% of the animation is effectively "running in empty space" — visually, it looks like the content pops open instantly and then just sits there. The reverse collapse has the same issue: nothing appears to happen for the first 64%, then it suddenly shrinks at the end.
+
+### Solution: CSS Grid `0fr → 1fr`
+
+Use a `grid-template-rows` transition from `0fr` to `1fr` instead of `max-height`. The browser will calculate the real content height precisely and animate smoothly to exactly that height.
+
+```html
+<!-- Expandable content container -->
+<div class="grid grid-rows-[0fr] group-hover/card:grid-rows-[1fr]
+    transition-[grid-template-rows] duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
+    <!-- Must have overflow-hidden + min-h-0, otherwise 0fr cannot truly collapse to 0 -->
+    <div class="overflow-hidden min-h-0">
+        <div class="p-3">Actual content</div>
+    </div>
+</div>
+````
+
+**Key points:**
+
+* The grid child must have `overflow: hidden` + `min-height: 0`, otherwise `0fr` cannot fully collapse the row to 0
+* `transition-property` only needs `grid-template-rows`; do not use `transition-all` (to avoid interfering with other properties)
+* The parent container does not need a fixed height; the height change of the grid child will naturally drive the parent to resize with it
+
+**Comparison:**
+
+| Approach       | Precision                                                                  | Animation Smoothness      | Browser Support   |
+| -------------- | -------------------------------------------------------------------------- | ------------------------- | ----------------- |
+| `max-height`   | Requires guessing a value; the larger the mismatch, the less even it feels | ❌ Severe dead-zone effect | ✅ Fully supported |
+| Grid `0fr→1fr` | Browser calculates precisely                                               | ✅ Even throughout         | ✅ Modern browsers |
+
+---
+
+## Card Depth: Multi-layer Shadows + Directional Border
+
+Create an embossed / dimensional card look using 4 layers of box-shadow plus differentiated border colors, without any images or extra DOM.
+
+```css
+.suggestion-card {
+  background: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),      /* Outer shadow 1: close projection */
+    0 2px 6px rgba(0, 0, 0, 0.03),      /* Outer shadow 2: ambient light */
+    inset 0 1px 0 rgba(255,255,255,0.9), /* Inner top highlight */
+    inset 0 -1px 0 rgba(0,0,0,0.04);    /* Inner bottom depth */
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-top-color: rgba(255, 255, 255, 0.7); /* Brighter top edge = light direction */
+}
+```
+
+**Hover enhancement:** deepen the shadow + apply `translateY(-1px)` to simulate the card lifting slightly off the surface.
+
+---
+
+## Expansion Animation Rhythm: Staggered Layers with Delay
+
+Expansion animation should feel layered. Do not start every property at the same time:
+
+1. **Width change first** (`duration-700`) — the card takes up space
+2. **Height expansion follows** (`duration-700`) — the Grid content expands in sync with width
+3. **Text fade-in comes later** (`duration-400, delay-150`) — the content appears only after the container is ready
+
+This layering avoids the stiff feeling of "everything popping out at once."
+
+---
+
+## Easing Curve Choice
+
+| Curve                         | Effect                                                   | Best Use Case                              |
+| ----------------------------- | -------------------------------------------------------- | ------------------------------------------ |
+| `ease-out`                    | Linear deceleration, somewhat mechanical                 | Simple transitions                         |
+| `cubic-bezier(0.32,0.72,0,1)` | Fast start → natural deceleration, slightly elastic feel | Expand / collapse animations (recommended) |
+| `ease-in-out`                 | Slow → fast → slow                                       | Looping animations                         |
+
+```
+
+---
+
+## Flex Squeeze Artifact: Ghost Border Stripe on Collapsed Siblings
+
+### Problem
+
+When one flex child expands via `hover:flex-[1_0_100%]`, the sibling cards get squeezed narrow. However, they never fully disappear — CSS flex layout preserves `min-width: auto` (the minimum content width), plus any `border`, `padding`, and `background` still render. The result is a thin **white stripe** at the edge where the sibling cards are crushed but still visible (a few pixels of border + white background + box-shadow).
+
+### Solution
+
+Add explicit "disappear" styles to siblings using Tailwind's `group-hover` on the parent list:
+
+```html
+group-hover/list:flex-[0_0_0%]    <!-- force flex-basis to 0 -->
+group-hover/list:opacity-0        <!-- make completely transparent -->
+group-hover/list:border-transparent  <!-- hide border color -->
+```
+
+The hovered card itself overrides these with `!important`:
+
+```html
+hover:flex-[1_0_100%]!   <!-- take full width -->
+hover:opacity-100!       <!-- stay fully visible -->
+```
+
+**Why this works:** `flex-[0_0_0%]` sets `flex-grow: 0, flex-shrink: 0, flex-basis: 0%`, which tells the browser "this item should occupy zero space." Combined with `opacity-0`, even if a few sub-pixel remnants exist, they are invisible.
+
+### Bonus: Separate Duration for Disappear vs Expand
+
+The disappear animation should be **slower** than the expand animation to feel natural (the focus card opens quickly, while background cards fade out gently):
+
+```html
+transition-all duration-700 ease-[...]   <!-- base speed -->
+group-hover/list:duration-1200           <!-- siblings disappear slowly -->
+hover:duration-700!                      <!-- hovered card expands at normal speed -->
+```
+
+This works because:
+1. When any card in the list is hovered, ALL cards receive `group-hover/list` styles, including the slower `duration-1200`
+2. The actually-hovered card additionally matches `hover:`, and `hover:duration-700!` with `!important` overrides the group duration
+3. Net result: hovered card = 700ms (expand), sibling cards = 1200ms (disappear)
+
+---
