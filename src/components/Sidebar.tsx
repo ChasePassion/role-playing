@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import type { CharacterVisibility, LLMProvider } from "@/lib/api";
 
@@ -83,6 +84,8 @@ export default function Sidebar({
 }: SidebarProps) {
     const { user, logout } = useAuth();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const pathname = usePathname();
+    const isDiscoverActive = pathname === "/";
 
     // ── 共用的用户菜单项，避免重复 ──
     const userMenuItems = (
@@ -140,7 +143,9 @@ export default function Sidebar({
                 <div className="px-2">
                     <Link
                         href="/"
-                        className="flex items-center w-full px-1 rounded-lg hover:bg-sidebar-hover text-text-primary transition-all duration-300 ease-in-out overflow-hidden outline-none h-10"
+                        className={`flex items-center w-full px-1 rounded-lg transition-all duration-300 ease-in-out overflow-hidden outline-none h-10 ${
+                            isDiscoverActive ? "bg-sidebar-selected" : "hover:bg-sidebar-hover"
+                        } text-text-primary`}
                     >
                         <div className="flex items-center justify-center shrink-0 w-8 h-10">
                             <Image src="/find.svg" alt="Discover" width={20} height={20} />
