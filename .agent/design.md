@@ -1,8 +1,658 @@
-# Design Knowledge
+# Design System — Role-Playing AI Learning Platform
+
+---
+
+## 1. Product UI Positioning
+
+### 1.1 Product Definition
+
++ 这个应用是什么：
+    - 一个 AI 角色互动的沉浸式英语学习产品
+
++ 这个应用主要做什么：
+    - 让用户创建 AI 角色，与角色进行对话学习英语，在互动中提升语言能力
+
++ 这个应用的目标用户是什么：
+    - 喜欢角色扮演、AI 陪伴、剧情互动的用户，以及希望通过沉浸式对话学习英语的学习者
+
+### 1.2 Product Type
+
++ 这个产品在界面上首先应该像什么：
+    - 沉浸式互动空间 / AI 角色舞台 / 智能陪伴界面
+
++ 这个产品不应该像什么：
+    - 后台工具 / 通用聊天壳子 / 功能堆砌页 / 普通社区 feed
+
+### 1.3 Core UI Promise
+
+界面必须首先传达：
+
++ 主任务是什么：与 AI 角色对话互动
++ 谁是主角：AI 角色（而非用户）
++ 当前焦点是什么：对话内容与角色本身
++ 用户下一步最可能做什么：发送消息继续对话
+
+### 1.4 Emotional Direction
+
+界面最终应给人的感受：
+
++ 沉浸 / 温暖 / 精致 / 智能 / 友好 / 轻快
+
+界面绝不能给人的感受：
+
++ 廉价 / 杂乱 / 后台感 / 默认组件库感 / 炫技过度
+
+---
+
+## 2. Visual North Star
+
+### 2.1 One-Paragraph Visual Thesis
+
+这是一个面向消费者的 AI 英语学习产品，界面应传达沉浸式角色互动的温暖感。整体视觉语言融合现代极简主义与轻量玻璃拟态效果，营造出智能而不冰冷、友好而不幼稚的氛围。界面空间感强调"呼吸感"——大量留白让角色成为视觉焦点，聊天区域成为用户自然停留的舞台。整体体验应让用户感到"在一个专属的 AI 角色空间里探索"而非"使用一个聊天工具"。
+
+### 2.2 Visual Keywords
+
++ 玻璃拟态（Glass Morphism）
++ 温暖渐变
++ 沉浸空间感
++ 角色聚焦
++ 轻量柔和阴影
+
+### 2.3 Anti-Keywords
+
++ 高饱和度撞色
++ 粗边框分割
++ 密集信息流
++ 企业级蓝白
++ Skeuomorphism 拟物
+
+---
+
+## 3. Layout & Composition
+
+### 3.1 Layout Character
+
+整体布局气质应为：
+
++ 内容优先 / 中轴稳定 / 非对称但平衡 / 编辑感
+
+整体布局不应为：
+
++ 随意堆叠 / 每个元素等权重 / 无视觉动线 / 密集填充
+
+### 3.2 Alignment Discipline
+
+界面必须给人以下感受：
+
++ 对齐是有纪律的
++ 分组是有逻辑的
++ 留白是有意图的
++ 元素不是被随意堆上去的
+
+界面不得出现以下情况：
+
++ 同一页面存在多套对齐基准
++ 相关元素之间距离远于无关元素
++ 留白分布随机，无法建立视觉节奏
+
+### 3.3 Density Strategy
+
+整体密度倾向：
+
++ 中等偏松
+
+**实际代码密度观察：**
+
+| 区域 | 实际间距 | 说明 |
+|------|---------|------|
+| Discover 页面边距 | `p-8`（32px） | 页面级间距 |
+| CharacterCard 网格 gap | `24px` | 卡片间距 |
+| Sidebar 内部间距 | `px-2`（8px）+ `gap-1` | 紧凑列表 |
+| Sidebar 列表项高度 | `h-[52px]`（展开）/ `h-10`（收起） | 切换动画 |
+| ChatHeader | `h-[64px]` + `px-[14px]` | 固定高度，紧凑 |
+| ChatMessage 横向padding | `px-3 sm:px-4 lg:px-0` | 响应式递增 |
+| ChatInput Composer | `p-2.5` + `28px` 圆角 | 内边距偏小 |
+| 对话气泡内边距 | `px-4 py-1.5` | 紧凑但可读 |
+| 消息间距 | `mt-1`（相邻消息） | 极小间距 |
+
+允许更密的区域：
+
++ 角色卡片网格（Discover 页面）
++ 标签列表
++ 聊天消息列表
++ 设置项列表
+
+必须更松的区域：
+
++ 首屏 Hero 区域（当前无明确 Hero）
++ 角色卡片内部信息区（padding 16px）
++ 核心输入区（ChatInput）
++ 对话气泡与边缘的安全距离
+
+### 3.4 White Space Strategy
+
+留白必须承担以下职责：
+
++ 建立主次（次要信息周围留白更多）
++ 切分区域（区块间留白传达分隔）
++ 给内容呼吸（特别是头像、角色卡片）
++ 强化焦点（焦点内容周围更疏）
++ 提升品质感（克制但充足的留白）
+
+留白不得用于：
+
++ 掩盖结构混乱
++ 填补内容缺失
++ 随机分布而不承担视觉职责
+
+### 3.5 Edge Discipline
+
+**实际代码中的页面边距：**
+
+| 断点 | 实际边距 | 说明 |
+|------|---------|------|
+| `< 640px`（sm） | `1rem`（16px） | 移动端 |
+| `640px - 1024px`（lg） | `1.5rem`（24px） | 平板 |
+| `>= 1024px`（lg+） | `4rem`（64px） | 桌面端 |
+
+```css
+.thread-content-margin {
+  --thread-content-margin: 1rem;  /* 16px */
+}
+@media (min-width: 640px) {
+  .thread-content-margin {
+    --thread-content-margin: 1.5rem;  /* 24px */
+  }
+}
+@media (min-width: 1024px) {
+  .thread-content-margin {
+    --thread-content-margin: 4rem;  /* 64px */
+  }
+}
+```
+
+**ChatInput Composer 的响应式边距：**
+- 使用 CSS 变量 `--thread-content-margin` 控制左右 padding
+- 最大宽度 `--thread-content-max-width: 48rem`（768px）
+
+**页面不应给人：**
++ 贴边（元素紧贴容器边缘）
++ 顶满（内容占据所有可用空间）
++ 塞满（每个区块都在抢空间）
+
+**页面应给人：**
++ 安全（边距是保护而非限制）
++ 从容（元素有呼吸空间）
++ 有边界感（内容有明确的"停靠点"）
++ 有停顿感（区块间有节奏）
+
+### 3.6 Responsive Continuity
+
+不同尺寸下必须保持不变的东西：
+
++ 主任务的清晰度（对话是核心）
++ 主次关系（角色 > 工具栏）
++ 产品气质（温暖、沉浸、精致）
++ 可读性（文字大小、间距比例）
++ 核心区域的辨识度（ChatInput、Sidebar）
+
+---
+
+## 4. Color System
+
+### 4.1 Color Philosophy
+
+整体配色应使用少量关键颜色，不追求颜色丰富，优先追求：
+
++ 主次清楚（背景 → 表面 → 焦点）
++ 长时间观看不累（低饱和度为主）
++ 重点明确（Primary 稀缺且精准）
++ 风格统一（所有颜色服务于同一气质）
+
+颜色应按"界面职责"定义，而不是按"能不能再多加一个色"定义。
+
+### 4.2 Key Colors
+
+**重要说明：项目使用两套颜色系统**
+
+1. **shadcn/ui 语义颜色**（通过 Tailwind 类名使用，如 `bg-primary`、`text-primary`）：
+   - 这些使用 OKLCH 色值，定义在 CSS 变量中
+
+2. **自定义应用颜色**（直接使用的语义化变量）：
+   - 这些用于特定组件和场景
+
+**shadcn/ui 语义 Token（Light Mode）：**
+
+| Token | OKLCH 值 | 用途 |
+|-------|---------|------|
+| `--background` | oklch(1 0 0) | 页面背景 |
+| `--foreground` | oklch(0.141 0.005 285.823) | 主要文字 |
+| `--primary` | oklch(0.21 0.006 285.885) | shadcn Button 默认态，**不是紫色** |
+| `--primary-foreground` | oklch(0.985 0 0) | primary 上文字 |
+| `--secondary` | oklch(0.967 0.001 286.375) | 次要背景 |
+| `--muted` | oklch(0.967 0.001 286.375) | 静音背景 |
+| `--muted-foreground` | oklch(0.552 0.016 285.938) | 次要文字 |
+| `--accent` | oklch(0.967 0.001 286.375) | 强调背景 |
+| `--destructive` | oklch(0.577 0.245 27.325) | 危险/错误 |
+| `--border` | oklch(0.92 0.004 286.32) | 边框 |
+| `--input` | oklch(0.92 0.004 286.32) | 输入框背景 |
+| `--ring` | oklch(0.705 0.015 286.067) | 焦点环 |
+
+**自定义应用颜色（实际使用的品牌色）：**
+
+| CSS 变量 | Hex 值 | 实际用途 |
+|----------|--------|---------|
+| `--bg-primary` | `#FFFFFF` | 页面背景（body 背景） |
+| `--text-primary` | `#0D0D0D` | 主要文字 |
+| `--text-secondary` | `#5D5D5D` | 次要文字 |
+| `--text-tertiary` | `#8F8F8F` | 辅助/占位符文字 |
+| `--theme-submit-btn-bg` | `#0285FF` | 提交按钮背景（ChatComposer） |
+| `--theme-submit-btn-text` | `#FFFFFF` | 提交按钮文字 |
+| `--send-button` | `#924FF7` | **发送按钮紫色**（ChatComposer） |
+| `--user-bubble` | `#E5F3FF` | 用户聊天气泡背景 |
+| `--sidebar-bg` | `#FAFAFA` | 侧边栏背景 |
+| `--workspace-bg` | `#F2F2F2` | 工作区背景 |
+| `--divider` | `#D5D5D5` | 分割线 |
+| `--input-border` | `#DEDEDE` | 输入框边框 |
+
+### 4.3 Usage Rules
+
+**shadcn 组件使用语义 Token：**
+- Button 默认态使用 `bg-primary`
+- 危险操作使用 `bg-destructive`
+- 表单输入使用 `border-input`
+
+**Chat Composer 特定逻辑：**
+- 发送按钮（圆形）：使用 `--send-button`（紫色 `#924FF7`）
+- 暂停/中断按钮：使用 `--theme-submit-btn-bg`（蓝色 `#0285FF`）
+- 辅助按钮（如 plus、mic）：使用 `--interactive-bg-secondary-hover`
+
+**CreateCharacterModal 特定逻辑：**
+- 创建按钮：直接使用 `#3964FE`（品牌蓝）
+
+**登录/注册页面：**
+- 使用原生 Tailwind 类（如 `bg-blue-600`），不经过设计系统
+
+**颜色优先级：**
+1. 如果一个页面同时有多个彩色焦点，说明颜色使用失败
+2. 语义 Token 用于 shadcn 组件
+3. 自定义变量用于特定功能组件
+4. 直接 Hex 色值仅用于 brand 颜色或一次性场景
+
+### 4.4 Dark Theme Note
+
+深色模式通过 `.dark` 类切换，覆盖 OKLCH 语义 Token：
+
+| Token | Light OKLCH | Dark OKLCH |
+|-------|-------------|------------|
+| `--background` | oklch(1 0 0) | oklch(0.141 0.005 285.823) |
+| `--foreground` | oklch(0.141 0.005 285.823) | oklch(0.985 0 0) |
+| `--primary` | oklch(0.21 0.006 285.885) | oklch(0.92 0.004 286.32) |
+| `--card` | oklch(1 0 0) | oklch(0.21 0.006 285.885) |
+| `--sidebar` | oklch(0.985 0 0) | oklch(0.21 0.006 285.885) |
+| `--border` | oklch(0.92 0.004 286.32) | oklch(1 0 0 / 10%) |
+| `--input` | oklch(0.92 0.004 286.32) | oklch(1 0 0 / 15%) |
+
+**注意：** 自定义应用颜色变量（如 `--send-button`、`--user-bubble`）在深色模式下**未定义**，深色模式聊天气泡等使用默认值。
+
+---
+
+## 5. Type System
+
+### 5.1 Typography Philosophy
+
+排版应优先承担以下职责：
+
++ 建立信息层级（标题 > 正文 > 辅助）
++ 提升扫描效率（行高、字重对比）
++ 保持阅读舒适度（行长度、间距）
++ 形成统一气质（Inter 的现代中性）
+
+字体家族不超过 3 个：Inter（UI）、Noto Sans SC（中文正文）、JetBrains Mono（代码/数字）。
+
+### 5.2 Type Structure
+
+**实际代码中的字体变量：**
+
+| CSS 变量 | 字体栈 | 用途 |
+|----------|--------|------|
+| `--font-inter` | Inter Variable（本地加载） | 主字体，weight 100-900 |
+| `--font-noto-sans-sc` | Noto Sans SC Variable（本地加载） | 中文正文 |
+| `--font-mono` | JetBrains Mono, ui-monospace | 代码/数字串 |
+
+**Tailwind font-sans 映射：**
+```css
+--font-sans: var(--font-inter);
+```
+
+**实际字体应用（body）：**
+```css
+body {
+  font-family: var(--font-inter), var(--font-noto-sans-sc), -apple-system,
+               system-ui, "Segoe UI", Helvetica, Arial, sans-serif,
+               "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+```
+
+**字重规范（实际代码）：**
+```css
+h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-extrabold, .font-black {
+  font-weight: 600;  /* 最大只到 semibold，不使用 bold/extrabold/black */
+}
+```
+
+**文字角色定义（基于实际使用）：**
+
+| Role | 用途 | 视觉特征 |
+|------|------|---------|
+| **type-display** | 产品名称、品牌标题（如"NeuraChar"） | 字重 700（bold），字号 24-32px |
+| **type-title** | 页面标题、区块标题、卡片标题 | 字重 600（semibold），字号 16-20px |
+| **type-body** | 正文、描述、对话内容 | 字重 400，字号 14-16px，行高 1.5 |
+| **type-label** | 按钮、输入标签、操作文案 | 字重 500-600，字号 13-15px |
+| **type-meta** | 时间、状态、辅助信息 | 字重 400，字号 11-13px，颜色 tertiary |
+
+**实际字号应用示例：**
+- ChatHeader: `text-base font-semibold`
+- Sidebar character name: `text-sm font-medium`
+- Sidebar character desc: `text-xs`（无额外字重）
+- Card name: `text-lg font-bold`
+
+### 5.3 Typographic Tone
+
+整体文字气质应为：
+
++ 清楚 / 现代 / 中性 / 克制 / 编辑感
+
+正文阅读体验应为：
+
++ 易扫读（足够行高 1.5+）
++ 不压迫（适当字重，全站最大字重 600-semibold）
++ 不发飘（深色文字 #0D0D0D，不褪光）
++ 可持续阅读（合理行长度，thread max-width: 44rem）
+
+**聊天区域最大宽度（实际代码）：**
+```css
+.thread-content-max-width {
+  --thread-content-max-width: 40rem;  /* 640px */
+}
+@media (min-width: 1024px) {
+  .thread-content-max-width {
+    --thread-content-max-width: 48rem;  /* 768px */
+  }
+}
+```
+
+---
+
+## 6. Surface, Depth, and Shape
+
+### 6.1 Surface Model
+
+界面需要明确的表面层次：
+
++ **基底层**（background）：承载整体空间，纯色 `#FFFFFF`
++ **区块层**（surface）：区分页面区域，如 Sidebar `#FAFAFA`
++ **内容层**（card）：承载主要信息，白色卡片
++ **浮层**（elevated）：承载短时任务或强调信息，阴影更重
+
+表面层次不得出现以下情况：
+
++ 多个层级使用相同视觉权重，导致前后关系模糊
++ 浮层与内容层无法区分
++ 用大量边框线代替层级关系
+
+### 6.2 Depth Perception
+
+用户应自然感到：
+
++ 有前后关系（通过阴影层次）
++ 有主次关系（焦点内容更突出）
++ 有轻重关系（背景退后，内容前进）
++ 重要内容被托出来（更大的阴影、更亮的表面）
++ 背景自然退后（饱和度更低）
+
+深度感不得依赖：
+
++ 大量投影堆叠（最多 4 层，且从轻到重）
++ 高对比度边框
++ 颜色差异过大导致割裂感
+
+### 6.3 Boundary Style
+
+边界应给人的感觉：
+
++ 清楚（边界存在但不死硬）
++ 克制（只用 1px 或更轻）
++ 不生硬（可用圆角柔化）
++ 不依赖粗边框维持结构
+
+边界不得出现以下情况：
+
++ 每个区块都有独立边框，页面变成格子
++ 分割线颜色比内容本身更抢眼
++ 用边框补偿布局结构的缺失
+
+### 6.4 Shape Language
+
+**实际代码中的 Border Radius：**
+
+| 元素 | 实际 Radius | 说明 |
+|------|------------|------|
+| Avatar | `rounded-full` | 全圆形，用于 Sidebar、ChatHeader |
+| Chat bubble | `10px` | 固定值，圆角矩形 |
+| Input container | `24px` | 大圆角胶囊形 |
+| Composer buttons | `340282000000000000000px`（接近无穷大 = 胶囊形） | composer-btn 专用 |
+| CharacterCard | `20px` | 玻璃拟态卡片 |
+| Send button | `50%`（圆形） | 36x36 圆形按钮 |
+| Suggestion card | 无额外 radius（使用 border 默认） | 3D 浮雕卡片 |
+| shadcn Card | `rounded-xl`（--radius-lg） | 默认 10px |
+
+**形状语言总结：**
+
++ **Avatar**: `rounded-full` — 全圆形，传达用户身份
++ **聊天输入区**: 大圆角 `24px` 胶囊形 — 友好、可点击
++ **聊天气泡**: `10px` — 轻圆角，不过于刻板
++ **发送按钮**: `50%` 圆形 — 明确的行动号召
++ **CharacterCard**: `20px` — 卡片感、沉浸感
+
+**按钮形状规则（实际代码）：**
+```css
+/* Composer 辅助按钮 - 胶囊形 */
+.composer-btn {
+  border-radius: 340282000000000000000px;  /* 近似无穷大 = 全胶囊 */
+}
+
+/* 发送按钮 - 圆形 */
+.send-button {
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+}
+
+/* 输入框容器 */
+.input-container {
+  border-radius: 24px;
+}
+```
+
+**Hover/Active 动效（按钮）：**
+```css
+.send-button:hover {
+  transform: scale(1.05);  /* 放大 5% */
+}
+.send-button:active {
+  transform: scale(0.95);  /* 缩小 5% */
+}
+```
+
+---
+
+## 7. Spacing & Grid System
+
+### 7.1 Spacing Unit
+
++ 基础单位：**4px**（`--spacing: 0.25rem`）
++ 所有间距值必须是基础单位的倍数
++ 不允许出现基础单位之外的随意数值
+
+**实际代码中的基础单位：**
+```css
+--spacing: 0.25rem;  /* 4px */
+
+/* 实际应用示例 */
+.composer-btn {
+  height: calc(var(--spacing) * 9);  /* 36px */
+  min-width: calc(var(--spacing) * 9);  /* 36px */
+}
+```
+
+### 7.2 Spacing Scale
+
+允许使用的间距序列（单位：4px）：
+
+| Token | Value | Tailwind | 实际用途 |
+|-------|-------|----------|---------|
+| 1 | 4px | `1` | 图标与文字间距 |
+| 2 | 8px | `2` | 紧凑间距、元素内 gap |
+| 3 | 12px | `3` | 组件内部元素间距 |
+| 4 | 16px | `4` | 标准间距、输入框内边距 |
+| 6 | 24px | `6` | 区块内间距、CharacterCard 网格 |
+| 8 | 32px | `8` | 区块间分隔、页面 padding |
+| 12 | 48px | `12` | 页面级分隔 |
+| 16 | 64px | `16` | 大区块分隔 |
+
+**实际代码间距示例：**
+
+```css
+/* CharacterCard 网格 */
+.card-grid {
+  gap: 24px;  /* 6 单位 */
+}
+
+/* ChatInput Composer */
+.composer-btn {
+  height: calc(var(--spacing) * 9);  /* 36px = 9 单位 */
+}
+
+/* Sidebar 列表项 */
+h-[52px]  /* 52px = 13 单位（展开态）*/
+
+/* ChatHeader */
+h-[64px]  /* 64px = 16 单位 */
+```
+
+较小值用于：
+
++ 图标与文字间距（4-8px）
++ 标签内边距（8px）
++ 行内元素间隔（8-12px）
+
+较大值用于：
+
++ 区块间距（24-32px）
++ 页面级分隔（48-64px）
++ 首屏留白（32px p-8）
+
+### 7.3 Page Margins
+
++ 移动端页面横向边距：**16-20px**
++ 桌面端页面横向边距：**24-64px**
++ 页面顶部与核心内容之间：**中等偏宽松，给产品气质留空间**
+
+### 7.4 Spacing Intention
+
+间距的分配必须服务于信息层级，而不是均匀填充：
+
++ 相关的元素之间间距小（4-8px）
++ 不相关的区块之间间距大（24-48px）
++ 主要内容周围的间距应明显大于次要内容
+
+---
+
+## 8. Motion & Animation
+
+### 8.1 Motion Philosophy
+
+整体动效气质应为：
+
++ 克制 / 功能性 / 自然 / 几乎无感知
+
+动效的存在目的只有两个：
+
++ 帮助用户理解状态变化（hover、active、loading）
++ 维持空间连续感（展开/收起、页面过渡）
+
+动效不得用于：
+
++ 装饰或炫技
++ 吸引注意力到非核心区域
++ 制造视觉噪音
+
+### 8.2 Duration Boundaries
+
+**实际代码中的动效时长：**
+
+| 类型 | 实际时长 | 代码位置 |
+|------|---------|---------|
+| Modal 出现 | 200ms | `.animate-modal-in { animation: modal-in 0.2s ease-out; }` |
+| Hover 反馈 | 200ms | `.send-button:hover { transition: all 0.2s ease; }` |
+| Input focus | 200ms | `.input-container:focus-within { transition: all 0.2s ease; }` |
+| Send button scale | 200ms | `.send-button:hover { transform: scale(1.05); }` |
+| Liquid glass hover | 300ms | `.liquid-glass:hover { transition: all 0.3s ease; }` |
+| Sidebar collapse | 300ms | 侧边栏宽度动画 |
+| CharacterCard hover | 400ms | `.glass-card:hover { transition: all 0.4s cubic-bezier(...); }` |
+| Speaker wave | 1000ms（循环） | `@keyframes speakerWaveShow` |
+
+**建议规范：**
+
+| 类型 | 时长范围 |
+|------|---------|
+| 微交互（hover、focus、toggle） | 100-200ms |
+| 元素出现 / 消失 | 150-250ms |
+| 页面级过渡 | 200-350ms |
+| Sidebar 动画 | 300ms |
+| 卡片 hover | 300-400ms |
+| 超过 **400ms** 的动画必须有充分理由 | 禁止 |
+
+### 8.3 Prohibited Motion
+
+以下动效类型在任何情况下都不允许使用：
+
++ bounce / spring 弹性动效
++ 过度 scale 放大（**超过 1.05**）— 实际代码最大 scale 为 1.05
++ 装饰性粒子
++ 循环播放的背景动画（loading spinner 除外）
++ 闪烁动画
+
+**实际代码中的 active scale：**
+```css
+.send-button:hover { transform: scale(1.05); }
+.send-button:active { transform: scale(0.95); }  /* 注意：最大放大是 1.05，不是 1.1 或更大 */
+```
+
+---
+
+## 9. Conflict Resolution
+
+当设计决策面临规则冲突时，按以下优先级裁决，序号越小越优先：
+
+1. **可读性** — 用户必须能看清、看懂
+2. **气质一致性** — 产品的整体感受不能被局部破坏
+3. **功能完整性** — 核心功能不能因为追求视觉而残缺
+4. **留白与克制** — 宁可少，不要为了填满而填满
+5. **视觉精致度** — 在前四条满足之后，再追求细节美感
+
+当某个决策同时违反多条规则时，优先修复序号最小的冲突。
+当规则本身无法覆盖某个情况时，回到 Section 2（Visual North Star）寻找答案。
+
+---
+
+## 10. Experience
+### Design Knowledge
 
 This is an AI role-playing English learning website aimed at consumers. Users can create characters on the platform and talk with them, learning music during the conversations.
 
-## DropdownMenu (shadcn) sideOffset Behavior
+### DropdownMenu (shadcn) sideOffset Behavior
 
 `s ideOffset` controls the **vertical distance** between the trigger element and the dropdown menu, not the left margin.
 
@@ -18,7 +668,7 @@ Example:
 
 ---
 
-## Input Component: `focus` vs `focus-visible`
+### Input Component: `focus` vs `focus-visible`
 
 When customizing Input component focus styles, using `focus:` doesn't work because shadcn's Input uses `focus-visible:` instead.
 
@@ -45,7 +695,7 @@ The `!` is Tailwind's important flag to ensure the style has highest priority.
 
 ---
 
-## Input Component: `::selection` with `bg-transparent`
+### Input Component: `::selection` with `bg-transparent`
 
 When Input component has `bg-transparent` + Tailwind `selection:` utility, selection color may not show properly in Chrome 131+.
 
@@ -68,7 +718,7 @@ className="... bg-transparent [&::selection]:bg-blue-500 [&::selection]:text-whi
 
 ---
 
-## Text Selection Overlay: Avoid React State for Selection Buttons
+### Text Selection Overlay: Avoid React State for Selection Buttons
 
 When showing a floating action button after the user selects text, do not use React state just to reveal or position that button.
 
@@ -125,7 +775,7 @@ function showSelectionButton(data: SelectionButtonData) {
 
 ---
 
-## Async State Timing: Loading vs Active State
+### Async State Timing: Loading vs Active State
 
 When implementing UI feedback for async operations (e.g., audio playback), distinguish between **loading state** and **active state**.
 
@@ -167,7 +817,7 @@ async function playMessage(candidateId: string) {
 
 ---
 
-## Prop Chain Completeness Check
+### Prop Chain Completeness Check
 
 When adding a new prop that flows through multiple component layers (page → ChatThread → ChatMessage), always verify the prop is passed at **every level**.
 
@@ -192,11 +842,11 @@ grep -n "ttsLoadingCandidateId" src/components/ChatMessage.tsx
 
 ---
 
-## Speaker Button Wave Animation
+### Speaker Button Wave Animation
 
 Implement a speaker icon with animated sound waves, using inline SVG + CSS animations.
 
-### SVG Structure
+#### SVG Structure
 
 The speaker icon is an inline SVG with two parts: the speaker body and the wave arcs.
 
@@ -222,7 +872,7 @@ The speaker icon is an inline SVG with two parts: the speaker body and the wave 
 </svg>
 ```
 
-### Wave Path Design (Quadratic Bezier)
+#### Wave Path Design (Quadratic Bezier)
 
 The waves use quadratic bezier curves (`Q` command) for smooth arcs:
 
@@ -241,7 +891,7 @@ The three waves have increasing arc sizes:
 - `wave2`: Medium arc
 - `wave3`: Largest arc (farthest from speaker)
 
-### CSS Animation
+#### CSS Animation
 
 ```css
 /* Base wave styles */
@@ -298,7 +948,7 @@ The three waves have increasing arc sizes:
 }
 ```
 
-### Key Design Decisions
+#### Key Design Decisions
 
 1. **Inline SVG over mask/image**
    - Inline SVG allows CSS control over individual paths
@@ -330,18 +980,15 @@ The three waves have increasing arc sizes:
 
 ---
 
-好的，下面是英文版，可直接追加到 `design.md` 末尾：
+### Fixing the "Jumpy" Hover Expansion: CSS Grid Instead of `max-height`
 
-````markdown
-## Fixing the "Jumpy" Hover Expansion: CSS Grid Instead of `max-height`
-
-### Problem
+#### Problem
 
 When a card expands on hover, using a `max-height` transition often causes a jumpy / unsmooth effect.
 
 **Root cause:** `max-height` requires a value much larger than the actual content height (for example, 150px), but the real content may only be 80px tall. The browser calculates the animation speed based on 40→150px (110px), while the actual content reaches its final height at 40→80px (the first 36% of the duration). The remaining 64% of the animation is effectively "running in empty space" — visually, it looks like the content pops open instantly and then just sits there. The reverse collapse has the same issue: nothing appears to happen for the first 64%, then it suddenly shrinks at the end.
 
-### Solution: CSS Grid `0fr → 1fr`
+#### Solution: CSS Grid `0fr → 1fr`
 
 Use a `grid-template-rows` transition from `0fr` to `1fr` instead of `max-height`. The browser will calculate the real content height precisely and animate smoothly to exactly that height.
 
@@ -371,7 +1018,7 @@ Use a `grid-template-rows` transition from `0fr` to `1fr` instead of `max-height
 
 ---
 
-## Card Depth: Multi-layer Shadows + Directional Border
+### Card Depth: Multi-layer Shadows + Directional Border
 
 Create an embossed / dimensional card look using 4 layers of box-shadow plus differentiated border colors, without any images or extra DOM.
 
@@ -392,7 +1039,7 @@ Create an embossed / dimensional card look using 4 layers of box-shadow plus dif
 
 ---
 
-## Expansion Animation Rhythm: Staggered Layers with Delay
+### Expansion Animation Rhythm: Staggered Layers with Delay
 
 Expansion animation should feel layered. Do not start every property at the same time:
 
@@ -404,7 +1051,7 @@ This layering avoids the stiff feeling of "everything popping out at once."
 
 ---
 
-## Easing Curve Choice
+### Easing Curve Choice
 
 | Curve                         | Effect                                                   | Best Use Case                              |
 | ----------------------------- | -------------------------------------------------------- | ------------------------------------------ |
@@ -416,13 +1063,13 @@ This layering avoids the stiff feeling of "everything popping out at once."
 
 ---
 
-## Flex Squeeze Artifact: Ghost Border Stripe on Collapsed Siblings
+### Flex Squeeze Artifact: Ghost Border Stripe on Collapsed Siblings
 
-### Problem
+#### Problem
 
 When one flex child expands via `hover:flex-[1_0_100%]`, the sibling cards get squeezed narrow. However, they never fully disappear — CSS flex layout preserves `min-width: auto` (the minimum content width), plus any `border`, `padding`, and `background` still render. The result is a thin **white stripe** at the edge where the sibling cards are crushed but still visible (a few pixels of border + white background + box-shadow).
 
-### Solution
+#### Solution
 
 Add explicit "disappear" styles to siblings using Tailwind's `group-hover` on the parent list:
 
@@ -441,7 +1088,7 @@ hover:opacity-100!       <!-- stay fully visible -->
 
 **Why this works:** `flex-[0_0_0%]` sets `flex-grow: 0, flex-shrink: 0, flex-basis: 0%`, which tells the browser "this item should occupy zero space." Combined with `opacity-0`, even if a few sub-pixel remnants exist, they are invisible.
 
-### Bonus: Separate Duration for Disappear vs Expand
+#### Bonus: Separate Duration for Disappear vs Expand
 
 The disappear animation should be **slower** than the expand animation to feel natural (the focus card opens quickly, while background cards fade out gently):
 
@@ -458,31 +1105,31 @@ This works because:
 
 ---
 
-## Elegant Sidebar Collapse Animation: Single DOM + Width Clipping
+### Elegant Sidebar Collapse Animation: Single DOM + Width Clipping
 
-### Problem
+#### Problem
 
 When animating a sidebar collapsing from a full view (e.g., 256px with text) to a rail view (e.g., 56px icons only), using conditional rendering (`if (isCollapsed) return <Rail/> else return <Full/>`) or crossfading two separate DOM trees causes ugly visual artifacts:
 1. **Timing Mismatch:** The parent container smoothly animates its width over 300ms, but React instantly swaps the DOM nodes. This creates a huge temporary blank space inside the shrinking wrapper.
 2. **Crossfade Ghosting:** Even if two separate DOM trees position an identical icon in the exact same coordinates, fading one out (`opacity 1→0`) while fading the other in (`opacity 0→1`) simultaneously creates a noticeable "dip" in opacity (flicker) due to alpha blending math.
 
-### Solution: Single Unified DOM
+#### Solution: Single Unified DOM
 
 Instead of switching between two layouts, use a single fluid layout and leverage the parent container's width transition to physically clip the content.
 
 ```tsx
 <!-- 1. Parent container controls the width transition -->
 <aside className={`transition-all duration-300 overflow-hidden ${isCollapsed ? 'w-14' : 'w-64'}`}>
-  
+
   <!-- 2. Single unified inner layout -->
   <div className="w-full flex flex-col whitespace-nowrap overflow-x-hidden">
-    
+
     <button className="w-full flex items-center overflow-hidden">
       <!-- 3. The Anchor: Fixed size square with shrink-0 -->
       <div className="w-10 h-10 shrink-0 flex items-center justify-center">
         <Icon />
       </div>
-      
+
       <!-- 4. The Tail: Text that fades out and gets clipped -->
       <div className={`min-w-[150px] transition-opacity duration-200 ${isCollapsed ? 'opacity-0' : 'opacity-100'}`}>
         <span>Text Content</span>
@@ -493,7 +1140,7 @@ Instead of switching between two layouts, use a single fluid layout and leverage
 </aside>
 ```
 
-### Key Techniques
+#### Key Techniques
 
 1. **Rigid Anchors (`shrink-0`):** The left-side icons are wrapped in fixed-width containers (e.g., `w-10 shrink-0`). When the parent shrink to 56px, these icon wrappers refuse to compress, staying perfectly anchored to the left.
 2. **Physical Clipping (`overflow-hidden` + `whitespace-nowrap`):** As the container narrows, the text on the right cannot wrap to a new line. It simply overflows its parent and is forcefully clipped by the moving right edge, acting exactly like a closing sliding door.
@@ -503,20 +1150,20 @@ This approach perfectly replicates the silky, jump-free sidebar animations seen 
 
 ---
 
-## Context-Aware Component Scaling (Sidebar Geometry Transition)
+### Context-Aware Component Scaling (Sidebar Geometry Transition)
 
-### Problem
+#### Problem
 
-When building a collapsible sidebar (e.g., shrinking from a 256px expanded layout to a 56px collapsed rail), forcing the child elements to use the smallest common denominator size (e.g., using 40x40px rows and 32x32px avatars everywhere so they fit the collapsed rail) makes the expanded state look cramped, unbalanced, and visually unimpressive. 
+When building a collapsible sidebar (e.g., shrinking from a 256px expanded layout to a 56px collapsed rail), forcing the child elements to use the smallest common denominator size (e.g., using 40x40px rows and 32x32px avatars everywhere so they fit the collapsed rail) makes the expanded state look cramped, unbalanced, and visually unimpressive.
 
-### Solution: Synchronous Dimension Transitions
+#### Solution: Synchronous Dimension Transitions
 
 Do not compromise the expanded design. Instead, apply CSS transitions to the specific dimensions of the child components (`height`, `width`, `font-size`, `margin`, `border-radius`), triggered by the exact same boolean state (`isCollapsed`) and using the exact same `duration` and `easing` as the parent wrapper.
 
 ```tsx
 <button className={`flex items-center w-full transition-all duration-300 ease-in-out
     ${isCollapsed ? 'h-10 rounded-lg' : 'h-[52px] rounded-xl'}`}>
-    
+
     <div className="w-10 flex items-center justify-center shrink-0">
         <!-- Avatar scales smoothly in sync with the wrapper -->
         <Avatar className={`shrink-0 transition-all duration-300 ease-in-out
@@ -524,7 +1171,7 @@ Do not compromise the expanded design. Instead, apply CSS transitions to the spe
             <AvatarImage src="..." />
         </Avatar>
     </div>
-    
+
     <!-- Text fades out and adjusts its relative layout -->
     <div className={`flex flex-col min-w-[150px] transition-all duration-300 ease-in-out
         ${isCollapsed ? 'opacity-0 ml-2' : 'opacity-100 ml-3'}`}>
@@ -536,8 +1183,59 @@ Do not compromise the expanded design. Instead, apply CSS transitions to the spe
 </button>
 ```
 
-### Key Benefits & Techniques
+#### Key Benefits & Techniques
 
 1. **Perfect Proportions in Both States:** The expanded view remains generous and readable (52px row height, 40px avatars, larger text margins), while the collapsed view instantly and cleanly converts into a neat, squarified UI (40px row height, 32px avatars).
 2. **"Breathing" Organism Effect:** As the sidebar drawer slides closed, the internal elements simultaneously shrink. Because the easing (`ease-in-out`) and duration (`300ms`) match the parent container's width animation perfectly, the elements appear to be reacting organically to spatial pressure rather than arbitrarily swapping sizes.
 3. **Shape Consistency via Border Radius:** When scaling dimensions down dramatically (e.g., `48x40` rectangle down to `40x40` square), remember to also step down the `border-radius` (e.g., `rounded-xl` down to `rounded-lg`). Failing to do so can cause elements to look like pills rather than rounded boxes. Maintaining mathematical concentricity (Outer Radius = Inner Radius + Padding) across states prevents visual distortion.
+
+---
+
+### SVG Color Inheritance: `<Image>` vs Inline SVG
+
+#### Problem
+
+When using Next.js `<Image>` component to load SVG icons, `currentColor` does not work — the SVG cannot inherit the parent element's text color, even when the SVG file itself uses `fill="currentColor"`.
+
+**Original code (broken):**
+```tsx
+<span className="text-[var(--cc-text-secondary)]">
+  <Image src="/message-fill.svg" alt="" width={14} height={14} style={{ color: 'currentColor' }} />
+  5.6k
+</span>
+```
+
+The `currentColor` style on `<Image>` has no effect because Next.js renders SVG as an external `<img>` element, which is isolated from the parent DOM tree.
+
+#### Root Cause
+
+Next.js `<Image>` component renders SVG files as standalone `<img>` elements, similar to PNG or JPG images. The SVG document is loaded as a separate resource, completely isolated from the main page DOM. CSS `currentColor` inheritance requires the SVG to exist directly in the DOM tree so it can traverse up to find the parent's `color` property.
+
+#### Solution: Inline SVG
+
+Replace `<Image>` with inline SVG markup, using `fill="currentColor"` on the path elements:
+
+```tsx
+<span className="text-[var(--cc-text-secondary)]">
+  <svg width="14" height="14" viewBox="0 0 1024 1024" style={{ color: 'currentColor' }}>
+    <path d="..." fill="currentColor" />
+  </svg>
+  5.6k
+</span>
+```
+
+#### Why It Works
+
+| Approach | DOM Relationship | `currentColor` Works? |
+|----------|-----------------|----------------------|
+| `<img src="*.svg">` | External resource, isolated | ❌ No |
+| `<Image src="*.svg">` | Rendered as `<img>`, isolated | ❌ No |
+| **Inline `<svg>...</svg>`** | Directly in DOM tree | ✅ Yes |
+
+Inline SVG exists directly in the page's DOM, so `currentColor` traverses up the element hierarchy to find the parent `<span>`'s `color` value.
+
+#### Alternative Solutions
+
+1. **SVGR webpack plugin** — Configure Next.js to import SVG as React components via `@svgr/webpack`
+2. **CSS mask** — Use `background-color: currentColor` + `mask-image: url(*.svg)` to achieve color inheritance
+3. **Filter hack** — `filter: invert() sepia() saturate() hue-rotate()` — but this is a workaround, not a real solution

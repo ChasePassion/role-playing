@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { Character } from "./Sidebar";
 import { MoreHorizontal } from "lucide-react";
 import { CHARACTER_CARD_VISIBLE_TAGS, normalizeCharacterTag } from "@/lib/character-tags";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface CharacterCardProps {
   character: Character;
@@ -22,31 +23,11 @@ export default function CharacterCard({
   onEdit,
   onDelete,
 }: CharacterCardProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isTagOverflowOpen, setIsTagOverflowOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const tagOverflowRef = useRef<HTMLDivElement>(null);
-
   const tags = (character.tags ?? [])
     .map((tag) => normalizeCharacterTag(tag))
     .filter((tag) => tag.length > 0);
   const visibleTags = tags.slice(0, CHARACTER_CARD_VISIBLE_TAGS);
   const hiddenTags = tags.slice(CHARACTER_CARD_VISIBLE_TAGS);
-
-  useEffect(() => {
-    if (!isMenuOpen && !isTagOverflowOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setIsMenuOpen(false);
-      }
-      if (tagOverflowRef.current && !tagOverflowRef.current.contains(target)) {
-        setIsTagOverflowOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMenuOpen, isTagOverflowOpen]);
 
   return (
     <div
@@ -78,7 +59,7 @@ export default function CharacterCard({
               {character.name}
             </h3>
             <span className="text-[13px] font-medium shrink-0 inline-flex items-center gap-1 leading-none text-[var(--cc-text-secondary)]">
-              <Image src="/message-fill.svg" alt="" width={14} height={14} style={{ filter: 'invert(1)' }} />
+              <svg width="14" height="14" viewBox="0 0 1024 1024" style={{ color: 'currentColor' }}><path d="M512 838c-39.98 0-78.592-5.132-115.02-14.686-23.648-6.2-88.642 15.36-194.98 64.686 28.444-92.068 35.188-144.976 20.232-158.724C153.926 666.49 112 581.53 112 488c0-193.3 179.086-350 400-350s400 156.7 400 350-179.086 350-400 350z m-159-304c24.852 0 45-20.148 45-45S377.852 444 353 444 308 464.148 308 489s20.148 45 45 45z m160 0c24.852 0 45-20.148 45-45S537.852 444 513 444 468 464.148 468 489s20.148 45 45 45z m160 0c24.852 0 45-20.148 45-45S697.852 444 673 444 628 464.148 628 489s20.148 45 45 45z" fill="currentColor"></path></svg>
               5.6k
             </span>
           </div>
@@ -100,26 +81,23 @@ export default function CharacterCard({
               ))}
 
               {hiddenTags.length > 0 && (
-                <div ref={tagOverflowRef} className="relative shrink-0">
-                  <button
-                    type="button"
-                    className="border border-[var(--cc-tag-overflow-border)] cursor-pointer shrink-0 bg-[var(--cc-tag-bg)] text-[var(--cc-tag-text)] text-[11px] font-semibold py-1 px-[10px] rounded-md tracking-wide hover:bg-[var(--cc-tag-overflow-hover)] transition-colors"
-                    aria-expanded={isTagOverflowOpen}
-                    aria-label={`查看全部标签，共 ${tags.length} 个`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsTagOverflowOpen((prev) => !prev);
-                    }}
-                  >
-                    +{hiddenTags.length}
-                  </button>
+                <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="border border-[var(--cc-tag-overflow-border)] cursor-pointer shrink-0 bg-[var(--cc-tag-bg)] text-[var(--cc-tag-text)] text-[11px] font-semibold py-1 px-[10px] rounded-md tracking-wide hover:bg-[var(--cc-tag-overflow-hover)] transition-colors"
+                        aria-label={`查看全部标签，共 ${tags.length} 个`}
+                      >
+                        +{hiddenTags.length}
+                      </button>
+                    </PopoverTrigger>
 
-                  {isTagOverflowOpen && (
-                    <div
-                      className="absolute left-0 bottom-[calc(100%+10px)] min-w-[180px] max-w-[220px] p-[10px] rounded-[14px] bg-[var(--cc-tag-overflow-bg)] border border-[var(--cc-tag-overflow-border)] shadow-[0_14px_36px_rgba(0,0,0,0.28)] backdrop-blur-[12px] z-[12]"
-                      role="dialog"
-                      aria-label="全部标签"
+                    <PopoverContent
+                      side="top"
+                      align="start"
+                      sideOffset={10}
+                      className="min-w-[180px] max-w-[220px] p-[10px] rounded-[14px] bg-[var(--cc-tag-overflow-bg)] border border-[var(--cc-tag-overflow-border)] shadow-[0_14px_36px_rgba(0,0,0,0.28)] backdrop-blur-[12px] z-[100]"
                     >
                       <p className="m-0 mb-2 text-[11px] font-bold text-[var(--cc-text-secondary)] tracking-wider">
                         全部标签
@@ -135,8 +113,8 @@ export default function CharacterCard({
                           </span>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
             </div>
@@ -145,43 +123,41 @@ export default function CharacterCard({
       </div>
 
       {showMenu && (
-        <div ref={menuRef} className="absolute bottom-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
-          <button
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--cc-menu-btn-bg)] backdrop-blur-[4px] border border-[var(--cc-menu-btn-border)] text-[var(--cc-menu-btn-text)] cursor-pointer transition-colors duration-200 hover:bg-[var(--cc-menu-btn-bg-hover)]"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsMenuOpen((prev) => !prev);
-            }}
-          >
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
-
-          <div className={cn(
-            "absolute right-0 bottom-full mb-2 w-[128px] bg-[var(--cc-dropdown-bg)] rounded-xl shadow-[var(--cc-dropdown-shadow)] border border-[var(--cc-dropdown-border)] p-1.5 flex-col gap-0.5",
-            isMenuOpen ? "flex" : "hidden"
-          )}>
-            <button
-              onClick={() => { setIsMenuOpen(false); onEdit?.(character); }}
-              className="w-full py-2 px-[10px] flex items-center gap-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-[var(--cc-dropdown-item-hover)]"
+        <div className="absolute bottom-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--cc-menu-btn-bg)] backdrop-blur-[4px] border border-[var(--cc-menu-btn-border)] text-[var(--cc-menu-btn-text)] cursor-pointer transition-colors duration-200 hover:bg-[var(--cc-menu-btn-bg-hover)]">
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="top"
+              align="end"
+              sideOffset={8}
+              className="w-[128px] bg-[var(--cc-dropdown-bg)] rounded-xl shadow-[var(--cc-dropdown-shadow)] border border-[var(--cc-dropdown-border)] p-1.5 flex-col gap-0.5 z-[100]"
             >
-              <Image src="/edit.svg" alt="Edit" width={16} height={16} />
-              <span className="text-sm text-gray-700">编辑</span>
-            </button>
-            <button
-              onClick={() => { setIsMenuOpen(false); onDelete?.(character); }}
-              className="w-full py-2 px-[10px] flex items-center gap-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-[var(--cc-dropdown-item-danger-hover)]"
-            >
-              <Image
-                src="/delete.svg"
-                alt="Delete"
-                width={16}
-                height={16}
-                style={{ filter: "invert(16%) sepia(96%) saturate(6932%) hue-rotate(357deg) brightness(90%) contrast(125%)" }}
-              />
-              <span className="text-sm text-red-600">删除</span>
-            </button>
-          </div>
+              <DropdownMenuItem
+                onSelect={() => onEdit?.(character)}
+                className="w-full py-2 px-[10px] flex items-center gap-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-[var(--cc-dropdown-item-hover)] focus:bg-[var(--cc-dropdown-item-hover)] focus:outline-none"
+              >
+                <Image src="/edit.svg" alt="Edit" width={16} height={16} />
+                <span className="text-sm text-gray-700">编辑</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onDelete?.(character)}
+                className="w-full py-2 px-[10px] flex items-center gap-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-[var(--cc-dropdown-item-danger-hover)] focus:bg-[var(--cc-dropdown-item-danger-hover)] focus:outline-none text-red-600"
+              >
+                <Image
+                  src="/delete.svg"
+                  alt="Delete"
+                  width={16}
+                  height={16}
+                  style={{ filter: "invert(16%) sepia(96%) saturate(6932%) hue-rotate(357deg) brightness(90%) contrast(125%)" }}
+                />
+                <span className="text-sm">删除</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
     </div>
