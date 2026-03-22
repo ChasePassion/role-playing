@@ -263,7 +263,6 @@ export default function ProfilePage() {
                                     showMenu={true}
                                     onEdit={handleEdit}
                                     onDelete={handleDeleteClick}
-                                    disableHoverFloat={true}
                                 />
                             ))}
                         </div>

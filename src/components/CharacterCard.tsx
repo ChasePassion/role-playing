@@ -36,17 +36,22 @@ export default function CharacterCard({
     <Card
       onClick={() => onClick(character)}
       className={cn(
-        "p-0 bg-transparent flex-row gap-0 relative block h-[130px] rounded-[20px] overflow-hidden no-underline shadow-(--cc-card-shadow) border border-white/10 transition-all duration-300 cursor-pointer hover:shadow-(--cc-card-shadow-hover)",
-        !disableHoverFloat && "hover:-translate-y-1.5"
+        "group p-0 bg-transparent flex-row gap-0 relative block h-[130px] rounded-[20px] overflow-hidden no-underline shadow-(--cc-card-shadow) border border-white/10 transition-all duration-500 cursor-pointer hover:shadow-(--cc-card-shadow-hover)"
       )}
     >
       <div
-        className="absolute inset-[-30px] bg-cover bg-center blur-xl scale-110 z-10"
+        className={cn(
+          "absolute inset-[-30px] bg-cover bg-center blur-xl scale-110 z-10 transition-all duration-700 ease-out",
+          !disableHoverFloat && "group-hover:blur-sm group-hover:scale-125"
+        )}
         style={{ backgroundImage: `url(${character.avatar})` }}
       />
 
       <div
-        className="absolute inset-0 z-20 rounded-[20px] transition-colors duration-300"
+        className={cn(
+          "absolute inset-0 z-20 rounded-[20px] transition-all duration-700 ease-out",
+          !disableHoverFloat && "group-hover:opacity-40"
+        )}
         style={{
           backgroundColor: 'var(--cc-card-bg-blur)',
           backgroundImage: 'var(--cc-card-bg-gradient)',
