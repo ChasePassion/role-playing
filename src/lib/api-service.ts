@@ -1,5 +1,6 @@
 import { httpClient } from "./http-client";
 import { ApiError, tokenStore, UnauthorizedError } from "./token-store";
+import { getErrorMessage } from "./error-map";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -976,7 +977,7 @@ export class ApiService {
       }
 
       if (error instanceof UnauthorizedError) {
-        handlers.onError(new Error("Authentication required"));
+        handlers.onError(new Error(getErrorMessage(error)));
         return;
       }
 
@@ -1165,7 +1166,7 @@ export class ApiService {
       }
 
       if (error instanceof UnauthorizedError) {
-        handlers.onError(new Error("Authentication required"));
+        handlers.onError(new Error(getErrorMessage(error)));
         return;
       }
 
@@ -1361,7 +1362,7 @@ export class ApiService {
       }
 
       if (error instanceof UnauthorizedError) {
-        handlers.onError(new Error("Authentication required"));
+        handlers.onError(new Error(getErrorMessage(error)));
         return;
       }
 

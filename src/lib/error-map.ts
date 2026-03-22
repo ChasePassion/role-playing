@@ -136,6 +136,26 @@ const ERROR_MESSAGE_MAP: Record<string, ErrorMapping> = {
     message: "似乎没有听到声音哦",
     severity: "info",
   },
+
+  // 授权/认证相关
+  unauthorized: {
+    message: "登录已过期，请重新登录",
+    severity: "error",
+  },
+  "authorization failed": {
+    message: "登录已过期，请重新登录",
+    severity: "error",
+  },
+
+  // API 层通用错误
+  "No response body": {
+    message: "服务器响应异常，请稍后重试",
+    severity: "error",
+  },
+  "Unknown error": {
+    message: "操作失败，请稍后重试",
+    severity: "error",
+  },
 };
 
 interface AlibabaCloudError {
@@ -211,6 +231,15 @@ export function mapApiError(error: unknown): MappedError {
         code: error.message,
         message: knownError.message,
         severity: knownError.severity,
+        rawMessage: error.message,
+      };
+    }
+
+    if (error.message.startsWith("authorization failed:")) {
+      return {
+        code: "authorization failed",
+        message: ERROR_MESSAGE_MAP["authorization failed"].message,
+        severity: "error",
         rawMessage: error.message,
       };
     }
