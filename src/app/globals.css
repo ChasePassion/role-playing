@@ -745,3 +745,49 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     grid-template-columns: 1fr;
   }
 }
+
+:root {
+  /* ============================================
+     CharacterCard CSS Variables (Light Mode Only)
+     ============================================ */
+
+  /* 卡片容器 */
+  --cc-card-bg-blur: rgba(10, 10, 15, 0.5);
+  --cc-card-bg-gradient: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 100%);
+  --cc-card-border: rgba(255, 255, 255, 0.15);
+  --cc-card-border-hover: rgba(255, 255, 255, 0.3);
+  --cc-card-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --cc-card-shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.12);
+
+  /* 头像 */
+  --cc-avatar-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  --cc-avatar-border: rgba(255, 255, 255, 0.1);
+
+  /* 文字 */
+  --cc-text-primary: #ffffff;
+  --cc-text-secondary: rgba(255, 255, 255, 0.6);
+  --cc-text-muted: rgba(255, 255, 255, 0.85);
+  --cc-text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --cc-text-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  /* 标签 */
+  --cc-tag-bg: rgba(0, 0, 0, 0.35);
+  --cc-tag-text: rgba(255, 255, 255, 0.9);
+  --cc-tag-border: rgba(255, 255, 255, 0.06);
+  --cc-tag-overflow-bg: rgba(10, 10, 15, 0.92);
+  --cc-tag-overflow-border: rgba(255, 255, 255, 0.12);
+  --cc-tag-overflow-hover: rgba(255, 255, 255, 0.16);
+
+  /* 菜单按钮 */
+  --cc-menu-btn-bg: rgba(255, 255, 255, 0.1);
+  --cc-menu-btn-border: rgba(255, 255, 255, 0.1);
+  --cc-menu-btn-text: rgba(255, 255, 255, 0.9);
+  --cc-menu-btn-bg-hover: rgba(255, 255, 255, 0.2);
+
+  /* 下拉菜单 */
+  --cc-dropdown-bg: #ffffff;
+  --cc-dropdown-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  --cc-dropdown-border: rgba(0, 0, 0, 0.05);
+  --cc-dropdown-item-hover: rgba(0, 0, 0, 0.05);
+  --cc-dropdown-item-danger-hover: rgba(239, 68, 68, 0.1);
+}
