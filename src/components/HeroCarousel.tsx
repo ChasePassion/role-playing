@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import type { EmblaCarouselType } from "embla-carousel";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { CharacterResponse } from "@/lib/api-service";
 import { resolveCharacterAvatarSrc } from "@/lib/character-avatar";
@@ -138,9 +137,6 @@ export default function HeroCarousel({
         .off("slideFocus", tweenScale);
     };
   }, [emblaApi, setTweenNodes, tweenScale]);
-
-  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -330,22 +326,6 @@ export default function HeroCarousel({
           ))}
         </div>
       </div>
-
-      <button
-        onClick={scrollPrev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-11 items-center justify-center rounded-full border border-white/30 bg-white/85 text-gray-800 shadow-md cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-white"
-        aria-label="上一张"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-
-      <button
-        onClick={scrollNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-11 items-center justify-center rounded-full border border-white/30 bg-white/85 text-gray-800 shadow-md cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-white"
-        aria-label="下一张"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
     </div>
   );
 }
