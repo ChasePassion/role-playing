@@ -17,7 +17,6 @@ interface HeroCarouselTweenInput {
   scrollProgress: number;
   scrollSnaps: number[];
   slideRegistry: number[][];
-  slidesInView: number[];
   loop: boolean;
   loopPoints: HeroTweenLoopPoint[];
 }
@@ -37,7 +36,6 @@ export function computeHeroTweenStyles({
   scrollProgress,
   scrollSnaps,
   slideRegistry,
-  slidesInView,
   loop,
   loopPoints,
 }: HeroCarouselTweenInput): HeroTweenStyle[] {
@@ -46,16 +44,11 @@ export function computeHeroTweenStyles({
     scale: HERO_MIN_SCALE,
     opacity: HERO_MIN_OPACITY,
   }));
-  const slidesInViewSet = new Set(slidesInView);
 
   scrollSnaps.forEach((scrollSnap, snapIndex) => {
     const slidesInSnap = slideRegistry[snapIndex] ?? [];
 
     slidesInSnap.forEach((slideIndex) => {
-      if (!slidesInViewSet.has(slideIndex)) {
-        return;
-      }
-
       let diffToTarget = scrollSnap - scrollProgress;
 
       if (loop) {
@@ -83,13 +76,21 @@ export function computeHeroTweenStyles({
       const opacityTweenValue =
         1 - Math.abs(diffToTarget * HERO_OPACITY_TWEEN_FACTOR);
 
-      tweenStyles[slideIndex] = {
+      const nextTweenStyle = {
         scale: Math.max(HERO_MIN_SCALE, Number(tweenValue.toFixed(3))),
         opacity: Math.max(
           HERO_MIN_OPACITY,
           Number(opacityTweenValue.toFixed(3))
         ),
       };
+
+      const currentTweenStyle = tweenStyles[slideIndex];
+      if (
+        nextTweenStyle.scale > currentTweenStyle.scale ||
+        nextTweenStyle.opacity > currentTweenStyle.opacity
+      ) {
+        tweenStyles[slideIndex] = nextTweenStyle;
+      }
     });
   });
 

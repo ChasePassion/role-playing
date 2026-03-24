@@ -71,7 +71,6 @@ export default function HeroCarousel({
       scrollProgress: api.scrollProgress(),
       scrollSnaps: api.scrollSnapList(),
       slideRegistry: engine.slideRegistry,
-      slidesInView: api.slidesInView(),
       loop: engine.options.loop,
       loopPoints: engine.slideLooper.loopPoints.map((loopPoint) => ({
         index: loopPoint.index,
