@@ -5,7 +5,7 @@ import {
   HERO_MIN_OPACITY,
   HERO_MIN_SCALE,
   computeHeroTweenStyles,
-} from "./hero-carousel-tween.ts";
+} from "./hero-carousel-tween";
 
 test("keeps non-updated slides at the minimized fallback style", () => {
   const tweenStyles = computeHeroTweenStyles({

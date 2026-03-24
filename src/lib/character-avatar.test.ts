@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveCharacterAvatarSrc } from "./character-avatar.ts";
+import { resolveCharacterAvatarSrc } from "./character-avatar";
 
 test("returns default avatar when avatar is missing", () => {
   assert.equal(resolveCharacterAvatarSrc(undefined), "/default-avatar.svg");
