@@ -72,7 +72,6 @@ interface ChatThreadProps {
     onPlayTts?: (candidateId: string) => void;
     onStopTts?: (candidateId: string) => void;
     isLoadingOlder?: boolean;
-    hasOlderMessages?: boolean;
 }
 
 export default function ChatThread({
@@ -95,7 +94,6 @@ export default function ChatThread({
     onPlayTts,
     onStopTts,
     isLoadingOlder = false,
-    hasOlderMessages = true,
 }: ChatThreadProps) {
     const CARD_GAP = 12;
     const VIEWPORT_PADDING = 12;

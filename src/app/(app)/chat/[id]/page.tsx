@@ -277,7 +277,6 @@ export default function ChatPage() {
                 onPlayTts={handlePlayTts}
                 onStopTts={handleStopTts}
                 isLoadingOlder={isLoadingOlder}
-                hasOlderMessages={hasOlderMessages}
             />
             <MessageNavigator
                 messages={messages}
