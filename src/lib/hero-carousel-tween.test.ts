@@ -5,7 +5,7 @@ import {
   HERO_MIN_OPACITY,
   HERO_MIN_SCALE,
   computeHeroTweenStyles,
-} from "./hero-carousel-tween.ts";
+} from "./hero-carousel-tween";
 
 test("keeps the centered slide emphasized without relying on slidesInView", () => {
   const tweenStyles = computeHeroTweenStyles({
