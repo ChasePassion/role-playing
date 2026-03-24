@@ -7,12 +7,9 @@ import Image from "next/image";
 
 import type { CharacterResponse } from "@/lib/api-service";
 import { resolveCharacterAvatarSrc } from "@/lib/character-avatar";
+import { computeHeroTweenStyles } from "@/lib/hero-carousel-tween";
 
 // ── 动画参数 ──
-const TWEEN_FACTOR = 0.52;
-const OPACITY_TWEEN_FACTOR = 0.9;
-const MIN_SCALE = 0.85;
-const MIN_OPACITY = 0.5;
 const HERO_ASPECT_RATIO = "21 / 9";
 const HERO_VIEWPORT_MAX_WIDTH = 1040;
 const HERO_VIEWPORT_BLEED = 80;
@@ -55,7 +52,7 @@ export default function HeroCarousel({
     skipSnaps: false,
   });
 
-  const tweenNodes = useRef<HTMLElement[]>([]);
+  const tweenNodes = useRef<Array<HTMLElement | null>>([]);
   const wheelTargetIndex = useRef(0);
 
   // 获取所有需要做 tween 动画的 slide 节点
@@ -63,77 +60,72 @@ export default function HeroCarousel({
     tweenNodes.current = api.slideNodes().map((slideNode) => {
       return slideNode.querySelector(
         "[data-carousel-slide-inner]"
-      ) as HTMLElement;
+      ) as HTMLElement | null;
     });
   }, []);
 
   // Cover Flow 核心动画函数
   const tweenScale = useCallback((api: EmblaCarouselType) => {
     const engine = api.internalEngine();
-    const scrollProgress = api.scrollProgress();
-    const slidesInView = api.slidesInView();
+    const tweenStyles = computeHeroTweenStyles({
+      scrollProgress: api.scrollProgress(),
+      scrollSnaps: api.scrollSnapList(),
+      slideRegistry: engine.slideRegistry,
+      slidesInView: api.slidesInView(),
+      loop: engine.options.loop,
+      loopPoints: engine.slideLooper.loopPoints.map((loopPoint) => ({
+        index: loopPoint.index,
+        target: loopPoint.target(),
+      })),
+    });
 
-    api.scrollSnapList().forEach((scrollSnap, snapIndex) => {
-      let diffToTarget = scrollSnap - scrollProgress;
-      const slidesInSnap = engine.slideRegistry[snapIndex];
+    tweenNodes.current.forEach((slideNode, slideIndex) => {
+      const tweenStyle = tweenStyles[slideIndex];
+      if (!slideNode || !tweenStyle) {
+        return;
+      }
 
-      slidesInSnap.forEach((slideIndex) => {
-        // 只计算可视区域内的卡片
-        if (!slidesInView.includes(slideIndex)) return;
-
-        // 处理 loop 循环时的边界计算
-        if (engine.options.loop) {
-          engine.slideLooper.loopPoints.forEach((loopPoint) => {
-            const target = loopPoint.target();
-            if (slideIndex === loopPoint.index && target !== 0) {
-              const sign = Math.sign(target);
-              if (sign === -1)
-                diffToTarget = scrollSnap - (1 + scrollProgress);
-              if (sign === 1)
-                diffToTarget = scrollSnap + (1 - scrollProgress);
-            }
-          });
-        }
-
-        // 计算动画值
-        const tweenValue = 1 - Math.abs(diffToTarget * TWEEN_FACTOR);
-        const scale = Math.max(
-          MIN_SCALE,
-          Number(tweenValue.toFixed(3))
-        );
-        const opacityTweenValue = 1 - Math.abs(diffToTarget * OPACITY_TWEEN_FACTOR);
-        const opacity = Math.max(
-          MIN_OPACITY,
-          Number(opacityTweenValue.toFixed(3))
-        );
-
-        // 应用到 DOM
-        const slideNode = tweenNodes.current[slideIndex];
-        if (slideNode) {
-          slideNode.style.transform = `scale(${scale})`;
-          slideNode.style.opacity = String(opacity);
-        }
-      });
+      slideNode.style.transform = `scale(${tweenStyle.scale})`;
+      slideNode.style.opacity = String(tweenStyle.opacity);
     });
   }, []);
 
   // 绑定 Embla 事件
   useEffect(() => {
     if (!emblaApi) return;
+
     setTweenNodes(emblaApi);
     tweenScale(emblaApi);
+
+    let initialTweenFrameId = 0;
+    let followupTweenFrameId = 0;
+
+    initialTweenFrameId = window.requestAnimationFrame(() => {
+      emblaApi.reInit();
+      tweenScale(emblaApi);
+
+      followupTweenFrameId = window.requestAnimationFrame(() => {
+        tweenScale(emblaApi);
+      });
+    });
 
     emblaApi
       .on("reInit", setTweenNodes)
       .on("reInit", tweenScale)
+      .on("select", tweenScale)
       .on("scroll", tweenScale)
+      .on("settle", tweenScale)
       .on("slideFocus", tweenScale);
 
     return () => {
+      window.cancelAnimationFrame(initialTweenFrameId);
+      window.cancelAnimationFrame(followupTweenFrameId);
       emblaApi
         .off("reInit", setTweenNodes)
         .off("reInit", tweenScale)
+        .off("select", tweenScale)
         .off("scroll", tweenScale)
+        .off("settle", tweenScale)
         .off("slideFocus", tweenScale);
     };
   }, [emblaApi, setTweenNodes, tweenScale]);
