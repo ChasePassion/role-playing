@@ -28,7 +28,7 @@ import {
     type VoiceCardDisplay,
 } from "@/lib/voice-adapter";
 
-type TabType = 'works' | 'likes' | 'voices';
+type TabType = 'works' | 'voices';
 
 export default function ProfilePage() {
     const { user, isAuthed } = useAuth();
@@ -220,18 +220,8 @@ export default function ProfilePage() {
                             className={`relative px-1 pb-3 text-lg font-medium transition-colors ${activeTab === 'works' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
-                            作品
+                            角色
                             {activeTab === 'works' && (
-                                <div className="absolute bottom-0 left-0 h-0.5 w-full rounded-full bg-blue-600" />
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('likes')}
-                            className={`relative px-1 pb-3 text-lg font-medium transition-colors ${activeTab === 'likes' ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
-                                }`}
-                        >
-                            喜欢
-                            {activeTab === 'likes' && (
                                 <div className="absolute bottom-0 left-0 h-0.5 w-full rounded-full bg-blue-600" />
                             )}
                         </button>
@@ -265,12 +255,6 @@ export default function ProfilePage() {
                                     onDelete={handleDeleteClick}
                                 />
                             ))}
-                        </div>
-                    )}
-
-                    {activeTab === 'likes' && (
-                        <div className="py-20 text-center text-gray-400">
-                            暂无内容
                         </div>
                     )}
 

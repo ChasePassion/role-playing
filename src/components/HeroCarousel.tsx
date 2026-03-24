@@ -178,15 +178,16 @@ export default function HeroCarousel({
       const isHorizontalIntent =
         absDeltaX >= WHEEL_MIN_DELTA_X &&
         absDeltaX > absDeltaY * WHEEL_AXIS_LOCK_RATIO;
+      const isVerticalIntent = absDeltaY > absDeltaX;
 
-      if (!isHorizontalIntent) {
+      if (!isHorizontalIntent && !isVerticalIntent) {
         resetWheelState();
         return;
       }
 
       e.preventDefault();
 
-      const wheelDirection = Math.sign(e.deltaX);
+      const wheelDirection = isHorizontalIntent ? Math.sign(e.deltaX) : Math.sign(e.deltaY);
       if (lastWheelDirection === 0) {
         gestureBaseIndex = wheelTargetIndex.current;
       }
@@ -279,7 +280,7 @@ export default function HeroCarousel({
                 {/* CTA 按钮 - 玻璃拟态 */}
                 <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center">
                   <button
-                    className="relative flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium text-white/95 rounded-[16px] cursor-pointer overflow-hidden transition-all duration-300 ease-out hover:scale-[1.02] hover:[&>span:last-child]:translate-x-1"
+                    className="group/btn relative flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium text-white/95 rounded-[16px] cursor-pointer overflow-hidden transition-all duration-300 ease-out hover:[&>span:last-child]:translate-x-1"
                     style={{
                       background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)',
                       backdropFilter: 'blur(20px) saturate(180%)',
@@ -290,6 +291,12 @@ export default function HeroCarousel({
                         inset 0 1px 0 rgba(255, 255, 255, 0.4),
                         inset 0 -1px 0 rgba(255, 255, 255, 0.1)
                       `,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.15) 100%)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)';
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
