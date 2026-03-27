@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, RefObject } from "react";
+import { ReactNode, RefObject, useLayoutEffect, useRef, useState } from "react";
 
 interface ChatMainFrameProps {
     header: ReactNode;
@@ -10,6 +10,8 @@ interface ChatMainFrameProps {
     scrollRootRef?: RefObject<HTMLDivElement | null>;
 }
 
+const DEFAULT_HEADER_HEIGHT = 64;
+
 export default function ChatMainFrame({
     header,
     thread,
@@ -17,76 +19,144 @@ export default function ChatMainFrame({
     disclaimer = null,
     scrollRootRef,
 }: ChatMainFrameProps) {
+    const headerRef = useRef<HTMLElement | null>(null);
+    const footerRef = useRef<HTMLDivElement | null>(null);
+    const [headerHeight, setHeaderHeight] = useState(DEFAULT_HEADER_HEIGHT);
+    const [footerHeight, setFooterHeight] = useState(0);
+
+    useLayoutEffect(() => {
+        const updateStickyOffsets = () => {
+            const nextHeaderHeight = Math.ceil(
+                headerRef.current?.getBoundingClientRect().height ?? DEFAULT_HEADER_HEIGHT
+            );
+            const nextFooterHeight = Math.ceil(
+                footerRef.current?.getBoundingClientRect().height ?? 0
+            );
+
+            setHeaderHeight((previous) =>
+                previous === nextHeaderHeight ? previous : nextHeaderHeight
+            );
+            setFooterHeight((previous) =>
+                previous === nextFooterHeight ? previous : nextFooterHeight
+            );
+        };
+
+        updateStickyOffsets();
+
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        window.addEventListener("resize", updateStickyOffsets);
+
+        if (typeof ResizeObserver === "undefined") {
+            return () => {
+                window.removeEventListener("resize", updateStickyOffsets);
+            };
+        }
+
+        const observer = new ResizeObserver(() => {
+            updateStickyOffsets();
+        });
+
+        if (headerRef.current) {
+            observer.observe(headerRef.current);
+        }
+
+        if (footerRef.current) {
+            observer.observe(footerRef.current);
+        }
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("resize", updateStickyOffsets);
+        };
+    }, []);
+
     return (
         <div
-            className="@container/main relative flex min-h-0 min-w-0 flex-1 flex-col -translate-y-[calc(env(safe-area-inset-bottom,0px)/2)] pt-[calc(env(safe-area-inset-bottom,0px)/2)]"
+            ref={scrollRootRef}
+            data-scroll-root
+            className="@container/main @w-sm/main:[scrollbar-gutter:stable_both-edges] touch:[scrollbar-width:none] custom-scrollbar relative flex min-h-0 min-w-0 flex-1 flex-col [scrollbar-gutter:stable] not-print:overflow-x-clip not-print:overflow-y-auto"
             data-chat-main-shell
-            style={{ backgroundColor: "var(--workspace-bg)" }}
+            style={{
+                backgroundColor: "var(--workspace-bg)",
+                ["--header-height" as string]: `${headerHeight}px`,
+                ["--sticky-padding-bottom" as string]: `${footerHeight}px`,
+                scrollPaddingTop: `${headerHeight}px`,
+                scrollPaddingBottom: `${footerHeight}px`,
+            }}
         >
-            <div
-                ref={scrollRootRef}
-                data-scroll-root
-                className="@w-sm/main:[scrollbar-gutter:stable_both-edges] touch:[scrollbar-width:none] custom-scrollbar relative flex min-h-0 min-w-0 flex-1 flex-col [scrollbar-gutter:stable] not-print:overflow-x-clip not-print:overflow-y-auto scroll-pt-(--header-height) [--sticky-padding-top:var(--header-height)] has-data-[fixed-header=less-than-xl]:@w-xl/main:scroll-pt-0 has-data-[fixed-header=less-than-xl]:@w-xl/main:[--sticky-padding-top:0px] has-data-[fixed-header=less-than-xxl]:@w-2xl/main:scroll-pt-0 has-data-[fixed-header=less-than-xxl]:@w-2xl/main:[--sticky-padding-top:0px] pb-[35vh]"
+            <header
+                ref={headerRef}
+                id="page-header"
+                data-fixed-header="less-than-xl"
+                className="draggable no-draggable-children sticky top-0 z-20 w-full bg-workspace-bg pointer-events-none select-none [view-transition-name:var(--vt-page-header)] *:pointer-events-auto transition-none motion-safe:transition-none [box-shadow:var(--sharp-edge-top-shadow)]"
+                style={{ backgroundColor: "var(--workspace-bg)" }}
+            >
+                {header}
+            </header>
+
+            <main
+                id="main"
+                className="shrink-0"
                 style={{
-                    ["--sticky-padding-bottom" as string]: "0px",
                     backgroundColor: "var(--workspace-bg)",
+                    minHeight: `calc(100% - ${headerHeight}px - ${footerHeight}px)`,
                 }}
             >
-                <header
-                    id="page-header"
-                    data-fixed-header="less-than-xl"
-                    className="draggable no-draggable-children sticky top-0 z-20 w-full bg-workspace-bg pointer-events-none select-none [view-transition-name:var(--vt-page-header)] *:pointer-events-auto transition-none motion-safe:transition-none [box-shadow:var(--sharp-edge-top-shadow)]"
-                    style={{ backgroundColor: "var(--workspace-bg)" }}
-                >
-                    {header}
-                </header>
+                <div id="thread" className="group/thread flex min-h-full flex-col">
+                    <div role="presentation" className="composer-parent flex flex-1 flex-col focus-visible:outline-0">
+                        <div className="relative basis-auto flex-col -mb-(--composer-overlap-px) [--composer-overlap-px:28px] grow flex">
+                            <div
+                                aria-hidden="true"
+                                data-edge="true"
+                                className="pointer-events-none absolute top-0 h-px w-px"
+                            />
 
-                <main
-                    id="main"
-                    className="min-h-0 flex-1"
-                    style={{ backgroundColor: "var(--workspace-bg)" }}
-                >
-                    <div id="thread" className="group/thread flex min-h-full flex-col">
-                        <div role="presentation" className="composer-parent flex flex-1 flex-col focus-visible:outline-0">
-                            <div className="relative basis-auto flex-col -mb-(--composer-overlap-px) [--composer-overlap-px:28px] grow flex">
-                                <div
-                                    aria-hidden="true"
-                                    data-edge="true"
-                                    className="pointer-events-none absolute top-0 h-px w-px"
-                                />
-
-                                <div className="flex flex-col text-sm">
-                                    {thread}
-                                </div>
-
-                                <div
-                                    aria-hidden="true"
-                                    data-edge="true"
-                                    className="pointer-events-none absolute bottom-0 h-px w-px"
-                                />
+                            <div className="flex flex-col text-sm">
+                                {thread}
                             </div>
+
+                            <div
+                                aria-hidden="true"
+                                data-edge="true"
+                                className="pointer-events-none absolute bottom-0 h-px w-px"
+                            />
                         </div>
                     </div>
-                </main>
-            </div>
-            <div
-                id="thread-bottom-container"
-                className="absolute bottom-0 left-0 right-0 group/thread-bottom-container isolate z-10 w-full has-data-has-thread-error:pt-2 has-data-has-thread-error:[box-shadow:var(--sharp-edge-bottom-shadow)] md:border-transparent md:pt-0 dark:border-white/20 md:dark:border-transparent print:hidden content-fade single-line flex flex-col bg-workspace-bg [--content-fade-bg:var(--workspace-bg)]"
-                style={{ backgroundColor: "var(--workspace-bg)", ["--content-fade-bg" as string]: "var(--workspace-bg)" }}
-            >
-                <div className="relative h-0" />
-                <div id="thread-bottom" style={{ backgroundColor: "var(--workspace-bg)" }}>
-                    {composer}
                 </div>
+            </main>
+            <div
+                ref={footerRef}
+                id="thread-bottom-container"
+                className="sticky bottom-0 group/thread-bottom-container isolate z-10 w-full has-data-has-thread-error:pt-2 has-data-has-thread-error:[box-shadow:var(--sharp-edge-bottom-shadow)] md:border-transparent md:pt-0 dark:border-white/20 md:dark:border-transparent print:hidden flex flex-col bg-workspace-bg"
+                style={{
+                    backgroundColor: "var(--workspace-bg)",
+                    paddingBottom: "env(safe-area-inset-bottom,0px)",
+                }}
+            >
                 <div
-                    className="-mt-4 text-token-text-secondary relative w-full overflow-hidden text-center text-xs [view-transition-name:var(--vt-disclaimer)] md:px-[60px]"
-                    style={{ height: "auto", opacity: 1, transform: "none", backgroundColor: "var(--workspace-bg)" }}
+                    className="content-fade single-line flex flex-col [--content-fade-bg:var(--workspace-bg)]"
+                    style={{
+                        backgroundColor: "var(--workspace-bg)",
+                        ["--content-fade-bg" as string]: "var(--workspace-bg)",
+                    }}
                 >
+                    <div className="relative h-0" />
+                    <div id="thread-bottom" style={{ backgroundColor: "var(--workspace-bg)" }}>
+                        {composer}
+                    </div>
                     <div
-                        className="select-none active:select-auto data-has-range-start:select-auto flex min-h-8 w-full items-center justify-center p-2"
-                        data-has-range-start=""
+                        className="-mt-4 text-token-text-secondary relative w-full overflow-hidden text-center text-xs [view-transition-name:var(--vt-disclaimer)] md:px-[60px]"
+                        style={{ height: "auto", opacity: 1, transform: "none", backgroundColor: "var(--workspace-bg)" }}
                     >
-                        <div className="pointer-events-auto">{disclaimer}</div>
+                        <div
+                            className="select-none active:select-auto data-has-range-start:select-auto flex min-h-8 w-full items-center justify-center p-2"
+                            data-has-range-start=""
+                        >
+                            <div className="pointer-events-auto">{disclaimer}</div>
+                        </div>
                     </div>
                 </div>
             </div>

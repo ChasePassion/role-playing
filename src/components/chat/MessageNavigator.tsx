@@ -35,11 +35,16 @@ interface NavigatorItem {
 
 const COLLAPSED_WIDTH = 44;
 const EXPANDED_WIDTH = 240;
-const EDGE_OFFSET = 16;
+const EDGE_OFFSET = 4;
 const HOVER_PREVIEW_DELAY = 600;
 const ITEM_HEIGHT = 38;
+const HIGHLIGHT_SYNC_TOP_OFFSET = 20;
+const CLICK_SCROLL_TOP_GAP = 16;
+const CLICK_HIGHLIGHT_LOCK_MS = 400;
 const MIN_MESSAGES = 3;
-const NAVIGATOR_GUTTER_OFFSET = 20;
+const NAVIGATOR_MAX_HEIGHT = 360;
+const PREVIEW_GAP = 12;
+const PREVIEW_MAX_WIDTH = 320;
 const VIEWPORT_PADDING = 32;
 
 function normalizeNavigatorLabel(content: string): string {
@@ -66,6 +71,9 @@ export default function MessageNavigator({
   });
 
   const hoverPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightSyncFrameRef = useRef<number | null>(null);
+  const clickedAtRef = useRef(0);
+  const clickedMessageIdRef = useRef<string | null>(null);
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const userMessages = useMemo(
@@ -104,8 +112,99 @@ export default function MessageNavigator({
   useEffect(() => {
     return () => {
       clearHoverPreviewTimer();
+      if (highlightSyncFrameRef.current !== null) {
+        cancelAnimationFrame(highlightSyncFrameRef.current);
+      }
     };
   }, [clearHoverPreviewTimer]);
+
+  const getMessageElement = useCallback(
+    (messageId: string) => {
+      return scrollRootRef.current?.querySelector<HTMLElement>(
+        `[data-turn-id="${messageId}"]`
+      ) ?? null;
+    },
+    [scrollRootRef]
+  );
+
+  const getHeaderOffset = useCallback((root: HTMLDivElement) => {
+    const headerHeightValue = window
+      .getComputedStyle(root)
+      .getPropertyValue("--header-height")
+      .trim();
+    const headerHeight = Number.parseFloat(headerHeightValue);
+    return Number.isFinite(headerHeight) ? headerHeight : 0;
+  }, []);
+
+  const getScrollBehavior = useCallback((): ScrollBehavior => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return "auto";
+    }
+
+    return "smooth";
+  }, []);
+
+  const syncCurrentMessageIndex = useCallback(() => {
+    const root = scrollRootRef.current;
+    if (!root || navigationItems.length === 0) {
+      return;
+    }
+
+    const clickedMessageId = clickedMessageIdRef.current;
+    if (
+      clickedMessageId &&
+      Date.now() - clickedAtRef.current < CLICK_HIGHLIGHT_LOCK_MS
+    ) {
+      const clickedIndex = navigationItems.findIndex(
+        (item) => item.id === clickedMessageId
+      );
+      if (clickedIndex !== -1) {
+        setCurrentMessageIndex((previous) =>
+          previous === clickedIndex ? previous : clickedIndex
+        );
+        return;
+      }
+    }
+
+    const activationLine =
+      root.getBoundingClientRect().top +
+      getHeaderOffset(root) +
+      HIGHLIGHT_SYNC_TOP_OFFSET;
+    let nextIndex = 0;
+
+    navigationItems.forEach((item, index) => {
+      const element = getMessageElement(item.id);
+      if (!element) {
+        return;
+      }
+
+      if (index === 0) {
+        nextIndex = 0;
+      }
+
+      if (element.getBoundingClientRect().top <= activationLine) {
+        nextIndex = index;
+      }
+    });
+
+    setCurrentMessageIndex((previous) =>
+      previous === nextIndex ? previous : nextIndex
+    );
+  }, [getHeaderOffset, getMessageElement, navigationItems, scrollRootRef]);
+
+  const scheduleCurrentMessageSync = useCallback(() => {
+    if (highlightSyncFrameRef.current !== null) {
+      cancelAnimationFrame(highlightSyncFrameRef.current);
+    }
+
+    highlightSyncFrameRef.current = requestAnimationFrame(() => {
+      highlightSyncFrameRef.current = null;
+      syncCurrentMessageIndex();
+    });
+  }, [syncCurrentMessageIndex]);
 
   useEffect(() => {
     const root = scrollRootRef.current;
@@ -117,7 +216,7 @@ export default function MessageNavigator({
       const rect = root.getBoundingClientRect();
       const scrollbarWidth = Math.max(0, root.offsetWidth - root.clientWidth);
       const rightInset =
-        window.innerWidth - rect.right + EDGE_OFFSET + scrollbarWidth + NAVIGATOR_GUTTER_OFFSET;
+        window.innerWidth - rect.right + EDGE_OFFSET + scrollbarWidth;
 
       if (rect.width === 0 || rect.height === 0) {
         setViewport((previous) =>
@@ -128,7 +227,7 @@ export default function MessageNavigator({
 
       setViewport({
         top: rect.top + rect.height / 2,
-        right: Math.max(rightInset, EDGE_OFFSET + NAVIGATOR_GUTTER_OFFSET),
+        right: Math.max(rightInset, EDGE_OFFSET),
         maxHeight: Math.max(220, rect.height - VIEWPORT_PADDING * 2),
         ready: true,
       });
@@ -169,48 +268,33 @@ export default function MessageNavigator({
       return;
     }
 
-    const indexById = new Map(
-      navigationItems.map((item, index) => [item.id, index] as const)
-    );
+    scheduleCurrentMessageSync();
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            return;
-          }
-
-          const turnId = entry.target.getAttribute("data-turn-id");
-          if (!turnId) {
-            return;
-          }
-
-          const nextIndex = indexById.get(turnId);
-          if (nextIndex === undefined) {
-            return;
-          }
-
-          setCurrentMessageIndex((previous) =>
-            previous === nextIndex ? previous : nextIndex
-          );
-        });
-      },
-      {
-        root: scrollRoot,
-        rootMargin: "-10% 0px -80% 0px",
-        threshold: 0,
-      }
-    );
-
-    navigationItems.forEach((item) => {
-      const element = scrollRoot.querySelector(`[data-turn-id="${item.id}"]`);
-      if (element) {
-        observer.observe(element);
-      }
+    scrollRoot.addEventListener("scroll", scheduleCurrentMessageSync, {
+      passive: true,
     });
+    window.addEventListener("resize", scheduleCurrentMessageSync);
 
-    return () => observer.disconnect();
-  }, [navigationItems, scrollRootRef]);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            scheduleCurrentMessageSync();
+          });
+
+    resizeObserver?.observe(scrollRoot);
+
+    return () => {
+      scrollRoot.removeEventListener("scroll", scheduleCurrentMessageSync);
+      window.removeEventListener("resize", scheduleCurrentMessageSync);
+      resizeObserver?.disconnect();
+
+      if (highlightSyncFrameRef.current !== null) {
+        cancelAnimationFrame(highlightSyncFrameRef.current);
+        highlightSyncFrameRef.current = null;
+      }
+    };
+  }, [navigationItems, scheduleCurrentMessageSync, scrollRootRef]);
 
   useEffect(() => {
     const activeItem = navigationItems[currentMessageIndex];
@@ -226,15 +310,40 @@ export default function MessageNavigator({
 
   const scrollToMessage = useCallback(
     (messageId: string) => {
-      const element = scrollRootRef.current?.querySelector(
-        `[data-turn-id="${messageId}"]`
-      );
-
-      if (element) {
-        element.scrollIntoView({ behavior: "auto", block: "start" });
+      const root = scrollRootRef.current;
+      const element = getMessageElement(messageId);
+      if (!root || !element) {
+        return;
       }
+
+      clickedMessageIdRef.current = messageId;
+      clickedAtRef.current = Date.now();
+
+      const clickedIndex = navigationItems.findIndex(
+        (item) => item.id === messageId
+      );
+      if (clickedIndex !== -1) {
+        setCurrentMessageIndex((previous) =>
+          previous === clickedIndex ? previous : clickedIndex
+        );
+      }
+
+      const rootRect = root.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const targetTop =
+        root.scrollTop +
+        (elementRect.top - rootRect.top) -
+        getHeaderOffset(root) -
+        CLICK_SCROLL_TOP_GAP;
+
+      root.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: getScrollBehavior(),
+      });
+
+      scheduleCurrentMessageSync();
     },
-    [scrollRootRef]
+    [getHeaderOffset, getMessageElement, getScrollBehavior, navigationItems, scheduleCurrentMessageSync, scrollRootRef]
   );
 
   const focusItem = useCallback(
@@ -347,7 +456,8 @@ export default function MessageNavigator({
 
   const panelHeight = Math.min(
     navigationItems.length * ITEM_HEIGHT,
-    viewport.maxHeight
+    viewport.maxHeight,
+    NAVIGATOR_MAX_HEIGHT
   );
 
   return (
@@ -399,7 +509,7 @@ export default function MessageNavigator({
           tabIndex={0}
           onKeyDown={handleKeyDown}
         >
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col">
             {navigationItems.map((item, index) => {
               const isCurrent = index === currentMessageIndex;
               const isHovered = hoveredIndex === index;
@@ -431,23 +541,25 @@ export default function MessageNavigator({
                     "focus-visible:ring-2 focus-visible:ring-[#3964FE]/20"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "min-w-0 flex-1 overflow-hidden whitespace-nowrap pr-11 text-[13px] leading-5 transition-[opacity,color,transform,max-width,padding] duration-180",
-                      isExpanded
-                        ? "max-w-full translate-x-0 px-3 opacity-100"
-                        : "max-w-0 translate-x-0 px-0 opacity-0",
-                      isCurrent
-                        ? "font-medium text-[#3964FE]"
-                        : showHoveredState
-                          ? "text-[#111111]"
-                          : "text-[#8F8F8F]"
-                    )}
-                  >
-                    <span className="block truncate">{item.label}</span>
-                  </span>
+                  <div className="min-w-0 flex-1 overflow-hidden pr-11">
+                    <div
+                      className={cn(
+                        "min-w-0 overflow-hidden whitespace-nowrap text-[13px] leading-5 transition-[opacity,color,transform,max-width,padding] duration-180",
+                        isExpanded
+                          ? "max-w-full translate-x-0 px-3 opacity-100"
+                          : "max-w-0 translate-x-0 px-0 opacity-0",
+                        isCurrent
+                          ? "font-medium text-[#3964FE]"
+                          : showHoveredState
+                            ? "text-[#111111]"
+                            : "text-[#8F8F8F]"
+                      )}
+                    >
+                      <div className="block truncate">{item.label}</div>
+                    </div>
+                  </div>
 
-                  <span className="absolute inset-y-0 right-0 flex w-[44px] items-center justify-center">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex w-[44px] items-center justify-end pr-[2px]">
                     <span
                       className={cn(
                         "rounded-full transition-[width,background-color] duration-150",
@@ -458,7 +570,7 @@ export default function MessageNavigator({
                             : "h-0.5 w-3 bg-black/20"
                       )}
                     />
-                  </span>
+                  </div>
                 </button>
               );
             })}
@@ -468,14 +580,19 @@ export default function MessageNavigator({
 
       {isExpanded && previewItem && hoveredIndex !== currentMessageIndex ? (
         <div
-          className="absolute right-[calc(100%+12px)] z-10 w-[320px] max-w-[min(320px,42vw)]"
+          className="absolute z-10"
           style={{
             top: `${previewTop}px`,
+            right: "100%",
             transform: "translateY(-50%)",
+            width: `calc(min(${PREVIEW_MAX_WIDTH}px, 42vw) + ${PREVIEW_GAP}px)`,
           }}
         >
-          <div className="rounded-[18px] bg-[#1F1F1F] px-4 py-3 text-white shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
-            <p className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words pr-1 text-[13px] leading-6">
+          <div
+            className="rounded-[18px] bg-[#1F1F1F] px-3 py-2 text-white shadow-[0_14px_30px_rgba(0,0,0,0.22)]"
+            style={{ width: `min(${PREVIEW_MAX_WIDTH}px, 42vw)` }}
+          >
+            <p className="message-navigator-preview-scroll max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words text-[13px] leading-6">
               {previewItem.preview}
             </p>
           </div>

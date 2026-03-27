@@ -1380,3 +1380,88 @@ applyTurnsPage(data);
 - 如果选中态依赖 `item.id === activeId`，就不能让旧请求覆盖 `activeId` 对应页面的内容状态
 - 视觉选中态 bug，先验证“当前项判定链路”是否正确，再去改颜色和样式
 - 对于聊天、详情页、master-detail 结构，**route 是 source of truth，异步响应必须向当前 route 对齐**
+
+---
+
+### Prevent Layout Jumps: Reserve Space Before Scrollbars or UI Chrome Appear
+
+#### Problem
+
+有一类视觉跳动并不是动画本身出了问题，而是某个会占据几何空间的元素在某个状态下“突然出现”了：
+
+- 滚动条从无到有
+- border 从无到有
+- 面板、badge、操作按钮、辅助列从无到有
+- 某个绝对定位元素虽然视觉浮层化，但它的宿主容器在状态切换时仍然改变了可用宽高
+
+典型现象是：
+
+- hover 前后元素的 x / y 锚点发生轻微偏移
+- 动效看起来像“跳一下”再继续
+- 组件本身位置没写错，但可布局空间在状态切换前后不一致
+
+#### Root Cause
+
+只要某个状态切换会改变容器的 **available width / available height**，就会触发重排，进而让本来应该稳定的视觉锚点发生偏移。
+
+这类问题的根因通常不是：
+
+- easing 曲线不对
+- transition duration 太短
+- transform 没写好
+
+真正的根因往往是：
+
+- 某个几何占位在 A 状态不存在，在 B 状态才出现
+- 容器在两种状态下使用了不同的 scrollbar / border / gutter / padding 策略
+
+#### Correct Pattern
+
+如果某个元素在某个状态下会出现并占据宽度或高度，那么在它还没有真正出现之前，就应该先把这份几何空间预留出来。
+
+常见做法包括：
+
+- 滚动条：隐藏时也保留 gutter，只把滚动条设为透明，不把宽度改成 `0`
+- border：默认态就保留同样的 border 宽度，只切换 border color
+- 面板或辅助列：默认态就预留固定 gutter，展开时只显示内容，不再改变 rail 的锚点
+- 按钮或图标区：默认态保留尺寸和布局位，隐藏时改 `opacity`，不要直接 `display: none`
+
+例如滚动条场景：
+
+```css
+.message-navigator-scroll {
+  scrollbar-gutter: stable;
+}
+
+.message-navigator-scroll-collapsed {
+  scrollbar-color: transparent transparent;
+}
+
+.message-navigator-scroll-collapsed::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-navigator-scroll-collapsed::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+```
+
+这里的关键不是“把滚动条藏起来”，而是“让滚动条继续占位，只是视觉上不可见”。
+
+#### Diagnostic Signal
+
+如果一个组件在 hover / focus / expanded / active 前后出现视觉跳动，应优先检查：
+
+- 前后状态的 `clientWidth` / `clientHeight` 是否一致
+- 是否有 `display: none -> block`
+- 是否有 `border: 0 -> 1px`
+- 是否有 `scrollbar-width: none -> thin`
+- 是否有 `width: 0 -> auto`
+- 是否有某个隐藏区在出现后才开始占据布局空间
+
+#### Rule of Thumb
+
+- **先保证几何空间稳定，再谈视觉过渡**
+- 如果某个元素出现后会占位，那就让它在未出现时也先占位
+- 能用 `opacity` / `color` / `background` 切状态，就尽量不要用 `display` / `width: 0` / `border: 0`
+- 处理“跳动感”时，优先检查 layout shift，而不是先调 animation curve

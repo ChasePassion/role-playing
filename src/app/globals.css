@@ -804,6 +804,7 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 /* MessageNavigator scrollbar styling */
 .message-navigator-scroll {
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(57, 100, 254, 0.18) transparent;
 }
@@ -826,12 +827,19 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 }
 
 .message-navigator-scroll-collapsed {
-  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
 }
 
 .message-navigator-scroll-collapsed::-webkit-scrollbar {
-  display: none;
-  width: 0;
+  width: 6px;
+}
+
+.message-navigator-scroll-collapsed::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.message-navigator-scroll-collapsed::-webkit-scrollbar-thumb:hover {
+  background-color: transparent;
 }
 
 .dark .message-navigator-scroll {
@@ -844,4 +852,28 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 .dark .message-navigator-scroll::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.28);
+}
+
+.message-navigator-preview-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.52) rgba(255, 255, 255, 0.08);
+}
+
+.message-navigator-preview-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-navigator-preview-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.message-navigator-preview-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.52);
+  border-radius: 999px;
+}
+
+.message-navigator-preview-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.72);
 }
