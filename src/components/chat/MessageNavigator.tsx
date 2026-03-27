@@ -33,6 +33,13 @@ interface NavigatorItem {
   preview: string;
 }
 
+interface RailHighlightState {
+  activeIndex: number;
+  fromIndex: number;
+  toIndex: number;
+  progress: number;
+}
+
 const COLLAPSED_WIDTH = 44;
 const EXPANDED_WIDTH = 240;
 const EDGE_OFFSET = 4;
@@ -40,12 +47,15 @@ const HOVER_PREVIEW_DELAY = 600;
 const ITEM_HEIGHT = 38;
 const HIGHLIGHT_SYNC_TOP_OFFSET = 20;
 const CLICK_SCROLL_TOP_GAP = 16;
-const CLICK_HIGHLIGHT_LOCK_MS = 400;
 const MIN_MESSAGES = 3;
 const NAVIGATOR_MAX_HEIGHT = 360;
 const PREVIEW_GAP = 12;
 const PREVIEW_MAX_WIDTH = 320;
 const VIEWPORT_PADDING = 32;
+const RAIL_BASE_WIDTH = 12;
+const RAIL_ACTIVE_WIDTH = 20;
+const RAIL_BASE_HEIGHT = 2;
+const RAIL_ACTIVE_HEIGHT = 6;
 
 function normalizeNavigatorLabel(content: string): string {
   const compactContent = content.replace(/\s+/g, " ").trim();
@@ -58,7 +68,12 @@ export default function MessageNavigator({
   isSidebarOpen = true,
   className,
 }: MessageNavigatorProps) {
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const [highlightState, setHighlightState] = useState<RailHighlightState>({
+    activeIndex: 0,
+    fromIndex: 0,
+    toIndex: 0,
+    progress: 1,
+  });
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
@@ -72,8 +87,6 @@ export default function MessageNavigator({
 
   const hoverPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const highlightSyncFrameRef = useRef<number | null>(null);
-  const clickedAtRef = useRef(0);
-  const clickedMessageIdRef = useRef<string | null>(null);
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const userMessages = useMemo(
@@ -147,52 +160,101 @@ export default function MessageNavigator({
     return "smooth";
   }, []);
 
-  const syncCurrentMessageIndex = useCallback(() => {
+  const syncHighlightState = useCallback(() => {
     const root = scrollRootRef.current;
     if (!root || navigationItems.length === 0) {
       return;
-    }
-
-    const clickedMessageId = clickedMessageIdRef.current;
-    if (
-      clickedMessageId &&
-      Date.now() - clickedAtRef.current < CLICK_HIGHLIGHT_LOCK_MS
-    ) {
-      const clickedIndex = navigationItems.findIndex(
-        (item) => item.id === clickedMessageId
-      );
-      if (clickedIndex !== -1) {
-        setCurrentMessageIndex((previous) =>
-          previous === clickedIndex ? previous : clickedIndex
-        );
-        return;
-      }
     }
 
     const activationLine =
       root.getBoundingClientRect().top +
       getHeaderOffset(root) +
       HIGHLIGHT_SYNC_TOP_OFFSET;
-    let nextIndex = 0;
-
-    navigationItems.forEach((item, index) => {
+    const anchors = navigationItems.flatMap((item, index) => {
       const element = getMessageElement(item.id);
       if (!element) {
-        return;
+        return [];
       }
 
-      if (index === 0) {
-        nextIndex = 0;
-      }
-
-      if (element.getBoundingClientRect().top <= activationLine) {
-        nextIndex = index;
-      }
+      const elementRect = element.getBoundingClientRect();
+      return [
+        {
+          index,
+          messageMiddle: elementRect.top + elementRect.height / 2,
+        },
+      ];
     });
 
-    setCurrentMessageIndex((previous) =>
-      previous === nextIndex ? previous : nextIndex
-    );
+    if (anchors.length === 0) {
+      return;
+    }
+
+    let nextHighlightState: RailHighlightState;
+
+    if (activationLine <= anchors[0].messageMiddle) {
+      nextHighlightState = {
+        activeIndex: anchors[0].index,
+        fromIndex: anchors[0].index,
+        toIndex: anchors[0].index,
+        progress: 1,
+      };
+    } else {
+      const lastAnchor = anchors[anchors.length - 1];
+
+      if (activationLine >= lastAnchor.messageMiddle) {
+        nextHighlightState = {
+          activeIndex: lastAnchor.index,
+          fromIndex: lastAnchor.index,
+          toIndex: lastAnchor.index,
+          progress: 1,
+        };
+      } else {
+        nextHighlightState = {
+          activeIndex: anchors[0].index,
+          fromIndex: anchors[0].index,
+          toIndex: anchors[0].index,
+          progress: 1,
+        };
+
+        for (let index = 0; index < anchors.length - 1; index += 1) {
+          const currentAnchor = anchors[index];
+          const nextAnchor = anchors[index + 1];
+
+          if (activationLine > nextAnchor.messageMiddle) {
+            continue;
+          }
+
+          const distance = nextAnchor.messageMiddle - currentAnchor.messageMiddle;
+          const rawProgress =
+            distance <= 0
+              ? 1
+              : (activationLine - currentAnchor.messageMiddle) / distance;
+          const progress = Math.min(Math.max(rawProgress, 0), 1);
+
+          nextHighlightState = {
+            activeIndex:
+              progress < 0.5 ? currentAnchor.index : nextAnchor.index,
+            fromIndex: currentAnchor.index,
+            toIndex: nextAnchor.index,
+            progress,
+          };
+          break;
+        }
+      }
+    }
+
+    setHighlightState((previous) => {
+      if (
+        previous.activeIndex === nextHighlightState.activeIndex &&
+        previous.fromIndex === nextHighlightState.fromIndex &&
+        previous.toIndex === nextHighlightState.toIndex &&
+        Math.abs(previous.progress - nextHighlightState.progress) < 0.001
+      ) {
+        return previous;
+      }
+
+      return nextHighlightState;
+    });
   }, [getHeaderOffset, getMessageElement, navigationItems, scrollRootRef]);
 
   const scheduleCurrentMessageSync = useCallback(() => {
@@ -202,9 +264,9 @@ export default function MessageNavigator({
 
     highlightSyncFrameRef.current = requestAnimationFrame(() => {
       highlightSyncFrameRef.current = null;
-      syncCurrentMessageIndex();
+      syncHighlightState();
     });
-  }, [syncCurrentMessageIndex]);
+  }, [syncHighlightState]);
 
   useEffect(() => {
     const root = scrollRootRef.current;
@@ -253,13 +315,21 @@ export default function MessageNavigator({
 
   useEffect(() => {
     if (navigationItems.length === 0) {
-      setCurrentMessageIndex(0);
+      setHighlightState({
+        activeIndex: 0,
+        fromIndex: 0,
+        toIndex: 0,
+        progress: 1,
+      });
       return;
     }
 
-    setCurrentMessageIndex((previous) =>
-      Math.min(previous, navigationItems.length - 1)
-    );
+    setHighlightState((previous) => ({
+      activeIndex: Math.min(previous.activeIndex, navigationItems.length - 1),
+      fromIndex: Math.min(previous.fromIndex, navigationItems.length - 1),
+      toIndex: Math.min(previous.toIndex, navigationItems.length - 1),
+      progress: previous.progress,
+    }));
   }, [navigationItems.length]);
 
   useEffect(() => {
@@ -297,7 +367,7 @@ export default function MessageNavigator({
   }, [navigationItems, scheduleCurrentMessageSync, scrollRootRef]);
 
   useEffect(() => {
-    const activeItem = navigationItems[currentMessageIndex];
+    const activeItem = navigationItems[highlightState.activeIndex];
     if (!activeItem) {
       return;
     }
@@ -306,7 +376,7 @@ export default function MessageNavigator({
       block: "nearest",
       inline: "nearest",
     });
-  }, [currentMessageIndex, navigationItems]);
+  }, [highlightState.activeIndex, navigationItems]);
 
   const scrollToMessage = useCallback(
     (messageId: string) => {
@@ -314,18 +384,6 @@ export default function MessageNavigator({
       const element = getMessageElement(messageId);
       if (!root || !element) {
         return;
-      }
-
-      clickedMessageIdRef.current = messageId;
-      clickedAtRef.current = Date.now();
-
-      const clickedIndex = navigationItems.findIndex(
-        (item) => item.id === messageId
-      );
-      if (clickedIndex !== -1) {
-        setCurrentMessageIndex((previous) =>
-          previous === clickedIndex ? previous : clickedIndex
-        );
       }
 
       const rootRect = root.getBoundingClientRect();
@@ -343,7 +401,7 @@ export default function MessageNavigator({
 
       scheduleCurrentMessageSync();
     },
-    [getHeaderOffset, getMessageElement, getScrollBehavior, navigationItems, scheduleCurrentMessageSync, scrollRootRef]
+    [getHeaderOffset, getMessageElement, getScrollBehavior, scheduleCurrentMessageSync, scrollRootRef]
   );
 
   const focusItem = useCallback(
@@ -373,12 +431,12 @@ export default function MessageNavigator({
           : Number.NaN;
       const startIndex = Number.isFinite(targetIndex)
         ? targetIndex
-        : currentMessageIndex;
+        : highlightState.activeIndex;
 
       if (pressedKey === "Enter" || pressedKey === " ") {
         if (event.target === event.currentTarget) {
           event.preventDefault();
-          const activeItem = navigationItems[currentMessageIndex];
+          const activeItem = navigationItems[highlightState.activeIndex];
           if (activeItem) {
             scrollToMessage(activeItem.id);
           }
@@ -403,7 +461,7 @@ export default function MessageNavigator({
       event.preventDefault();
       focusItem(nextIndex);
     },
-    [currentMessageIndex, focusItem, navigationItems, scrollToMessage]
+    [focusItem, highlightState.activeIndex, navigationItems, scrollToMessage]
   );
 
   const handleNavigatorEnter = useCallback(() => {
@@ -434,7 +492,7 @@ export default function MessageNavigator({
       clearHoverPreviewTimer();
       setPreviewItemId(null);
 
-      if (index === currentMessageIndex) {
+      if (index === highlightState.activeIndex) {
         return;
       }
 
@@ -442,7 +500,7 @@ export default function MessageNavigator({
         setPreviewItemId(item.id);
       }, HOVER_PREVIEW_DELAY);
     },
-    [clearHoverPreviewTimer, currentMessageIndex]
+    [clearHoverPreviewTimer, highlightState.activeIndex]
   );
 
   if (navigationItems.length < MIN_MESSAGES || !viewport.ready) {
@@ -459,6 +517,22 @@ export default function MessageNavigator({
     viewport.maxHeight,
     NAVIGATOR_MAX_HEIGHT
   );
+
+  const getRailStrength = (index: number): number => {
+    if (highlightState.fromIndex === highlightState.toIndex) {
+      return index === highlightState.fromIndex ? 1 : 0;
+    }
+
+    if (index === highlightState.fromIndex) {
+      return 1 - highlightState.progress;
+    }
+
+    if (index === highlightState.toIndex) {
+      return highlightState.progress;
+    }
+
+    return 0;
+  };
 
   return (
     <aside
@@ -511,9 +585,22 @@ export default function MessageNavigator({
         >
           <div className="flex flex-col">
             {navigationItems.map((item, index) => {
-              const isCurrent = index === currentMessageIndex;
+              const isCurrent = index === highlightState.activeIndex;
               const isHovered = hoveredIndex === index;
               const showHoveredState = isHovered && !isCurrent;
+              const railStrength = getRailStrength(index);
+              const railWidth =
+                RAIL_BASE_WIDTH +
+                (RAIL_ACTIVE_WIDTH - RAIL_BASE_WIDTH) * railStrength;
+              const railHeight =
+                RAIL_BASE_HEIGHT +
+                (RAIL_ACTIVE_HEIGHT - RAIL_BASE_HEIGHT) * railStrength;
+              const railColor =
+                railStrength > 0
+                  ? `rgba(57, 100, 254, ${0.22 + railStrength * 0.78})`
+                  : showHoveredState
+                    ? "#111111"
+                    : "rgba(0, 0, 0, 0.2)";
 
               return (
                 <button
@@ -561,14 +648,12 @@ export default function MessageNavigator({
 
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex w-[44px] items-center justify-end pr-[2px]">
                     <span
-                      className={cn(
-                        "rounded-full transition-[width,background-color] duration-150",
-                        isCurrent
-                          ? "h-1.5 w-5 bg-[#3964FE]"
-                          : showHoveredState
-                            ? "h-1 w-4 bg-[#111111]"
-                            : "h-0.5 w-3 bg-black/20"
-                      )}
+                      className="rounded-full"
+                      style={{
+                        width: `${railWidth}px`,
+                        height: `${railHeight}px`,
+                        backgroundColor: railColor,
+                      }}
                     />
                   </div>
                 </button>
@@ -578,7 +663,7 @@ export default function MessageNavigator({
         </div>
       </div>
 
-      {isExpanded && previewItem && hoveredIndex !== currentMessageIndex ? (
+      {isExpanded && previewItem && hoveredIndex !== highlightState.activeIndex ? (
         <div
           className="absolute z-10"
           style={{

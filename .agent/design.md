@@ -1313,45 +1313,44 @@ Inline SVG exists directly in the page's DOM, so `currentColor` traverses up the
 3. **Filter hack** — `filter: invert() sepia() saturate() hue-rotate()` — but this is a workaround, not a real solution
 
 ---
-
 ### History Sidebar Active Highlight: Guard Against Stale Chat Responses
 
 #### Problem
 
-聊天历史侧栏的选中态有时看起来像是“浅蓝背景直接没了”，但真正的问题并不一定在颜色样式本身。
+Sometimes the selected state in the chat history sidebar looks like “the light blue background just disappeared,” but the real problem is not necessarily the color style itself.
 
-典型现场是：
+A typical scenario looks like this:
 
-- 预期：当前聊天项应该拿到浅蓝背景，例如 `bg-[#E5F3FF]`
-- 实际：用户正在看的那一行只有 hover 态 class，计算后的背景色也是透明
-- 表象：像是选中态背景失效
-- 本质：页面正文和侧栏认为的“当前聊天”不是同一条记录
+* Expected: the current chat item should have a light blue background, such as `bg-[#E5F3FF]`
+* Actual: the row the user is viewing only has hover-state classes, and its computed background color is also transparent
+* Symptom: it looks like the selected-state background is broken
+* Reality: the main content area and the sidebar do not agree on which chat is the “current chat”
 
 #### Root Cause
 
-当路由已经切到新的 `chatId` 时，旧聊天的 `getChatTurns` 响应如果晚到，仍然可能覆盖当前页面的 `chat/messages` 状态。
+After the route has already switched to a new `chatId`, a late response from the previous chat’s `getChatTurns` request may still overwrite the current page’s `chat/messages` state.
 
-这样会形成一个非常迷惑的错位：
+This creates a very confusing mismatch:
 
-1. 历史侧栏用当前 route 的 `chatId` 判断 active
-2. 页面正文却被旧 chat 的响应覆盖
-3. 用户看到的内容属于 A，但侧栏高亮的是 B
-4. 于是“我正在看的这一项”没有浅蓝背景，看起来像背景丢失
+1. The history sidebar uses the current route’s `chatId` to determine the active item
+2. The main content area gets overwritten by the old chat’s response
+3. The user sees content from A, but the sidebar highlights B
+4. As a result, “the item I’m currently viewing” has no light blue background, making it look like the background is missing
 
-这类问题不是颜色 token 错了，也不是 Tailwind 类名没生效，而是 **stale response 覆盖 current route state**。
+This kind of issue is not caused by a wrong color token, nor by Tailwind class names failing to apply. It is **a stale response overwriting current route state**.
 
 #### Diagnostic Signal
 
-如果一个“选中态背景丢失”的问题同时满足下面的现象，应优先怀疑请求竞态，而不是先改 CSS：
+If a “selected-state background is missing” issue shows the following symptoms at the same time, suspect a request race condition before changing CSS:
 
-- 某一行没有 active class，只剩 hover class
-- 同一个列表里另有一条记录拿到了 active 结构
-- 当前 URL、当前页面内容、当前高亮项三者对不上
-- 问题更容易发生在切换聊天、首次加载或旧请求较慢时
+* A row has no active class and only retains the hover class
+* Another record in the same list has the active structure
+* The current URL, the current page content, and the currently highlighted item do not match
+* The issue is more likely to happen when switching chats, during initial load, or when an older request is slow
 
 #### Correct Pattern
 
-凡是“页面内容”和“侧栏 active 高亮”都依赖当前 route `chatId` 的场景，所有异步聊天响应在落地前都必须确认自己仍然属于当前 route。
+In any scenario where both the page content and the sidebar’s active highlight depend on the current route `chatId`, every async chat response must confirm that it still belongs to the current route before being applied.
 
 ```tsx
 const activeChatIdRef = useRef(chatId);
@@ -1369,17 +1368,17 @@ if (data.chat.id !== activeChatIdRef.current) {
 applyTurnsPage(data);
 ```
 
-同样的保护也要覆盖：
+The same protection should also cover:
 
-- 首次加载 `loadChat`
-- 翻页加载 `loadOlderMessages`
-- `catch/finally` 里的 `error` / `loading` 状态收尾
+* initial load in `loadChat`
+* paginated loading in `loadOlderMessages`
+* cleanup of `error` / `loading` state inside `catch/finally`
 
 #### Rule of Thumb
 
-- 如果选中态依赖 `item.id === activeId`，就不能让旧请求覆盖 `activeId` 对应页面的内容状态
-- 视觉选中态 bug，先验证“当前项判定链路”是否正确，再去改颜色和样式
-- 对于聊天、详情页、master-detail 结构，**route 是 source of truth，异步响应必须向当前 route 对齐**
+* If the selected state depends on `item.id === activeId`, then old requests must not be allowed to overwrite the page content state for the page associated with that `activeId`
+* For visual selected-state bugs, first verify whether the “current item resolution chain” is correct, then change colors and styles
+* For chat views, detail pages, and master-detail structures, **the route is the source of truth, and async responses must stay aligned with the current route**
 
 ---
 
@@ -1387,46 +1386,46 @@ applyTurnsPage(data);
 
 #### Problem
 
-有一类视觉跳动并不是动画本身出了问题，而是某个会占据几何空间的元素在某个状态下“突然出现”了：
+Some visual jank is not caused by the animation itself, but by an element that occupies geometric space suddenly appearing in a certain state:
 
-- 滚动条从无到有
-- border 从无到有
-- 面板、badge、操作按钮、辅助列从无到有
-- 某个绝对定位元素虽然视觉浮层化，但它的宿主容器在状态切换时仍然改变了可用宽高
+* a scrollbar appears where there was none
+* a border appears where there was none
+* a panel, badge, action button, or auxiliary column appears where there was none
+* an absolutely positioned element may look like a visual overlay, but its host container still changes the available width or height when the state changes
 
-典型现象是：
+Typical symptoms include:
 
-- hover 前后元素的 x / y 锚点发生轻微偏移
-- 动效看起来像“跳一下”再继续
-- 组件本身位置没写错，但可布局空间在状态切换前后不一致
+* the x / y anchor point shifts slightly before and after hover
+* the motion looks like it “jumps” once and then continues
+* the component’s position is not coded incorrectly, but the available layout space is inconsistent before and after the state change
 
 #### Root Cause
 
-只要某个状态切换会改变容器的 **available width / available height**，就会触发重排，进而让本来应该稳定的视觉锚点发生偏移。
+As long as a state change modifies the container’s **available width / available height**, it will trigger reflow, causing visual anchor points that should have remained stable to shift.
 
-这类问题的根因通常不是：
+The root cause of this kind of problem is usually not:
 
-- easing 曲线不对
-- transition duration 太短
-- transform 没写好
+* the easing curve being wrong
+* the transition duration being too short
+* the transform being written incorrectly
 
-真正的根因往往是：
+The real cause is often:
 
-- 某个几何占位在 A 状态不存在，在 B 状态才出现
-- 容器在两种状态下使用了不同的 scrollbar / border / gutter / padding 策略
+* some geometric occupancy does not exist in state A but appears in state B
+* the container uses different scrollbar / border / gutter / padding strategies in the two states
 
 #### Correct Pattern
 
-如果某个元素在某个状态下会出现并占据宽度或高度，那么在它还没有真正出现之前，就应该先把这份几何空间预留出来。
+If an element will appear in a certain state and take up width or height, then that geometric space should already be reserved before the element actually appears.
 
-常见做法包括：
+Common approaches include:
 
-- 滚动条：隐藏时也保留 gutter，只把滚动条设为透明，不把宽度改成 `0`
-- border：默认态就保留同样的 border 宽度，只切换 border color
-- 面板或辅助列：默认态就预留固定 gutter，展开时只显示内容，不再改变 rail 的锚点
-- 按钮或图标区：默认态保留尺寸和布局位，隐藏时改 `opacity`，不要直接 `display: none`
+* Scrollbars: keep the gutter even when hidden, and make the scrollbar transparent instead of changing its width to `0`
+* Borders: preserve the same border width in the default state and only switch the border color
+* Panels or auxiliary columns: reserve a fixed gutter in the default state, and only reveal the content when expanded without changing the rail’s anchor point
+* Button or icon areas: preserve their size and layout slot in the default state, and hide them with `opacity` instead of `display: none`
 
-例如滚动条场景：
+For example, in a scrollbar scenario:
 
 ```css
 .message-navigator-scroll {
@@ -1446,22 +1445,82 @@ applyTurnsPage(data);
 }
 ```
 
-这里的关键不是“把滚动条藏起来”，而是“让滚动条继续占位，只是视觉上不可见”。
+The key here is not “hide the scrollbar,” but “let the scrollbar continue occupying space while remaining visually invisible.”
 
 #### Diagnostic Signal
 
-如果一个组件在 hover / focus / expanded / active 前后出现视觉跳动，应优先检查：
+If a component visually jumps before and after `hover` / `focus` / `expanded` / `active`, first check:
 
-- 前后状态的 `clientWidth` / `clientHeight` 是否一致
-- 是否有 `display: none -> block`
-- 是否有 `border: 0 -> 1px`
-- 是否有 `scrollbar-width: none -> thin`
-- 是否有 `width: 0 -> auto`
-- 是否有某个隐藏区在出现后才开始占据布局空间
+* whether `clientWidth` / `clientHeight` are consistent between the two states
+* whether there is any `display: none -> block`
+* whether there is any `border: 0 -> 1px`
+* whether there is any `scrollbar-width: none -> thin`
+* whether there is any `width: 0 -> auto`
+* whether some hidden area only begins to occupy layout space after it appears
 
 #### Rule of Thumb
 
-- **先保证几何空间稳定，再谈视觉过渡**
-- 如果某个元素出现后会占位，那就让它在未出现时也先占位
-- 能用 `opacity` / `color` / `background` 切状态，就尽量不要用 `display` / `width: 0` / `border: 0`
-- 处理“跳动感”时，优先检查 layout shift，而不是先调 animation curve
+* **Stabilize geometric space first, then think about visual transitions**
+* If an element will occupy space after appearing, let it occupy that space before it appears
+* If you can switch states with `opacity` / `color` / `background`, avoid using `display` / `width: 0` / `border: 0`
+* When dealing with a “jumping” effect, check layout shift before tuning animation curves
+
+---
+
+### Message Navigator Highlight: Drive the Rail Directly from Scroll Position
+
+#### Problem
+
+If the highlight rail in a message navigator mixes several driving mechanisms at the same time, it will easily become visually inaccurate during fast scrolling or click-to-jump interactions:
+
+* discrete `activeIndex` switching
+* temporary locked state after clicking
+* fixed-duration CSS transitions
+* the browser’s own smooth scroll timing curve
+
+Typical symptoms include:
+
+* during fast scrolling, the first half of the highlight is barely visible
+* it only becomes obvious suddenly when approaching the target and the scrolling slows down
+* the rail looks like it is “chasing” the scroll instead of staying synchronized with the scroll position
+
+#### Correct Pattern
+
+Completely separate “click-based positioning” from “highlight rendering”:
+
+* Click-based positioning should still calculate the target `scrollTop` using container geometry
+* The highlight rail should no longer rely on time-based animation, but instead be derived directly from the current scroll position on every frame
+* Use the position of the current activation line between two adjacent messages to calculate:
+
+  * `activeIndex`
+  * `fromIndex`
+  * `toIndex`
+  * `progress`
+* The width, thickness, and color of each row’s rail should all be computed directly from that `progress`
+
+```tsx
+const targetTop =
+  root.scrollTop +
+  (elementRect.top - rootRect.top) -
+  getHeaderOffset(root) -
+  CLICK_SCROLL_TOP_GAP;
+
+const progress = clamp(
+  (activationLine - currentAnchor.messageMiddle) /
+    (nextAnchor.messageMiddle - currentAnchor.messageMiddle),
+  0,
+  1
+);
+```
+
+#### Why It Works
+
+* The visual state of the rail becomes a direct function of the current scroll position, no longer affected by fixed transition durations
+* Whether the user scrolls manually or the scroll is triggered programmatically after a click, the highlight always follows the current position
+* Message positioning after clicking remains stable, and the header offset logic does not get broken by highlight experiments
+
+#### Rule of Thumb
+
+* **A scroll-linked highlight must be `style = f(scrollTop)`, not `style = f(time)`**
+* The target coordinates for click-to-jump and the highlight animation are two separate layers of logic and should not be mixed together
+* If a scroll highlight behaves very differently at different speeds, the first suspicion should be that it is still partially driven by time
