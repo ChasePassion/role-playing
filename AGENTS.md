@@ -11,7 +11,7 @@
   - 命令行运行环境是Windows PowerShell，请注意路径分隔符的使用。
   - 编辑文件的时候不要改变文件的编码格式，保持UTF-8编码
   - 当用户没有明确要求时，你的开发方案的作用范围为cwd
-  - 当用户要求你创建plan的时候，你需要把plan放在docs\dev文件夹下面现有的phasex或者递增一个phasex，每个phasex文件夹下面分为plan-active和plan-completed，plan的命名规范为phasex.y-xxx.md，完成任务后，把plan移动到dev/phasex/plan-completed文件夹里面
+  - 当用户要求你创建plan的时候，你需要把plan放在docs\dev文件夹下面现有的phasex或者递增一个phasex，每个phasex文件夹下面分为plan-active和plan-completed，plan的命名规范为phasex.y-xxx.md，完成任务后，把plan移动到dev/phasex/plan-completed文件夹里面,plan的phasex需要有明确的定义和边界，且phase需要递进，在边界里面的添加到这个phase，不在这个边界里面的重新开一个phase。注意，是将你执行的plan从active文件夹移动到completed文件夹，不是新建文件。
   - 制定plan的时候需要明确当前现状，plan目标，同时提供一些必要的顶层设计的思想或者想用户询问以澄清顶层设计思想，在制定其中的实施路径部分的时候需要详细，同时还需要思考可能的决策点，提供明确的选择/方向的建议，plan在制定的时候应该避免歧义。
   - docs/dev文档只是作为一个计划记录，不是系统当前状态，不能认为是系统当前状态，不需要阅读这个文档，同时这部分文档不要更新，除非用户明确要求。
   - 执行任何一个计划，完成代码编写之后，都需要进入检查修复循环，检查：首先检查代码改动是否符合计划要求，是否实现了计划提到的所有内容，然后检查代码改动本身是否有问题，修复：修复检查阶段发现的所有问题。退出检查修复循环的标准是你认为没有任何问题了。
@@ -439,3 +439,29 @@ git diff --staged --stat        # index should be empty (unless you intentionall
 | `jq`              | 读取 JSON 字段、过滤 JSON 数据            | 命令行 JSON 处理器            |
 | `yq`              | 读取 YAML，也能处理 JSON/XML/CSV/TOML 等 | 面向结构化配置文件               |
 | `ast-grep` (`sg`) | 按代码语法结构搜索、批量改写代码                 | 基于 AST，不是普通文本匹配         |
+
+### 10.1 SSH 远程服务器连接
+
+本机运行环境是 Windows，当需要通过 SSH 连接远程 Linux 服务器时，以下是经过验证的可靠方式：
+
+**环境：** 本机安装了 PuTTY（`C:\Program Files\PuTTY\plink.exe`），远程服务器已开启 SSH 服务。
+
+**关键经验：**
+
+1. **不要使用 `cmd /c` 包装命令** — `cmd /c` 的输出会被 Windows banner 吞掉，导致看不到远程命令的任何返回。
+2. **必须使用 `powershell -NoProfile -Command`** 来调用 `plink.exe`，这是唯一可靠获取远程输出的方式。
+3. **不要用 `ssh` 命令** — Windows OpenSSH 在此环境中不支持密码认证交互，会直接 `Permission denied`。
+4. **`plink -batch` 需要指定 hostkey** — 首次连接时 host key 未缓存，`-batch` 模式会因无法交互确认而直接 `Connection abandoned`。**获取指纹：** 用 Git Bash 自带的 `ssh-keyscan` 直接获取：`ssh-keyscan <host> 2>/dev/null | ssh-keygen -l -f -`，将输出的指纹（如 `SHA256:xxx`）填入 `-hostkey` 参数。
+5. **多行命令用 `-m` 参数执行脚本文件** — PowerShell 的 `$PATH` 等变量会在展开时泄漏本机环境变量到远程命令中，导致语法错误。将命令写入 `.sh` 文件，用 `plink -m <file>` 执行。
+
+**标准连接模板：**
+
+```powershell
+# 单条命令
+powershell -NoProfile -Command "& 'C:\Program Files\PuTTY\plink.exe' -ssh -pw '<password>' -hostkey '<fingerprint>' -batch root@<host> '<command>' 2>&1"
+
+# 多条命令：先写脚本文件，再用 -m 执行
+# 1. 写入脚本到 tmp/remote_cmd.sh
+# 2. 执行：
+powershell -NoProfile -Command "& 'C:\Program Files\PuTTY\plink.exe' -ssh -pw '<password>' -hostkey '<fingerprint>' -batch root@<host> -m 'E:\code\xdyai-agent-runtime\tmp\remote_cmd.sh' 2>&1"
+```
