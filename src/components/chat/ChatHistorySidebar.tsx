@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import { X } from "lucide-react";
+
+import { X, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { Character } from "@/components/Sidebar";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   Tooltip,
@@ -237,25 +236,20 @@ export default function ChatHistorySidebar({
       <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <SheetContent
           side="right"
-          className="w-full max-w-[360px] p-0 flex flex-col border-l border-divider bg-white"
+          className="w-full max-w-[360px] sm:w-[360px] p-0 flex flex-col border-l border-border bg-background shadow-[-10px_0_20px_-10px_rgba(0,0,0,0.05)]"
           showCloseButton={false}
         >
-          <SheetHeader className="flex flex-row items-center justify-between border-b border-divider px-5 py-4 space-y-0">
+          <SheetHeader className="flex flex-row items-center justify-between border-b border-border/60 px-5 h-[64px] space-y-0 shrink-0 transition-opacity">
             <div className="min-w-0">
-              <SheetTitle className="text-base font-semibold text-text-primary">历史记录</SheetTitle>
-              <SheetDescription className="truncate text-sm text-gray-500 mt-0">
-                {character ? character.name : "当前角色"}
-              </SheetDescription>
+              <SheetTitle className="text-base font-normal text-foreground tracking-tight">历史记录</SheetTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={onClose}
-              className="h-8 px-2 text-gray-500 hover:text-gray-700"
+              className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+              aria-label="关闭"
             >
-              <X className="h-4 w-4 mr-1" />
-              关闭
-            </Button>
+              <X className="h-4 w-4 opacity-80" />
+            </button>
           </SheetHeader>
 
           <ScrollArea className="flex-1 px-3 py-3">
@@ -275,7 +269,7 @@ export default function ChatHistorySidebar({
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               {displayItems.map((item) => {
                 const isActive = item.chat.id === activeChatId;
                 const isRenaming = renamingChatId === item.chat.id;
@@ -283,14 +277,14 @@ export default function ChatHistorySidebar({
                 return (
                   <div
                     key={item.chat.id}
-                    className={`group rounded-2xl border px-3 py-3 transition-colors ${
+                    className={`group relative rounded-xl px-3 py-2.5 flex items-center gap-2.5 transition-colors border-l-[2.5px] cursor-pointer ${
                       isActive
-                        ? "border-[#3964FE]/20 bg-[#3964FE]/6"
-                        : "border-transparent bg-gray-50 hover:border-gray-200 hover:bg-white"
+                        ? "bg-primary/[0.07] border-primary"
+                        : "border-transparent hover:bg-accent/40"
                     }`}
                   >
                     {isRenaming ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2 flex-1 w-full relative z-10">
                         <Input
                           value={renameValue}
                           onChange={(event) => {
@@ -335,16 +329,16 @@ export default function ChatHistorySidebar({
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-start gap-3">
+                      <>
                         <button
                           type="button"
                           onClick={() => onSelectChat(item.chat.id)}
-                          className="min-w-0 flex-1 text-left"
+                          className="min-w-0 flex-1 text-left flex flex-col justify-center"
                         >
-                          <div className="truncate text-sm font-medium text-gray-900">
+                          <div className="truncate text-[13.5px] font-normal text-foreground tracking-tight leading-tight">
                             {getChatTitle(item.chat.title)}
                           </div>
-                          <div className="mt-1 text-xs text-gray-500">
+                          <div className={`mt-0.5 flex items-center text-[11px] font-normal leading-tight ${isActive ? "text-muted-foreground" : "text-muted-foreground/80"}`}>
                             {formatTimestamp(item.chat.last_turn_at ?? item.chat.created_at)}
                           </div>
                         </button>
@@ -356,15 +350,10 @@ export default function ChatHistorySidebar({
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
-                                    className="opacity-0 transition-opacity group-hover:opacity-100 rounded-lg p-1.5 hover:bg-gray-100 data-[state=open]:opacity-100"
+                                    className="shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 hover:bg-foreground/5 rounded-md text-muted-foreground hover:text-foreground flex items-center justify-center data-[state=open]:opacity-100 shadow-sm sm:shadow-none"
                                     aria-label="更多操作"
                                   >
-                                    <Image
-                                      src="/vertical dots.svg"
-                                      alt=""
-                                      width={16}
-                                      height={16}
-                                    />
+                                    <MoreHorizontal className="h-4 w-4" />
                                   </button>
                                 </DropdownMenuTrigger>
                               </TooltipTrigger>
@@ -374,25 +363,21 @@ export default function ChatHistorySidebar({
                             </Tooltip>
                           </TooltipProvider>
                           <DropdownMenuContent align="end" sideOffset={8} className="w-40">
-                            <DropdownMenuItem onClick={() => beginRename(item)}>
-                              <Image
-                                src="/icons/edit-6d87e1.svg"
-                                alt=""
-                                width={16}
-                                height={16}
-                              />
+                            <DropdownMenuItem onClick={() => beginRename(item)} className="cursor-pointer">
+                              <Pencil className="mr-2 h-4 w-4" />
                               重命名
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
+                              className="cursor-pointer"
                               onClick={() => setDeleteTarget(item)}
                             >
-                              <Image src="/delete.svg" alt="" width={16} height={16} />
+                              <Trash2 className="mr-2 h-4 w-4" />
                               删除
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </div>
+                      </>
                     )}
                   </div>
                 );
@@ -400,19 +385,18 @@ export default function ChatHistorySidebar({
             </div>
 
             {hasMore ? (
-              <div className="pt-3">
+              <div className="pt-3 pb-2 px-1">
                 <TooltipProvider delayDuration={300}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
+                      <button
                         type="button"
-                        variant="outline"
-                        className="w-full"
+                        className="w-full py-2 rounded-lg border border-border/80 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
                         onClick={() => void loadPage(nextCursor ?? undefined, true)}
                         disabled={isLoadingMore}
                       >
                         {isLoadingMore ? "加载中..." : "加载更多"}
-                      </Button>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>{isLoadingMore ? "正在加载更多聊天记录" : "点击加载更多历史记录"}</p>
