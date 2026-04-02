@@ -1524,3 +1524,89 @@ const progress = clamp(
 * **A scroll-linked highlight must be `style = f(scrollTop)`, not `style = f(time)`**
 * The target coordinates for click-to-jump and the highlight animation are two separate layers of logic and should not be mixed together
 * If a scroll highlight behaves very differently at different speeds, the first suspicion should be that it is still partially driven by time
+
+---
+
+### scrollIntoView Bubbles Through position:fixed — Use Manual scrollTop Instead
+
+#### Problem
+
+A `position: fixed` overlay component (e.g., a message navigator panel) contains a scrollable list of items. When `scrollIntoView({ block: "nearest" })` is called on an item inside this list, the component experiences **vertical jitter** — but only when the outer page scroll is being actively manipulated (e.g., by a "pin to bottom" auto-scroll loop).
+
+The jitter does not happen all the time. It specifically requires:
+
+1. The outer scroll root is being continuously scrolled (e.g., `pinToBottomUntilSettled` setting `root.scrollTop = root.scrollHeight` on every animation frame)
+2. The fixed-position component expands (e.g., hover to show items)
+3. `scrollIntoView` is called on an item inside the component
+
+#### Root Cause
+
+`scrollIntoView()` does **not** respect `position: fixed` as a scroll boundary. It walks up the **DOM tree** (not the visual stacking context) and attempts to scroll **every scrollable ancestor**, including containers that the fixed element is visually independent from.
+
+If the fixed component is a DOM descendant of the page's scroll root (which is common — the component is rendered inside the page even though it's visually detached via `position: fixed`), then `scrollIntoView` will simultaneously:
+
+1. Scroll the component's **internal** scroll container (desired)
+2. Scroll the **outer page** scroll root (undesired)
+
+When the outer scroll root is also being manipulated by auto-scroll logic (`pinToBottomUntilSettled`), these two competing scroll operations create a feedback loop:
+
+```
+scrollIntoView adjusts outer scrollTop
+  → triggers scroll event
+  → syncHighlightState recalculates activeIndex
+  → activeIndex change triggers scrollIntoView again
+  → repeat
+```
+
+This manifests as **vertical jitter** on the fixed component.
+
+#### Why Naive Fixes Fail
+
+| Attempted Fix | Why It Fails |
+|---|---|
+| Block scrollIntoView during expand transition (timer-based) | The jitter also occurs after the transition whenever auto-scroll is active (e.g., during streaming). The problem is not about the transition timing. |
+| Block all passive scrollIntoView (only allow on user click/keyboard) | Fixes jitter but breaks the "follow active item" feature — the blue highlight rail can scroll out of the component's visible area without the component tracking it. |
+
+#### Correct Fix: Manual `container.scrollTop` Adjustment
+
+Replace `scrollIntoView()` with direct `scrollTop` manipulation on the component's own scroll container. This is guaranteed to only affect the target container and cannot propagate to any ancestor.
+
+```tsx
+const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  const container = scrollContainerRef.current;
+  const activeItem = navigationItems[highlightState.activeIndex];
+  if (!container || !activeItem) return;
+
+  const itemElement = itemRefs.current.get(activeItem.id);
+  if (!itemElement) return;
+
+  const containerRect = container.getBoundingClientRect();
+  const itemRect = itemElement.getBoundingClientRect();
+
+  if (itemRect.top < containerRect.top) {
+    container.scrollTop += itemRect.top - containerRect.top;
+  } else if (itemRect.bottom > containerRect.bottom) {
+    container.scrollTop += itemRect.bottom - containerRect.bottom;
+  }
+}, [highlightState.activeIndex, navigationItems]);
+```
+
+This replicates `scrollIntoView({ block: "nearest" })` behavior but is scoped to exactly one container.
+
+#### Diagnostic Signal
+
+If a `position: fixed` component jitters when:
+
+* It contains a scrollable area with `scrollIntoView` calls
+* An ancestor in the DOM tree is also a scroll container
+* That ancestor scroll container is being actively manipulated (auto-scroll, pin-to-bottom, infinite scroll)
+
+Then the root cause is almost certainly `scrollIntoView` propagating to the ancestor scroll container.
+
+#### Rule of Thumb
+
+* **Never use `scrollIntoView` inside a `position: fixed` component that is a DOM descendant of another scroll container.** Use manual `container.scrollTop` adjustment instead.
+* `position: fixed` only affects visual rendering (paint layer). It does **not** create a scroll boundary in the DOM tree. `scrollIntoView` follows DOM parentage, not visual stacking.
+* When implementing "keep active item visible" in a scrollable list, prefer explicit `scrollTop` math over `scrollIntoView` — it gives full control over which container is affected and prevents cross-container interference.

@@ -88,6 +88,7 @@ export default function MessageNavigator({
   const hoverPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const highlightSyncFrameRef = useRef<number | null>(null);
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const userMessages = useMemo(
     () => messages.filter((message) => message.role === "user" && !message.isTemp),
@@ -367,16 +368,26 @@ export default function MessageNavigator({
   }, [navigationItems, scheduleCurrentMessageSync, scrollRootRef]);
 
   useEffect(() => {
+    const container = scrollContainerRef.current;
     const activeItem = navigationItems[highlightState.activeIndex];
-    if (!activeItem) {
+    if (!container || !activeItem) {
       return;
     }
 
-    itemRefs.current.get(activeItem.id)?.scrollIntoView({
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, [highlightState.activeIndex, navigationItems]);
+    const itemElement = itemRefs.current.get(activeItem.id);
+    if (!itemElement) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = itemElement.getBoundingClientRect();
+
+    if (itemRect.top < containerRect.top) {
+      container.scrollTop += itemRect.top - containerRect.top;
+    } else if (itemRect.bottom > containerRect.bottom) {
+      container.scrollTop += itemRect.bottom - containerRect.bottom;
+    }
+  }, [highlightState.activeIndex, isExpanded, navigationItems]);
 
   const scrollToMessage = useCallback(
     (messageId: string) => {
@@ -575,6 +586,7 @@ export default function MessageNavigator({
         />
 
         <div
+          ref={scrollContainerRef}
           className={cn(
             "message-navigator-scroll relative overflow-y-auto outline-none",
             !isExpanded && "message-navigator-scroll-collapsed"
