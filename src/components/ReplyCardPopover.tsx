@@ -12,12 +12,14 @@ interface ReplyCardPopoverProps {
     replyCard: ReplyCard;
     onToggleFavorite: FavoriteToggleHandler;
     onClose: () => void;
+    placement?: "top" | "bottom" | "left" | "right";
 }
 
 export default function ReplyCardPopover({
     replyCard,
     onToggleFavorite,
     onClose,
+    placement,
 }: ReplyCardPopoverProps) {
     const popoverRef = useDismissiblePopover<HTMLDivElement>(onClose);
     const { isFavorited: localFavorited, handleToggleFavorite } =
@@ -33,6 +35,7 @@ export default function ReplyCardPopover({
             title="Reply Card"
             isFavorited={localFavorited}
             onToggleFavorite={handleToggleFavorite}
+            placement={placement}
         >
             <p className="text-sm text-gray-700 leading-relaxed">
                 {replyCard.zh}

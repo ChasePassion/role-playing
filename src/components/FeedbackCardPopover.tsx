@@ -12,12 +12,14 @@ interface FeedbackCardPopoverProps {
     feedbackCard: FeedbackCardType;
     onToggleFavorite: FavoriteToggleHandler;
     onClose: () => void;
+    placement?: "top" | "bottom" | "left" | "right";
 }
 
 export default function FeedbackCardPopover({
     feedbackCard,
     onToggleFavorite,
     onClose,
+    placement,
 }: FeedbackCardPopoverProps) {
     const popoverRef = useDismissiblePopover<HTMLDivElement>(onClose);
     const { isFavorited: localFavorited, handleToggleFavorite } =
@@ -33,6 +35,7 @@ export default function FeedbackCardPopover({
             title="Better Expression"
             isFavorited={localFavorited}
             onToggleFavorite={handleToggleFavorite}
+            placement={placement}
         >
             <p className="text-sm font-semibold text-gray-900 leading-relaxed">
                 {feedbackCard.surface}

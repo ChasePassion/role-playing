@@ -4,6 +4,13 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createPortal } from "react-dom";
+import {
+    useFloating,
+    offset,
+    flip,
+    shift,
+    autoUpdate,
+} from "@floating-ui/react";
 import ChatMessage, {
     type Message,
     type MessageActionStatus,
@@ -12,10 +19,6 @@ import ReplyCardPopover from "@/components/ReplyCardPopover";
 import WordCardPopover from "@/components/WordCardPopover";
 import FeedbackCardPopover from "@/components/FeedbackCardPopover";
 import type { Character } from "@/components/Sidebar";
-import {
-    useFloatingPosition,
-    type FloatingAnchorRect,
-} from "@/hooks/useFloatingPosition";
 import { useUserSettings } from "@/lib/user-settings-context";
 import {
   ApiError,
@@ -37,6 +40,15 @@ interface FeedbackCardState {
     pendingOpen: boolean;
     requestId: number;
     errorCode?: string | null;
+}
+
+interface RectAnchor {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+    width: number;
+    height: number;
 }
 
 const getMessageVersionKey = (message: Message): string =>
@@ -113,7 +125,7 @@ export default function ChatThread({
     // Phase 3: Word card popover state
     const [wordCard, setWordCard] = useState<WordCard | null>(null);
     const wordCardWrapperRef = useRef<HTMLDivElement | null>(null);
-    const [wordCardAnchorRect, setWordCardAnchorRect] = useState<FloatingAnchorRect | null>(null);
+    const [wordCardAnchorRect, setWordCardAnchorRect] = useState<RectAnchor | null>(null);
     const [isWordCardLoading, setIsWordCardLoading] = useState(false);
     const [wordCardFavoriteOverride, setWordCardFavoriteOverride] = useState<{
         isFavorited: boolean;
@@ -125,7 +137,7 @@ export default function ChatThread({
         contextText: string | null;
         top: number;
         left: number;
-        anchorRect: FloatingAnchorRect;
+        anchorRect: RectAnchor;
     } | null>(null);
 
     // Phase 3: Feedback card popover state
@@ -311,7 +323,7 @@ export default function ChatThread({
             contextText: string | null;
             top: number;
             left: number;
-            anchorRect: FloatingAnchorRect;
+            anchorRect: RectAnchor;
         }) => {
             selectionButtonDataRef.current = buttonData;
             const button = selectionButtonRef.current;
@@ -817,40 +829,91 @@ export default function ChatThread({
                 message.content.trim().length === 0
             )
     );
-    const replyCardPosition = useFloatingPosition({
-        isOpen: Boolean(openReplyCardKey && openCardMessage?.replyCard),
-        overlayRef: replyCardWrapperRef,
-        getAnchorRect: () => {
-            if (!openCardMessage?.id) return null;
-            const anchor = cardAnchorRefs.current.get(openCardMessage.id);
-            return anchor?.getBoundingClientRect() ?? null;
-        },
-        preferredPlacement: "left",
-        gap: CARD_GAP,
-        padding: VIEWPORT_PADDING,
+    const floatingCardMiddleware = [
+        offset(CARD_GAP),
+        flip(),
+        shift({ padding: VIEWPORT_PADDING }),
+    ];
+    const {
+        refs: replyCardRefs,
+        floatingStyles: replyCardStyles,
+        placement: replyCardPlacement,
+        x: replyCardX,
+        y: replyCardY,
+    } = useFloating({
+        open: Boolean(openReplyCardKey && openCardMessage?.replyCard),
+        placement: "left",
+        strategy: "fixed",
+        middleware: floatingCardMiddleware,
+        whileElementsMounted: autoUpdate,
+    });
+    const {
+        refs: wordCardRefs,
+        floatingStyles: wordCardStyles,
+        placement: wordCardPlacement,
+        x: wordCardX,
+        y: wordCardY,
+    } = useFloating({
+        open: Boolean(wordCard && wordCardAnchorRect),
+        placement: "bottom",
+        strategy: "fixed",
+        middleware: floatingCardMiddleware,
+        whileElementsMounted: autoUpdate,
+    });
+    const {
+        refs: feedbackCardRefs,
+        floatingStyles: feedbackCardStyles,
+        placement: feedbackCardPlacement,
+        x: feedbackCardX,
+        y: feedbackCardY,
+    } = useFloating({
+        open: Boolean(feedbackCard && feedbackCardMessage),
+        placement: "right",
+        strategy: "fixed",
+        middleware: floatingCardMiddleware,
+        whileElementsMounted: autoUpdate,
     });
 
-    const wordCardPosition = useFloatingPosition({
-        isOpen: Boolean(wordCard && wordCardAnchorRect),
-        overlayRef: wordCardWrapperRef,
-        getAnchorRect: () => wordCardAnchorRect,
-        preferredPlacement: "bottom",
-        gap: CARD_GAP,
-        padding: VIEWPORT_PADDING,
-    });
+    useEffect(() => {
+        if (!openCardMessage?.id) {
+            replyCardRefs.setReference(null);
+            return;
+        }
 
-    const feedbackCardPosition = useFloatingPosition({
-        isOpen: Boolean(feedbackCard && feedbackCardMessage),
-        overlayRef: feedbackCardWrapperRef,
-        getAnchorRect: () => {
-            if (!feedbackCardMessage?.id) return null;
-            const anchor = messageAnchorRefs.current.get(feedbackCardMessage.id);
-            return anchor?.getBoundingClientRect() ?? null;
-        },
-        preferredPlacement: "right",
-        gap: CARD_GAP,
-        padding: VIEWPORT_PADDING,
-    });
+        replyCardRefs.setReference(cardAnchorRefs.current.get(openCardMessage.id) ?? null);
+    }, [openCardMessage?.id, replyCardRefs]);
+
+    useEffect(() => {
+        if (!wordCardAnchorRect) {
+            wordCardRefs.setReference(null);
+            return;
+        }
+
+        wordCardRefs.setReference({
+            getBoundingClientRect: () =>
+                new DOMRect(
+                    wordCardAnchorRect.left,
+                    wordCardAnchorRect.top,
+                    wordCardAnchorRect.width,
+                    wordCardAnchorRect.height
+                ),
+        });
+    }, [wordCardAnchorRect, wordCardRefs]);
+
+    useEffect(() => {
+        if (!feedbackCardMessage?.id) {
+            feedbackCardRefs.setReference(null);
+            return;
+        }
+
+        feedbackCardRefs.setReference(
+            messageAnchorRefs.current.get(feedbackCardMessage.id) ?? null
+        );
+    }, [feedbackCardMessage?.id, feedbackCardRefs]);
+
+    const isReplyCardPositioned = replyCardX !== null && replyCardY !== null;
+    const isWordCardPositioned = wordCardX !== null && wordCardY !== null;
+    const isFeedbackCardPositioned = feedbackCardX !== null && feedbackCardY !== null;
 
     const shouldRenderReplyCard =
         Boolean(openReplyCardKey && replyCardMessage) &&
@@ -993,14 +1056,15 @@ export default function ChatThread({
             {shouldRenderReplyCard &&
                 createPortal(
                     <div
-                        ref={replyCardWrapperRef}
+                        ref={(node) => {
+                            replyCardWrapperRef.current = node;
+                            replyCardRefs.setFloating(node);
+                        }}
                         style={{
-                            position: "fixed",
-                            top: replyCardPosition ? `${replyCardPosition.top}px` : "0px",
-                            left: replyCardPosition ? `${replyCardPosition.left}px` : "0px",
+                            ...replyCardStyles,
                             zIndex: 60,
-                            visibility: replyCardPosition ? "visible" : "hidden",
-                            pointerEvents: replyCardPosition ? "auto" : "none",
+                            visibility: isReplyCardPositioned ? "visible" : "hidden",
+                            pointerEvents: isReplyCardPositioned ? "auto" : "none",
                         }}
                     >
                         <ReplyCardPopover
@@ -1013,6 +1077,7 @@ export default function ChatThread({
                                 )
                             }
                             onClose={handleCloseReplyCard}
+                            placement={replyCardPlacement.split("-")[0] as "top" | "bottom" | "left" | "right"}
                         />
                     </div>,
                     document.body
@@ -1021,14 +1086,15 @@ export default function ChatThread({
             {wordCard && typeof document !== "undefined" && (
                 createPortal(
                     <div
-                        ref={wordCardWrapperRef}
+                        ref={(node) => {
+                            wordCardWrapperRef.current = node;
+                            wordCardRefs.setFloating(node);
+                        }}
                         style={{
-                            position: "fixed",
-                            top: wordCardPosition ? `${wordCardPosition.top}px` : "0px",
-                            left: wordCardPosition ? `${wordCardPosition.left}px` : "0px",
+                            ...wordCardStyles,
                             zIndex: 60,
-                            visibility: wordCardPosition ? "visible" : "hidden",
-                            pointerEvents: wordCardPosition ? "auto" : "none",
+                            visibility: isWordCardPositioned ? "visible" : "hidden",
+                            pointerEvents: isWordCardPositioned ? "auto" : "none",
                         }}
                     >
                         <WordCardPopover
@@ -1044,6 +1110,7 @@ export default function ChatThread({
                                 handleToggleWordCardFavorite(isFavorited, savedItemId, wordCard)
                             }
                             onClose={handleCloseWordCard}
+                            placement={wordCardPlacement.split("-")[0] as "top" | "bottom" | "left" | "right"}
                         />
                     </div>,
                     document.body
@@ -1110,14 +1177,15 @@ export default function ChatThread({
             {feedbackCard && typeof document !== "undefined" && (
                 createPortal(
                     <div
-                        ref={feedbackCardWrapperRef}
+                        ref={(node) => {
+                            feedbackCardWrapperRef.current = node;
+                            feedbackCardRefs.setFloating(node);
+                        }}
                         style={{
-                            position: "fixed",
-                            top: feedbackCardPosition ? `${feedbackCardPosition.top}px` : "0px",
-                            left: feedbackCardPosition ? `${feedbackCardPosition.left}px` : "0px",
+                            ...feedbackCardStyles,
                             zIndex: 60,
-                            visibility: feedbackCardPosition ? "visible" : "hidden",
-                            pointerEvents: feedbackCardPosition ? "auto" : "none",
+                            visibility: isFeedbackCardPositioned ? "visible" : "hidden",
+                            pointerEvents: isFeedbackCardPositioned ? "auto" : "none",
                         }}
                     >
                         <FeedbackCardPopover
@@ -1137,6 +1205,7 @@ export default function ChatThread({
                                 handleToggleFeedbackFavorite(isFavorited, savedItemId, feedbackCard)
                             }
                             onClose={handleCloseFeedbackCard}
+                            placement={feedbackCardPlacement.split("-")[0] as "top" | "bottom" | "left" | "right"}
                         />
                     </div>,
                     document.body

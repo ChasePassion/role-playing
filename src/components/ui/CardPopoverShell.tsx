@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import FavoriteIcon from "@/components/ui/FavoriteIcon";
 
 interface CardPopoverShellProps {
@@ -8,6 +9,7 @@ interface CardPopoverShellProps {
     isFavorited: boolean;
     onToggleFavorite: () => void;
     children: ReactNode;
+    placement?: "top" | "bottom" | "left" | "right";
 }
 
 const CardPopoverShell = forwardRef<HTMLDivElement, CardPopoverShellProps>(
@@ -17,13 +19,20 @@ const CardPopoverShell = forwardRef<HTMLDivElement, CardPopoverShellProps>(
             isFavorited,
             onToggleFavorite,
             children,
+            placement = "left",
         },
         ref
     ) {
         return (
             <div
                 ref={ref}
-                className="w-[calc(100vw-24px)] max-w-80 rounded-2xl border border-gray-200 bg-white shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 overflow-hidden"
+                className={cn(
+                    "w-[calc(100vw-24px)] max-w-80 rounded-2xl border border-gray-200 bg-white shadow-xl z-50 animate-in fade-in duration-200 overflow-hidden",
+                    placement === "top" && "slide-in-from-top-2",
+                    placement === "bottom" && "slide-in-from-bottom-2",
+                    placement === "left" && "slide-in-from-left-2",
+                    placement === "right" && "slide-in-from-right-2"
+                )}
             >
                 <div className="px-5 pt-5 pb-3 flex items-start justify-between shrink-0">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
