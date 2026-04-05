@@ -1,7 +1,13 @@
 import { httpClient } from "./http-client";
-import { ApiError, tokenStore, UnauthorizedError } from "./token-store";
+import { ApiError, UnauthorizedError } from "./token-store";
 import { getErrorMessage } from "./error-map";
 import type { GrowthTodaySummary, GrowthShareCard } from "./growth-types";
+import { fetchWithBetterAuth } from "./better-auth-token";
+import {
+  parseJsonResponse,
+  throwApiErrorResponse,
+  unwrapEnvelopePayload,
+} from "./http-client";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -27,20 +33,6 @@ export interface User {
   avatar_url?: string;
   created_at: string;
   last_login_at?: string;
-}
-
-export interface AuthResponse {
-  access_token: string;
-  token_type: string;
-}
-
-export interface SendCodeRequest {
-  email: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  code: string;
 }
 
 export interface UpdateProfileRequest {
@@ -716,24 +708,6 @@ type ChatStreamEvent =
   | ChatStreamTtsErrorEvent;
 
 export class ApiService {
-  async sendVerificationCode(email: string): Promise<void> {
-    await httpClient.post("/v1/auth/send_code", { email });
-  }
-
-  async login(email: string, code: string): Promise<AuthResponse> {
-    const response = await httpClient.post<AuthResponse>("/v1/auth/login", {
-      email,
-      code,
-    });
-
-    tokenStore.setToken(response.access_token);
-    return response;
-  }
-
-  async getCurrentUser(): Promise<User> {
-    return httpClient.get<User>("/v1/auth/me");
-  }
-
   async uploadFile(file: File): Promise<{ url: string }> {
     return httpClient.upload<{ url: string }>("/v1/upload", file);
   }
@@ -928,17 +902,12 @@ export class ApiService {
     },
   ): Promise<void> {
     try {
-      const token = tokenStore.getToken();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       };
 
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`/v1/turns/${turnId}/regen/stream`, {
+      const response = await fetchWithBetterAuth(`/v1/turns/${turnId}/regen/stream`, {
         method: "POST",
         headers,
         body: JSON.stringify({}),
@@ -946,19 +915,7 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        const errorData: { code?: string; message?: string; detail?: string } =
-          await response.json().catch(() => ({}));
-        const errorMessage =
-          errorData.message ||
-          errorData.detail ||
-          `HTTP error! status: ${response.status}`;
-
-        if (response.status === 401) {
-          tokenStore.clearToken();
-          throw new UnauthorizedError(errorMessage);
-        }
-
-        throw new ApiError(response.status, errorData.code, errorMessage);
+        return throwApiErrorResponse(response);
       }
 
       const reader = response.body?.getReader();
@@ -1111,17 +1068,12 @@ export class ApiService {
     },
   ): Promise<void> {
     try {
-      const token = tokenStore.getToken();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       };
 
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`/v1/turns/${turnId}/edit/stream`, {
+      const response = await fetchWithBetterAuth(`/v1/turns/${turnId}/edit/stream`, {
         method: "POST",
         headers,
         body: JSON.stringify(request),
@@ -1129,19 +1081,7 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        const errorData: { code?: string; message?: string; detail?: string } =
-          await response.json().catch(() => ({}));
-        const errorMessage =
-          errorData.message ||
-          errorData.detail ||
-          `HTTP error! status: ${response.status}`;
-
-        if (response.status === 401) {
-          tokenStore.clearToken();
-          throw new UnauthorizedError(errorMessage);
-        }
-
-        throw new ApiError(response.status, errorData.code, errorMessage);
+        return throwApiErrorResponse(response);
       }
 
       const reader = response.body?.getReader();
@@ -1308,17 +1248,12 @@ export class ApiService {
     },
   ): Promise<void> {
     try {
-      const token = tokenStore.getToken();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       };
 
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`/v1/chats/${chatId}/stream`, {
+      const response = await fetchWithBetterAuth(`/v1/chats/${chatId}/stream`, {
         method: "POST",
         headers,
         body: JSON.stringify(request),
@@ -1326,19 +1261,7 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        const errorData: { code?: string; message?: string; detail?: string } =
-          await response.json().catch(() => ({}));
-        const errorMessage =
-          errorData.message ||
-          errorData.detail ||
-          `HTTP error! status: ${response.status}`;
-
-        if (response.status === 401) {
-          tokenStore.clearToken();
-          throw new UnauthorizedError(errorMessage);
-        }
-
-        throw new ApiError(response.status, errorData.code, errorMessage);
+        return throwApiErrorResponse(response);
       }
 
       const reader = response.body?.getReader();
@@ -1510,12 +1433,6 @@ export class ApiService {
     audioBlob: Blob,
     options?: { audio_format?: string; sample_rate?: number },
   ): Promise<STTTranscriptionResult> {
-    const token = tokenStore.getToken();
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
     const formData = new FormData();
     const fileName = options?.audio_format === "wav" ? "recording.wav" : "recording.webm";
     formData.append("audio", audioBlob, fileName);
@@ -1526,36 +1443,29 @@ export class ApiService {
       formData.append("sample_rate", String(options.sample_rate));
     }
 
-    const response = await fetch("/v1/voice/stt/transcriptions", {
+    const response = await fetchWithBetterAuth("/v1/voice/stt/transcriptions", {
       method: "POST",
-      headers,
       body: formData,
     });
 
     if (!response.ok) {
-      const errorData: { code?: string; message?: string; detail?: string } =
-        await response.json().catch(() => ({}));
-      const errorMessage =
-        errorData.message ||
-        errorData.detail ||
-        `HTTP error! status: ${response.status}`;
-
-      if (response.status === 401) {
-        tokenStore.clearToken();
-        throw new UnauthorizedError(errorMessage);
-      }
       if (response.status === 422) {
-        throw new ApiError(422, errorData.code ?? "no_speech", errorMessage);
+        const errorData = (await parseJsonResponse(response)) as {
+          code?: string;
+          message?: string;
+          detail?: string;
+        } | undefined;
+        const errorMessage =
+          errorData?.message ||
+          errorData?.detail ||
+          `HTTP error! status: ${response.status}`;
+        throw new ApiError(422, errorData?.code ?? "no_speech", errorMessage);
       }
-      throw new ApiError(response.status, errorData.code, errorMessage);
+      return throwApiErrorResponse(response);
     }
 
-    const payload = await response.json();
-    // Unwrap SuccessEnvelope if present
-    if (payload && typeof payload === "object" && "data" in payload) {
-      return payload.data as STTTranscriptionResult;
-    }
-    return payload as STTTranscriptionResult;
+    const payload = await parseJsonResponse(response);
+    return unwrapEnvelopePayload<STTTranscriptionResult>(payload);
   }
 
   // Phase 2: TTS single-message audio stream
@@ -1563,35 +1473,17 @@ export class ApiService {
     assistantCandidateId: string,
     options?: { audio_format?: "opus" | "mp3"; signal?: AbortSignal },
   ): Promise<ArrayBuffer> {
-    const token = tokenStore.getToken();
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
     const format = options?.audio_format ?? "opus";
-    const response = await fetch(
+    const response = await fetchWithBetterAuth(
       `/v1/voice/tts/messages/${assistantCandidateId}/audio?audio_format=${format}`,
       {
         method: "GET",
-        headers,
         signal: options?.signal,
       },
     );
 
     if (!response.ok) {
-      const errorData: { code?: string; message?: string; detail?: string } =
-        await response.json().catch(() => ({}));
-      const errorMessage =
-        errorData.message ||
-        errorData.detail ||
-        `HTTP error! status: ${response.status}`;
-
-      if (response.status === 401) {
-        tokenStore.clearToken();
-        throw new UnauthorizedError(errorMessage);
-      }
-      throw new ApiError(response.status, errorData.code, errorMessage);
+      return throwApiErrorResponse(response);
     }
 
     return response.arrayBuffer();
@@ -1635,34 +1527,16 @@ export class ApiService {
   }
 
   async createVoiceClone(formData: FormData): Promise<VoiceProfile> {
-    const token = tokenStore.getToken();
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    const response = await fetch("/v1/voices/clones", {
+    const response = await fetchWithBetterAuth("/v1/voices/clones", {
       method: "POST",
-      headers,
       body: formData,
     });
 
     if (!response.ok) {
-      const errorData: { code?: string; message?: string; detail?: string } =
-        await response.json().catch(() => ({}));
-      const errorMessage =
-        errorData.message ||
-        errorData.detail ||
-        `API error! status: ${response.status}`;
-
-      if (response.status === 401) {
-        tokenStore.clearToken();
-        throw new UnauthorizedError(errorMessage);
-      }
-      throw new ApiError(response.status, errorData.code, errorMessage);
+      return throwApiErrorResponse(response);
     }
 
-    const payload = await response.json();
+    const payload = await parseJsonResponse(response);
     if (payload && typeof payload === "object" && "data" in payload) {
       const data = (payload as { data: VoiceProfile | { voice?: VoiceProfile } }).data;
       if (data && typeof data === "object" && "voice" in data && data.voice) {
@@ -1689,35 +1563,17 @@ export class ApiService {
     voiceId: string,
     options?: { audio_format?: "opus" | "mp3"; signal?: AbortSignal },
   ): Promise<ArrayBuffer> {
-    const token = tokenStore.getToken();
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
     const format = options?.audio_format ?? "mp3";
-    const response = await fetch(
+    const response = await fetchWithBetterAuth(
       `/v1/voices/${voiceId}/preview/audio?audio_format=${format}`,
       {
         method: "GET",
-        headers,
         signal: options?.signal,
       },
     );
 
     if (!response.ok) {
-      const errorData: { code?: string; message?: string; detail?: string } =
-        await response.json().catch(() => ({}));
-      const errorMessage =
-        errorData.message ||
-        errorData.detail ||
-        `API error! status: ${response.status}`;
-
-      if (response.status === 401) {
-        tokenStore.clearToken();
-        throw new UnauthorizedError(errorMessage);
-      }
-      throw new ApiError(response.status, errorData.code, errorMessage);
+      return throwApiErrorResponse(response);
     }
 
     return response.arrayBuffer();

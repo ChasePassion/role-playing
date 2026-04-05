@@ -144,10 +144,12 @@ export default function SetupPage() {
                 avatar_url: avatarUrl,
             });
 
-            // Refresh user data
-            await refreshUser();
+            try {
+                await refreshUser();
+            } catch (err) {
+                console.error("Failed to refresh user after profile update:", err);
+            }
 
-            // Navigate to main page
             router.push("/");
         } catch (err) {
             const message = err instanceof Error ? err.message : "设置失败，请重试";

@@ -1,11 +1,119 @@
 // 重新导出 ApiService 方法，保持向后兼容
 import { apiService } from "./api-service";
+import { authClient } from "./auth-client";
+import { mapBetterAuthSessionToUser } from "./auth-user-mapper";
+import { clearBetterAuthJwt } from "./better-auth-token";
 
 // 认证相关
-export const sendVerificationCode =
-  apiService.sendVerificationCode.bind(apiService);
-export const loginWithCode = apiService.login.bind(apiService);
-export const getCurrentUser = apiService.getCurrentUser.bind(apiService);
+export async function sendVerificationCode(email: string): Promise<void> {
+  const response = await authClient.emailOtp.sendVerificationOtp({
+    email,
+    type: "sign-in",
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message || "验证码发送失败");
+  }
+}
+
+export async function getVerificationCodeDeliveryStatus(
+  email: string,
+): Promise<{
+  status: "idle" | "queued" | "sent" | "failed";
+  errorMessage: string | null;
+}> {
+  const response = await fetch(
+    `/api/auth/email-otp-status?email=${encodeURIComponent(email)}&type=sign-in`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+
+  const payload = (await response.json()) as {
+    status?: "idle" | "queued" | "sent" | "failed";
+    errorMessage?: string | null;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.errorMessage || "验证码状态查询失败");
+  }
+
+  return {
+    status: payload.status || "idle",
+    errorMessage: payload.errorMessage ?? null,
+  };
+}
+
+export async function loginWithCode(
+  email: string,
+  code: string,
+): Promise<void> {
+  const response = await authClient.signIn.emailOtp({
+    email,
+    otp: code,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message || "验证码登录失败");
+  }
+
+  clearBetterAuthJwt();
+}
+
+export async function loginWithPassword(
+  email: string,
+  password: string,
+): Promise<void> {
+  const response = await authClient.signIn.email({
+    email,
+    password,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message || "密码登录失败");
+  }
+
+  clearBetterAuthJwt();
+}
+
+export async function registerWithPassword(
+  email: string,
+  password: string,
+  name?: string,
+): Promise<void> {
+  const response = await authClient.signUp.email({
+    email,
+    password,
+    name: name || email.split("@")[0],
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message || "密码注册失败");
+  }
+
+  clearBetterAuthJwt();
+}
+
+export async function signInWithGoogle(callbackURL = "/"): Promise<void> {
+  const response = await authClient.signIn.social({
+    provider: "google",
+    callbackURL,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message || "Google 登录失败");
+  }
+}
+
+export async function getCurrentUser() {
+  const response = await authClient.getSession();
+  if (response.error) {
+    throw new Error(response.error.message || "获取用户信息失败");
+  }
+
+  return mapBetterAuthSessionToUser(response.data);
+}
 
 // 用户相关
 export const uploadFile = apiService.uploadFile.bind(apiService);
@@ -79,7 +187,6 @@ export const listSavedItemsPhase3 = apiService.listSavedItemsPhase3.bind(apiServ
 export * from "./token-store";
 export type {
   User,
-  AuthResponse,
   ChatMessage,
   ChatDetailResponse,
   ChatCreateRequest,

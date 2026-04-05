@@ -127,7 +127,14 @@ export default function Sidebar({
             <DropdownMenuSeparator className="bg-gray-100 h-px mx-2 my-1" />
 
             <DropdownMenuItem
-                onClick={() => { logout(); window.location.href = "/login"; }}
+                onClick={async () => {
+                    try {
+                        await logout();
+                        window.location.href = "/login";
+                    } catch (error) {
+                        console.error("Failed to logout:", error);
+                    }
+                }}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <Image src="/out.svg" alt="Logout" width={20} height={20} />

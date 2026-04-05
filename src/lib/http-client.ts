@@ -1,4 +1,5 @@
-import { ApiError, tokenStore, UnauthorizedError } from "./token-store";
+import { ApiError, UnauthorizedError } from "./token-store";
+import { clearBetterAuthJwt, fetchWithBetterAuth } from "./better-auth-token";
 
 interface SuccessEnvelope<T> {
     code: string;
@@ -14,45 +15,45 @@ interface ErrorEnvelope {
     status?: number;
 }
 
+export async function parseJsonResponse(response: Response): Promise<unknown> {
+    return response.json().catch(() => undefined);
+}
+
+export function unwrapEnvelopePayload<T>(payload: unknown): T {
+    if (
+        payload &&
+        typeof payload === "object" &&
+        "code" in payload &&
+        "status" in payload &&
+        "data" in payload
+    ) {
+        return (payload as SuccessEnvelope<T>).data;
+    }
+
+    return payload as T;
+}
+
+export async function throwApiErrorResponse(response: Response): Promise<never> {
+    const payload = (await parseJsonResponse(response)) as ErrorEnvelope | undefined;
+    const code = payload?.code;
+    const message =
+        payload?.message ||
+        payload?.detail ||
+        `API Error: ${response.status}`;
+
+    if (response.status === 401) {
+        clearBetterAuthJwt();
+        throw new UnauthorizedError(message);
+    }
+
+    throw new ApiError(response.status, code, message);
+}
+
 class HttpClient {
     private baseURL: string;
 
     constructor(baseURL: string) {
         this.baseURL = baseURL;
-    }
-
-    private async parseJson(response: Response): Promise<unknown> {
-        return response.json().catch(() => undefined);
-    }
-
-    private unwrapEnvelope<T>(payload: unknown): T {
-        if (
-            payload &&
-            typeof payload === "object" &&
-            "code" in payload &&
-            "status" in payload &&
-            "data" in payload
-        ) {
-            return (payload as SuccessEnvelope<T>).data;
-        }
-
-        return payload as T;
-    }
-
-    private async handleError(response: Response): Promise<never> {
-        const payload = (await this.parseJson(response)) as ErrorEnvelope | undefined;
-        const code = payload?.code;
-        const message =
-            payload?.message ||
-            payload?.detail ||
-            `API Error: ${response.status}`;
-
-        if (response.status === 401) {
-            tokenStore.clearToken();
-            throw new UnauthorizedError(message);
-        }
-
-        throw new ApiError(response.status, code, message);
     }
 
     private async request<T>(
@@ -65,26 +66,21 @@ class HttpClient {
             ...(options.headers as Record<string, string>),
         };
 
-        const token = tokenStore.getToken();
-        if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(url, {
+        const response = await fetchWithBetterAuth(url, {
             ...options,
             headers,
         });
 
         if (!response.ok) {
-            return this.handleError(response);
+            return throwApiErrorResponse(response);
         }
 
         if (response.status === 204) {
             return undefined as T;
         }
 
-        const payload = await this.parseJson(response);
-        return this.unwrapEnvelope<T>(payload);
+        const payload = await parseJsonResponse(response);
+        return unwrapEnvelopePayload<T>(payload);
     }
 
     async get<T>(endpoint: string): Promise<T> {
@@ -117,32 +113,24 @@ class HttpClient {
     }
 
     async upload<T = unknown>(endpoint: string, file: File): Promise<T> {
-        const token = tokenStore.getToken();
-        const headers: Record<string, string> = {};
-
-        if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-        }
-
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch(`${this.baseURL}${endpoint}`, {
+        const response = await fetchWithBetterAuth(`${this.baseURL}${endpoint}`, {
             method: "POST",
-            headers,
             body: formData,
         });
 
         if (!response.ok) {
-            return this.handleError(response);
+            return throwApiErrorResponse(response);
         }
 
         if (response.status === 204) {
             return undefined as T;
         }
 
-        const payload = await this.parseJson(response);
-        return this.unwrapEnvelope<T>(payload);
+        const payload = await parseJsonResponse(response);
+        return unwrapEnvelopePayload<T>(payload);
     }
 }
 

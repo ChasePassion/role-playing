@@ -30,10 +30,14 @@ export default function ProfileDialog({
         onClose();
     };
 
-    const handleLogout = () => {
-        logout();
-        onClose();
-        router.push("/login");
+    const handleLogout = async () => {
+        try {
+            await logout();
+            onClose();
+            router.push("/login");
+        } catch (error) {
+            console.error("Failed to logout:", error);
+        }
     };
 
     const handleOpenSettings = () => {
