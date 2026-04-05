@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useGrowth } from "@/lib/growth-context";
 import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
 import { useSidebar } from "./layout";
 import { getOrCreateChatId } from "@/lib/chat-helpers";
@@ -22,9 +23,11 @@ import { resolveCharacterAvatarSrc } from "@/lib/character-avatar";
 
 export default function DiscoverPage() {
   const { user } = useAuth();
+  const { refreshGrowthEntry } = useGrowth();
   const router = useRouter();
   const { setSelectedCharacterId, refreshSidebarCharacters, sidebarCharacters } =
     useSidebar();
+  const userId = user?.id ?? null;
 
   const [mode, setMode] = useState<ViewMode>("character");
   const [discoverCharacters, setDiscoverCharacters] = useState<CharacterResponse[]>([]);
@@ -51,17 +54,27 @@ export default function DiscoverPage() {
       }
     }
 
-    if (user) {
+    if (userId) {
       initData();
     }
-  }, [user]);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    void refreshGrowthEntry({ autoOpenPopup: true }).catch((err) => {
+      console.error("Failed to refresh growth entry:", err);
+    });
+  }, [refreshGrowthEntry, userId]);
 
   // 同步侧边栏的字符
   useEffect(() => {
-    if (user && sidebarCharacters.length === 0) {
+    if (userId && sidebarCharacters.length === 0) {
       refreshSidebarCharacters();
     }
-  }, [user, sidebarCharacters.length, refreshSidebarCharacters]);
+  }, [userId, sidebarCharacters.length, refreshSidebarCharacters]);
 
   // 当处于 Discover 页时清除选中的角色
   useEffect(() => {

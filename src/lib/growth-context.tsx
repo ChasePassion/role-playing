@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useAuth } from "./auth-context";
 import type {
   GrowthTodaySummary,
   GrowthPopup,
@@ -17,6 +18,12 @@ import type {
   GrowthCalendarDay,
 } from "./growth-types";
 import { consumeGrowthEntry, listPendingShareCards } from "./growth-api";
+import {
+  dismissGrowthEntryForToday as persistGrowthEntryDismissal,
+  readGrowthEntryDismissedStatDate,
+  shouldEvaluateGrowthEntryAutoOpenForSession,
+  shouldAutoOpenGrowthEntryPopup,
+} from "./growth-entry-prompt";
 
 // ── Context shape ──
 
@@ -26,6 +33,8 @@ interface GrowthContextType {
   isEntryPopupVisible: boolean;
   entryPopupData: GrowthPopup | null;
   closeEntryPopup: () => void;
+  dismissEntryPopupForToday: () => void;
+  refreshGrowthEntry: (options?: { autoOpenPopup?: boolean }) => Promise<void>;
 
   updateTodaySummary: (today: GrowthTodaySummary) => void;
 
@@ -38,8 +47,6 @@ interface GrowthContextType {
   calendarMonth: GrowthCalendarMonth | null;
   updateCalendarDay: (day: GrowthCalendarDay) => void;
   updateMakeupCardBalance: (balance: number) => void;
-
-  isLoading: boolean;
 }
 
 const GrowthContext = createContext<GrowthContextType | null>(null);
@@ -55,6 +62,7 @@ export function useGrowth(): GrowthContextType {
 // ── Provider ──
 
 export function GrowthProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [todaySummary, setTodaySummary] = useState<GrowthTodaySummary | null>(
     null,
   );
@@ -67,62 +75,90 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
   );
   const [calendarMonth, setCalendarMonth] =
     useState<GrowthCalendarMonth | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const hasCalledRef = useRef(false);
+  const lastHandledAutoOpenStatDateRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (hasCalledRef.current) return;
-    hasCalledRef.current = true;
+    setIsEntryPopupVisible(false);
+    setEntryPopupData(null);
+    setCalendarMonth(null);
+    setTodaySummary(null);
+    lastHandledAutoOpenStatDateRef.current = null;
+
+    if (!user?.id) {
+      setPendingShareCards([]);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
 
     let cancelled = false;
 
-    async function bootstrap() {
+    async function restorePendingShareCards() {
       try {
-        const data = await consumeGrowthEntry();
+        const pendingRes = await listPendingShareCards({ limit: 10 });
         if (cancelled) return;
-
-        setTodaySummary(data.today);
-        setEntryPopupData(data.popup);
-        setCalendarMonth(data.popup.calendar);
-
-        if (data.popup.should_show) {
-          setIsEntryPopupVisible(true);
-        }
-
-        try {
-          const pendingRes = await listPendingShareCards({ limit: 10 });
-          if (cancelled) return;
-          setPendingShareCards((prev) => {
-            const seen = new Set(prev.map((card) => card.id));
-            const merged = [...prev];
-            for (const card of pendingRes.items) {
-              if (seen.has(card.id)) continue;
-              seen.add(card.id);
-              merged.push(card);
-            }
-            return merged;
-          });
-        } catch (pendingErr) {
-          console.error("Failed to restore pending share cards:", pendingErr);
-        }
-      } catch (err) {
-        console.error("Growth entry failed:", err);
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        setPendingShareCards(pendingRes.items);
+      } catch (pendingErr) {
+        console.error("Failed to restore pending share cards:", pendingErr);
       }
     }
 
-    bootstrap();
+    void restorePendingShareCards();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.id]);
+
+  const refreshGrowthEntry = useCallback(
+    async (options?: { autoOpenPopup?: boolean }) => {
+      if (!user?.id) {
+        return;
+      }
+
+      const data = await consumeGrowthEntry();
+      setTodaySummary(data.today);
+      setEntryPopupData(data.popup);
+      setCalendarMonth(data.popup.calendar);
+
+      if (!options?.autoOpenPopup) {
+        return;
+      }
+
+      if (
+        !shouldEvaluateGrowthEntryAutoOpenForSession({
+          statDate: data.today.stat_date,
+          lastHandledStatDate: lastHandledAutoOpenStatDateRef.current,
+        })
+      ) {
+        return;
+      }
+
+      lastHandledAutoOpenStatDateRef.current = data.today.stat_date;
+      const dismissedStatDate = readGrowthEntryDismissedStatDate(user.id);
+      setIsEntryPopupVisible(
+        shouldAutoOpenGrowthEntryPopup({
+          statDate: data.today.stat_date,
+          dismissedStatDate,
+        }),
+      );
+    },
+    [user?.id],
+  );
 
   const closeEntryPopup = useCallback(() => {
     setIsEntryPopupVisible(false);
   }, []);
+
+  const dismissEntryPopupForToday = useCallback(() => {
+    if (todaySummary?.stat_date) {
+      persistGrowthEntryDismissal(todaySummary.stat_date, user?.id);
+    }
+    setIsEntryPopupVisible(false);
+  }, [todaySummary?.stat_date, user?.id]);
 
   const updateTodaySummary = useCallback((today: GrowthTodaySummary) => {
     setTodaySummary(today);
@@ -164,6 +200,8 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
         isEntryPopupVisible,
         entryPopupData,
         closeEntryPopup,
+        dismissEntryPopupForToday,
+        refreshGrowthEntry,
         updateTodaySummary,
         pendingShareCards,
         enqueueShareCard,
@@ -172,7 +210,6 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
         calendarMonth,
         updateCalendarDay,
         updateMakeupCardBalance,
-        isLoading,
       }}
     >
       {children}

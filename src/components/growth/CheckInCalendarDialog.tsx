@@ -105,6 +105,7 @@ export default function CheckInCalendarDialog() {
     isEntryPopupVisible,
     entryPopupData,
     closeEntryPopup,
+    dismissEntryPopupForToday,
     calendarMonth,
     todaySummary,
     updateCalendarDay,
@@ -176,6 +177,11 @@ export default function CheckInCalendarDialog() {
     setDisplayedCalendar(null);
     closeEntryPopup();
   }, [closeEntryPopup]);
+
+  const handleDismissToday = useCallback(() => {
+    setDisplayedCalendar(null);
+    dismissEntryPopupForToday();
+  }, [dismissEntryPopupForToday]);
 
   if (!entryPopupData || !calendar) return null;
 
@@ -262,12 +268,23 @@ export default function CheckInCalendarDialog() {
           </div>
 
           {/* CTA */}
-          <Button
-            onClick={handleClose}
-            className="mt-4 w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all"
-          >
-            Chat
-          </Button>
+          <div className="mt-4 flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDismissToday}
+              className="flex-1 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+            >
+              今日不再提示
+            </Button>
+            <Button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all"
+            >
+              继续探索
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
