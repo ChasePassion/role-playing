@@ -5,6 +5,12 @@ import nodemailer from "nodemailer";
 import { Pool } from "pg";
 
 import { logEmailOtpEvent } from "./auth-email-otp-log";
+import {
+  setEmailOtpDeliveryFailed,
+  setEmailOtpDeliveryQueued,
+  setEmailOtpDeliverySent,
+  type EmailOtpDeliveryType,
+} from "./auth-email-otp-status-store";
 
 const databaseUrl = process.env.DATABASE_URL;
 const betterAuthUrl = process.env.BETTER_AUTH_URL;
@@ -26,15 +32,7 @@ const pool = new Pool({
   connectionString: databaseUrl,
 });
 
-type EmailOtpDeliveryType =
-  | "sign-in"
-  | "email-verification"
-  | "forget-password"
-  | "change-email";
-type EmailOtpDeliveryStatus = "queued" | "sent" | "failed";
-
 let emailTransporter: nodemailer.Transporter | null = null;
-let ensureEmailOtpDeliveryStatusTablePromise: Promise<void> | null = null;
 
 function getPurelymailConfig() {
   const host = process.env.PURELYMAIL_SMTP_HOST?.trim() || "smtp.purelymail.com";
@@ -91,54 +89,6 @@ function getPurelymailTransporter() {
   return emailTransporter;
 }
 
-async function ensureEmailOtpDeliveryStatusTable(): Promise<void> {
-  if (!ensureEmailOtpDeliveryStatusTablePromise) {
-    ensureEmailOtpDeliveryStatusTablePromise = pool
-      .query(`
-        CREATE TABLE IF NOT EXISTS email_otp_delivery_status (
-          email TEXT NOT NULL,
-          otp_type TEXT NOT NULL,
-          status TEXT NOT NULL,
-          error_message TEXT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          PRIMARY KEY (email, otp_type)
-        )
-      `)
-      .then(() => undefined);
-  }
-
-  await ensureEmailOtpDeliveryStatusTablePromise;
-}
-
-async function updateEmailOtpDeliveryStatus(
-  email: string,
-  type: EmailOtpDeliveryType,
-  status: EmailOtpDeliveryStatus,
-  errorMessage: string | null = null,
-): Promise<void> {
-  await ensureEmailOtpDeliveryStatusTable();
-  await pool.query(
-    `
-      INSERT INTO email_otp_delivery_status (
-        email,
-        otp_type,
-        status,
-        error_message,
-        created_at,
-        updated_at
-      )
-      VALUES ($1, $2, $3, $4, NOW(), NOW())
-      ON CONFLICT (email, otp_type)
-      DO UPDATE SET
-        status = EXCLUDED.status,
-        error_message = EXCLUDED.error_message,
-        updated_at = NOW()
-    `,
-    [email, type, status, errorMessage],
-  );
-}
-
 function normalizeDeliveryError(error: unknown): string {
   if (!(error instanceof Error)) {
     return "邮件发送失败，请稍后重试";
@@ -148,16 +98,41 @@ function normalizeDeliveryError(error: unknown): string {
   return message || "邮件发送失败，请稍后重试";
 }
 
-async function persistEmailOtpDeliveryStatus(params: {
+function buildUserFacingDeliveryErrorMessage(errorMessage: string): string {
+  const lowered = errorMessage.toLowerCase();
+  if (
+    lowered.includes("smtp") ||
+    lowered.includes("econnection") ||
+    lowered.includes("greeting") ||
+    lowered.includes("timeout") ||
+    lowered.includes("invalid login") ||
+    lowered.includes("auth")
+  ) {
+    return "邮件服务暂时不可用，请稍后重试";
+  }
+  return "邮件发送失败，请稍后重试";
+}
+
+async function persistEmailOtpDeliveryFailed(params: {
   email: string;
   type: EmailOtpDeliveryType;
-  status: EmailOtpDeliveryStatus;
-  errorMessage?: string | null;
+  errorMessage: string;
 }) {
-  const { email, type, status, errorMessage = null } = params;
-
+  const { email, type, errorMessage } = params;
   try {
-    await updateEmailOtpDeliveryStatus(email, type, status, errorMessage);
+    await setEmailOtpDeliveryFailed(
+      email,
+      type,
+      buildUserFacingDeliveryErrorMessage(errorMessage),
+    );
+  } catch (error) {
+    console.error("Failed to persist OTP delivery status:", error);
+  }
+}
+
+async function persistEmailOtpDeliverySent(email: string, type: EmailOtpDeliveryType) {
+  try {
+    await setEmailOtpDeliverySent(email, type);
   } catch (error) {
     console.error("Failed to persist OTP delivery status:", error);
   }
@@ -192,11 +167,7 @@ function queueEmailOtpDelivery(params: {
           html,
         });
 
-        await persistEmailOtpDeliveryStatus({
-          email,
-          type,
-          status: "sent",
-        });
+        await persistEmailOtpDeliverySent(email, type);
         await writeEmailOtpDeliveryLog({
           event: "email_otp.delivery_sent",
           message: "OTP email delivered to SMTP provider",
@@ -207,10 +178,9 @@ function queueEmailOtpDelivery(params: {
       } catch (error) {
         const normalizedError = normalizeDeliveryError(error);
         console.error("Failed to deliver OTP email:", normalizedError);
-        await persistEmailOtpDeliveryStatus({
+        await persistEmailOtpDeliveryFailed({
           email,
           type,
-          status: "failed",
           errorMessage: normalizedError,
         });
         await writeEmailOtpDeliveryLog({
@@ -224,41 +194,6 @@ function queueEmailOtpDelivery(params: {
       }
     })();
   }, 0);
-}
-
-export async function getEmailOtpDeliveryStatus(
-  email: string,
-  type: EmailOtpDeliveryType,
-): Promise<{
-  status: EmailOtpDeliveryStatus | "idle";
-  errorMessage: string | null;
-}> {
-  await ensureEmailOtpDeliveryStatusTable();
-  const normalizedEmail = email.trim().toLowerCase();
-  const result = await pool.query<{
-    status: EmailOtpDeliveryStatus;
-    error_message: string | null;
-  }>(
-    `
-      SELECT status, error_message
-      FROM email_otp_delivery_status
-      WHERE email = $1 AND otp_type = $2
-    `,
-    [normalizedEmail, type],
-  );
-
-  const row = result.rows[0];
-  if (!row) {
-    return {
-      status: "idle",
-      errorMessage: null,
-    };
-  }
-
-  return {
-    status: row.status,
-    errorMessage: row.error_message,
-  };
 }
 
 function buildGoogleProvider() {
@@ -374,7 +309,7 @@ export const auth = betterAuth({
           </div>
         `;
 
-        await updateEmailOtpDeliveryStatus(normalizedEmail, type, "queued");
+        await setEmailOtpDeliveryQueued(normalizedEmail, type);
         await writeEmailOtpDeliveryLog({
           event: "email_otp.delivery_queued",
           message: "OTP email queued for background delivery",

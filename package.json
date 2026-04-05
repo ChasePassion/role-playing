@@ -5,6 +5,9 @@
   "packageManager": "pnpm@10.11.0",
   "scripts": {
     "dev": "next dev --turbopack -p 3001",
+    "dev:redis": "pwsh -NoProfile -File .\\scripts\\dev-redis.ps1 start",
+    "dev:redis:stop": "pwsh -NoProfile -File .\\scripts\\dev-redis.ps1 stop",
+    "dev:redis:status": "pwsh -NoProfile -File .\\scripts\\dev-redis.ps1 status",
     "build": "next build --turbopack",
     "start": "next start -p 3001",
     "lint": "eslint"
@@ -26,6 +29,7 @@
     "react-dom": "19.1.0",
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
+    "redis": "^5.11.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",

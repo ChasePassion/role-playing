@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getEmailOtpDeliveryStatus } from "@/lib/auth";
+import {
+  getEmailOtpDeliveryStatus,
+  type EmailOtpDeliveryType,
+} from "@/lib/auth-email-otp-status-store";
+
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const email = request.nextUrl.searchParams.get("email")?.trim().toLowerCase();
   const type =
     (request.nextUrl.searchParams.get("type") as
-      | "sign-in"
-      | "email-verification"
-      | "forget-password"
+      | EmailOtpDeliveryType
       | null) ?? "sign-in";
 
   if (!email) {

@@ -230,7 +230,7 @@ export default function LoginPage() {
             <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="p-8">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">NeuraChar</h1>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">ParlaSoul</h1>
                         <p className="text-gray-500">
                             {activeMethod === "otp"
                                 ? step === "email"
