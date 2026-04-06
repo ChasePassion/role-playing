@@ -5,10 +5,53 @@ import {
   PHASE_PRODUCTION_SERVER,
 } from "next/constants";
 
+const devBackendBaseUrl =
+  process.env.INTERNAL_BACKEND_BASE_URL?.trim() || "http://localhost:8000";
+const prodBackendBaseUrl =
+  process.env.INTERNAL_BACKEND_BASE_URL?.trim() || "http://backend:8000";
+
+const devConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/uploads/:path*",
+        destination: `${devBackendBaseUrl}/uploads/:path*`,
+      },
+      {
+        source: "/v1/:path*",
+        destination: `${devBackendBaseUrl}/v1/:path*`,
+      },
+    ];
+  },
+};
+
+const prodConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/uploads/:path*",
+        destination: `${prodBackendBaseUrl}/uploads/:path*`,
+      },
+      {
+        source: "/v1/:path*",
+        destination: `${prodBackendBaseUrl}/v1/:path*`,
+      },
+    ];
+  },
+};
+
 const baseConfig: NextConfig = {
   // Disable compression so SSE responses aren't buffered by the proxy layer.
   // (Streaming endpoints rely on incremental flush of chunks.)
   compress: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+    ],
+  },
   turbopack: {
     root: process.cwd(),
   },
@@ -23,18 +66,6 @@ const baseConfig: NextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: "/uploads/:path*",
-        destination: "http://localhost:8000/uploads/:path*",
-      },
-      {
-        source: "/v1/:path*",
-        destination: "http://localhost:8000/v1/:path*",
-      },
-    ];
-  },
 };
 
 export default function nextConfig(phase: string): NextConfig {
@@ -45,8 +76,11 @@ export default function nextConfig(phase: string): NextConfig {
         ? ".next-prod"
         : ".next";
 
+  const isProd = phase === PHASE_PRODUCTION_SERVER || phase === PHASE_PRODUCTION_BUILD;
+
   return {
     ...baseConfig,
+    ...(isProd ? prodConfig : devConfig),
     distDir,
   };
 }
