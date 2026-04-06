@@ -12,27 +12,41 @@ import {
   type EmailOtpDeliveryType,
 } from "./auth-email-otp-status-store";
 
-const databaseUrl = process.env.DATABASE_URL;
-const betterAuthUrl = process.env.BETTER_AUTH_URL;
-const betterAuthSecret = process.env.BETTER_AUTH_SECRET;
-
-if (!databaseUrl) {
-  throw new Error("Missing DATABASE_URL for Better Auth.");
-}
-
-if (!betterAuthUrl) {
-  throw new Error("Missing BETTER_AUTH_URL for Better Auth.");
-}
-
-if (!betterAuthSecret) {
-  throw new Error("Missing BETTER_AUTH_SECRET for Better Auth.");
-}
-
-const pool = new Pool({
-  connectionString: databaseUrl,
-});
-
 let emailTransporter: nodemailer.Transporter | null = null;
+let pool: Pool | null = null;
+let authInstance: ReturnType<typeof createAuth> | null = null;
+
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing ${name} for Better Auth.`);
+  }
+  return value;
+}
+
+function getDatabaseUrl() {
+  return requireEnv("DATABASE_URL");
+}
+
+function getBetterAuthUrl() {
+  return requireEnv("BETTER_AUTH_URL");
+}
+
+function getBetterAuthSecret() {
+  return requireEnv("BETTER_AUTH_SECRET");
+}
+
+function getPool() {
+  if (pool) {
+    return pool;
+  }
+
+  pool = new Pool({
+    connectionString: getDatabaseUrl(),
+  });
+
+  return pool;
+}
 
 function getPurelymailConfig() {
   const host = process.env.PURELYMAIL_SMTP_HOST?.trim() || "smtp.purelymail.com";
@@ -212,121 +226,136 @@ function buildGoogleProvider() {
   };
 }
 
-export const auth = betterAuth({
-  appName: "NeuraChar",
-  database: pool,
-  baseURL: betterAuthUrl,
-  trustedOrigins: [betterAuthUrl],
-  secret: betterAuthSecret,
-  user: {
-    modelName: "users",
-    fields: {
-      name: "display_name",
-      image: "avatar_url",
-      emailVerified: "email_verified",
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
-    additionalFields: {
-      username: {
-        type: "string",
-        required: false,
-        input: false,
-        fieldName: "username",
-      },
-      lastLoginAt: {
-        type: "date",
-        required: false,
-        input: false,
-        fieldName: "last_login_at",
-      },
-    },
-  },
-  advanced: {
-    database: {
-      generateId: "uuid",
-    },
-  },
-  emailAndPassword: {
-    enabled: true,
-  },
-  socialProviders: buildGoogleProvider(),
-  databaseHooks: {
+function createAuth() {
+  const betterAuthUrl = getBetterAuthUrl();
+  const betterAuthSecret = getBetterAuthSecret();
+  const resolvedPool = getPool();
+
+  return betterAuth({
+    appName: "NeuraChar",
+    database: resolvedPool,
+    baseURL: betterAuthUrl,
+    trustedOrigins: [betterAuthUrl],
+    secret: betterAuthSecret,
     user: {
-      create: {
-        before: async (user) => {
-          const fallbackName =
-            user.name?.trim() || user.email.split("@")[0] || "新用户";
-          return {
-            data: {
-              ...user,
-              name: fallbackName,
-            },
-          };
+      modelName: "users",
+      fields: {
+        name: "display_name",
+        image: "avatar_url",
+        emailVerified: "email_verified",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
+      },
+      additionalFields: {
+        username: {
+          type: "string",
+          required: false,
+          input: false,
+          fieldName: "username",
+        },
+        lastLoginAt: {
+          type: "date",
+          required: false,
+          input: false,
+          fieldName: "last_login_at",
         },
       },
     },
-    session: {
-      create: {
-        after: async (session) => {
-          await pool.query(
-            "UPDATE users SET last_login_at = NOW() WHERE id = $1",
-            [session.userId],
-          );
+    advanced: {
+      database: {
+        generateId: "uuid",
+      },
+    },
+    emailAndPassword: {
+      enabled: true,
+    },
+    socialProviders: buildGoogleProvider(),
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => {
+            const fallbackName =
+              user.name?.trim() || user.email.split("@")[0] || "新用户";
+            return {
+              data: {
+                ...user,
+                name: fallbackName,
+              },
+            };
+          },
+        },
+      },
+      session: {
+        create: {
+          after: async (session) => {
+            await resolvedPool.query(
+              "UPDATE users SET last_login_at = NOW() WHERE id = $1",
+              [session.userId],
+            );
+          },
         },
       },
     },
-  },
-  plugins: [
-    emailOTP({
-      otpLength: 6,
-      expiresIn: 300,
-      async sendVerificationOTP({ email, otp, type }) {
-        const normalizedEmail = email.trim().toLowerCase();
-        getPurelymailConfig();
-        getPurelymailTransporter();
+    plugins: [
+      emailOTP({
+        otpLength: 6,
+        expiresIn: 300,
+        async sendVerificationOTP({ email, otp, type }) {
+          const normalizedEmail = email.trim().toLowerCase();
+          getPurelymailConfig();
+          getPurelymailTransporter();
 
-        const subject =
-          type === "forget-password"
-            ? "ParlaSoul 密码重置验证码"
-            : type === "email-verification"
-              ? "ParlaSoul 邮箱验证验证码"
-              : "ParlaSoul 登录验证码";
+          const subject =
+            type === "forget-password"
+              ? "ParlaSoul 密码重置验证码"
+              : type === "email-verification"
+                ? "ParlaSoul 邮箱验证验证码"
+                : "ParlaSoul 登录验证码";
 
-        const title =
-          type === "forget-password"
-            ? "密码重置验证码"
-            : type === "email-verification"
-              ? "邮箱验证验证码"
-              : "登录验证码";
+          const title =
+            type === "forget-password"
+              ? "密码重置验证码"
+              : type === "email-verification"
+                ? "邮箱验证验证码"
+                : "登录验证码";
 
-        const html = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; line-height: 1.6;">
-            <h2 style="margin-bottom: 12px;">${title}</h2>
-            <p>您好，您的验证码如下：</p>
-            <div style="margin: 20px 0; font-size: 28px; font-weight: 700; letter-spacing: 8px;">${otp}</div>
-            <p>验证码 5 分钟内有效，请勿泄露给他人。</p>
-          </div>
-        `;
+          const html = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; line-height: 1.6;">
+              <h2 style="margin-bottom: 12px;">${title}</h2>
+              <p>您好，您的验证码如下：</p>
+              <div style="margin: 20px 0; font-size: 28px; font-weight: 700; letter-spacing: 8px;">${otp}</div>
+              <p>验证码 5 分钟内有效，请勿泄露给他人。</p>
+            </div>
+          `;
 
-        await setEmailOtpDeliveryQueued(normalizedEmail, type);
-        await writeEmailOtpDeliveryLog({
-          event: "email_otp.delivery_queued",
-          message: "OTP email queued for background delivery",
-          email: normalizedEmail,
-          otpType: type,
-        });
-        queueEmailOtpDelivery({
-          email: normalizedEmail,
-          type,
-          subject,
-          html,
-        });
-      },
-    }),
-    jwt(),
-    nextCookies(),
-  ],
-});
+          await setEmailOtpDeliveryQueued(normalizedEmail, type);
+          await writeEmailOtpDeliveryLog({
+            event: "email_otp.delivery_queued",
+            message: "OTP email queued for background delivery",
+            email: normalizedEmail,
+            otpType: type,
+          });
+          queueEmailOtpDelivery({
+            email: normalizedEmail,
+            type,
+            subject,
+            html,
+          });
+        },
+      }),
+      jwt(),
+      nextCookies(),
+    ],
+  });
+}
 
-export type AuthSession = typeof auth.$Infer.Session;
+export function getAuth(): ReturnType<typeof createAuth> {
+  if (authInstance) {
+    return authInstance;
+  }
+
+  authInstance = createAuth();
+  return authInstance;
+}
+
+export type AuthSession = ReturnType<typeof getAuth>["$Infer"]["Session"];
