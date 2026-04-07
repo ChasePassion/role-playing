@@ -232,7 +232,7 @@ function createAuth() {
   const resolvedPool = getPool();
 
   return betterAuth({
-    appName: "NeuraChar",
+    appName: "parlasoul",
     database: resolvedPool,
     baseURL: betterAuthUrl,
     trustedOrigins: [betterAuthUrl],

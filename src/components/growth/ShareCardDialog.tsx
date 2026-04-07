@@ -42,7 +42,7 @@ export default function ShareCardDialog() {
       });
 
       const link = document.createElement("a");
-      link.download = `neurachar-${currentCard?.kind ?? "card"}-${Date.now()}.png`;
+      link.download = `parlasoul-${currentCard?.kind ?? "card"}-${Date.now()}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (err) {
