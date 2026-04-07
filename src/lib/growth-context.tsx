@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -20,6 +19,7 @@ import type {
 import { consumeGrowthEntry, listPendingShareCards } from "./growth-api";
 import {
   dismissGrowthEntryForToday as persistGrowthEntryDismissal,
+  getGrowthEntrySessionHandledKey,
   readGrowthEntryDismissedStatDate,
   shouldEvaluateGrowthEntryAutoOpenForSession,
   shouldAutoOpenGrowthEntryPopup,
@@ -75,19 +75,68 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
   );
   const [calendarMonth, setCalendarMonth] =
     useState<GrowthCalendarMonth | null>(null);
-  const lastHandledAutoOpenStatDateRef = useRef<string | null>(null);
+  const [handledAutoOpenStatDate, setHandledAutoOpenStatDate] = useState<
+    string | null
+  >(null);
+
+  const readHandledAutoOpenStatDate = useCallback((userId?: string | null) => {
+    if (!userId || typeof window === "undefined") {
+      return null;
+    }
+
+    try {
+      return (
+        window.sessionStorage.getItem(getGrowthEntrySessionHandledKey(userId)) ??
+        null
+      );
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const persistHandledAutoOpenStatDate = useCallback(
+    (statDate: string, userId?: string | null) => {
+      if (!userId) {
+        return;
+      }
+
+      setHandledAutoOpenStatDate(statDate);
+
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      try {
+        window.sessionStorage.setItem(
+          getGrowthEntrySessionHandledKey(userId),
+          statDate,
+        );
+      } catch {
+        // Ignore storage failures and keep the popup behavior functional.
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     setIsEntryPopupVisible(false);
     setEntryPopupData(null);
     setCalendarMonth(null);
     setTodaySummary(null);
-    lastHandledAutoOpenStatDateRef.current = null;
+    setHandledAutoOpenStatDate(null);
 
     if (!user?.id) {
       setPendingShareCards([]);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    setHandledAutoOpenStatDate(readHandledAutoOpenStatDate(user.id));
+  }, [readHandledAutoOpenStatDate, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -128,16 +177,18 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const lastHandledStatDate =
+        handledAutoOpenStatDate ?? readHandledAutoOpenStatDate(user.id);
       if (
         !shouldEvaluateGrowthEntryAutoOpenForSession({
           statDate: data.today.stat_date,
-          lastHandledStatDate: lastHandledAutoOpenStatDateRef.current,
+          lastHandledStatDate,
         })
       ) {
         return;
       }
 
-      lastHandledAutoOpenStatDateRef.current = data.today.stat_date;
+      persistHandledAutoOpenStatDate(data.today.stat_date, user.id);
       const dismissedStatDate = readGrowthEntryDismissedStatDate(user.id);
       setIsEntryPopupVisible(
         shouldAutoOpenGrowthEntryPopup({
@@ -146,7 +197,12 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
         }),
       );
     },
-    [user?.id],
+    [
+      handledAutoOpenStatDate,
+      persistHandledAutoOpenStatDate,
+      readHandledAutoOpenStatDate,
+      user?.id,
+    ],
   );
 
   const closeEntryPopup = useCallback(() => {
