@@ -13,7 +13,7 @@ export default function ShareCardRenderer({ card }: ShareCardRendererProps) {
       <div className="flex flex-col items-center gap-4 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 px-8 py-10 text-white">
         {/* Brand */}
         <p className="text-xs font-medium uppercase tracking-widest text-white/60">
-          parlasoul
+          ParlaSoul
         </p>
 
         {/* Title */}
@@ -63,7 +63,7 @@ export default function ShareCardRenderer({ card }: ShareCardRendererProps) {
       <div className="flex flex-col items-center gap-4 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 px-8 py-10 text-white">
         {/* Brand */}
         <p className="text-xs font-medium uppercase tracking-widest text-white/60">
-          parlasoul
+          ParlaSoul
         </p>
 
         {/* Character name */}
