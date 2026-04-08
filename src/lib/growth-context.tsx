@@ -33,6 +33,7 @@ interface GrowthContextType {
   isEntryPopupVisible: boolean;
   entryPopupData: GrowthPopup | null;
   closeEntryPopup: () => void;
+  openEntryPopup: () => Promise<void>;
   dismissEntryPopupForToday: () => void;
   refreshGrowthEntry: (options?: { autoOpenPopup?: boolean }) => Promise<void>;
 
@@ -209,6 +210,13 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
     setIsEntryPopupVisible(false);
   }, []);
 
+  const openEntryPopup = useCallback(async () => {
+    if (!entryPopupData) {
+      await refreshGrowthEntry();
+    }
+    setIsEntryPopupVisible(true);
+  }, [entryPopupData, refreshGrowthEntry]);
+
   const dismissEntryPopupForToday = useCallback(() => {
     if (todaySummary?.stat_date) {
       persistGrowthEntryDismissal(todaySummary.stat_date, user?.id);
@@ -256,6 +264,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
         isEntryPopupVisible,
         entryPopupData,
         closeEntryPopup,
+        openEntryPopup,
         dismissEntryPopupForToday,
         refreshGrowthEntry,
         updateTodaySummary,

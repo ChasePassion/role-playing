@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useGrowth } from "@/lib/growth-context";
 import type { CharacterStatus, CharacterVisibility, LLMProvider } from "@/lib/api";
 
 import { SettingsModal } from "./SettingsModal";
@@ -84,6 +85,7 @@ export default function Sidebar({
     isCollapsed = false,
 }: SidebarProps) {
     const { user, logout } = useAuth();
+    const { openEntryPopup } = useGrowth();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const pathname = usePathname();
     const isDiscoverActive = pathname === "/";
@@ -169,12 +171,29 @@ export default function Sidebar({
                         <div className="flex items-center justify-center shrink-0 w-8 h-10">
                             <Image src="/find.svg" alt="Discover" width={20} height={20} />
                         </div>
-                        <span 
+                        <span
                             className={`font-medium block min-w-[150px] transition-all duration-300 ease-in-out ${isCollapsed ? "opacity-0 ml-2" : "opacity-100 ml-3"}`}
                         >
                             发现
                         </span>
                     </Link>
+                </div>
+
+                <div className="px-2">
+                    <button
+                        type="button"
+                        onClick={() => void openEntryPopup()}
+                        className={`flex items-center w-full px-1 rounded-lg hover:bg-sidebar-hover transition-all duration-300 ease-in-out overflow-hidden outline-none h-10 text-text-primary text-left`}
+                    >
+                        <div className="flex items-center justify-center shrink-0 w-8 h-10">
+                            <Image src="/calender.svg" alt="Check-in Calendar" width={20} height={20} />
+                        </div>
+                        <span
+                            className={`font-medium block min-w-[150px] transition-all duration-300 ease-in-out ${isCollapsed ? "opacity-0 ml-2" : "opacity-100 ml-3"}`}
+                        >
+                            签到
+                        </span>
+                    </button>
                 </div>
             </section>
 
