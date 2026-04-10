@@ -8,6 +8,8 @@
   * 优先一次到位，避免肤浅回答和无谓澄清。
   * 永远使用UTF-8阅读文件,编辑文件的时候不要改变文件的编码格式，保持UTF-8编码。
   * 在你收到任务开始执行之前，都需要首先使用UTF-8阅读.agent文件夹下面的所有文件：并制定详细的执行计划，提供多个方案供我选择。
+  * 数据库文档范式固定为一式两份：`E:\code\parlasoul-backend\.agent\dataschema.md` 与 `E:\code\parlasoul-frontend\.agent\dataschema.md` 必须保持一致。
+  * 当需要更新数据库文档的时候，必须先在后端仓库运行 `conda run -n parlasoul python scripts/generate_database_doc.py` 刷新前后端两份 `.agent\dataschema.md`，然后阅读前后端真实代码更新 `E:\code\parlasoul-backend\docs\database\database-semantics.md`，再重新运行脚本；禁止只手改生成后的 `.agent\dataschema.md`。
   * 严格遵守Response.md中的错误码规范，不要随意创建新的错误码。
   * 当你需要给出方案或者用户向你询问建议的时候，你需要使用find-docs skill获取如Dify，Alibaba，Manus，Google，Microsoft等专业团队的最佳实践。
   * 命令行运行环境是Windows PowerShell，请注意路径分隔符的使用。
