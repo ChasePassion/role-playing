@@ -43,8 +43,6 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
   - 音色：[`voice_profiles`](#table-voice_profiles)
   - 成长系统：[`growth_user_stats`](#table-growth_user_stats) 等 5 张统计表
   - 订阅审计：[`subscription_webhook_events`](#table-subscription_webhook_events)
-- 当前非前端主链路 / 兼容遗留
-  - 当前旧验证码登录链路已经从代码库与数据库 schema 中移除，认证统一收敛到 `better-auth`。
 
 ### 3. 顶层框架
 
