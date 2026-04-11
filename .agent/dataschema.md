@@ -2,7 +2,7 @@
 
 本文档由脚本直接连接 PostgreSQL 实例并基于实时元数据生成。
 
-- 生成时间: `2026-04-10 23:53:42 北京时间`
+- 生成时间: `2026-04-11 07:37:02 北京时间`
 - 目标数据库: `localhost:5432/role_play_mem`
 - Schema: `public`
 - 表数量: `19`
@@ -43,6 +43,8 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
   - 音色：[`voice_profiles`](#table-voice_profiles)
   - 成长系统：[`growth_user_stats`](#table-growth_user_stats) 等 5 张统计表
   - 订阅审计：[`subscription_webhook_events`](#table-subscription_webhook_events)
+- 当前非前端主链路 / 兼容遗留
+  - 当前旧验证码登录链路已经从代码库与数据库 schema 中移除，认证统一收敛到 `better-auth`。
 
 ### 3. 顶层框架
 
@@ -688,6 +690,7 @@ sequenceDiagram
 <a id="table-account"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -737,6 +740,7 @@ sequenceDiagram
 <a id="table-alembic_version"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -768,6 +772,7 @@ sequenceDiagram
 <a id="table-candidates"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `已启用`（强制执行）
 
 ### 列
 
@@ -828,6 +833,7 @@ sequenceDiagram
 <a id="table-characters"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `已启用`（强制执行）
 
 ### 列
 
@@ -912,6 +918,7 @@ sequenceDiagram
 <a id="table-chats"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `已启用`（强制执行）
 
 ### 列
 
@@ -981,6 +988,7 @@ sequenceDiagram
 <a id="table-growth_character_daily_stats"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1039,6 +1047,7 @@ sequenceDiagram
 <a id="table-growth_character_stats"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1100,6 +1109,7 @@ sequenceDiagram
 <a id="table-growth_daily_stats"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1154,6 +1164,7 @@ sequenceDiagram
 <a id="table-growth_share_triggers"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1207,6 +1218,7 @@ sequenceDiagram
 <a id="table-growth_user_stats"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1248,6 +1260,7 @@ sequenceDiagram
 <a id="table-jwks"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1283,6 +1296,7 @@ sequenceDiagram
 <a id="table-saved_items"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `已启用`（强制执行）
 
 ### 列
 
@@ -1343,6 +1357,7 @@ sequenceDiagram
 <a id="table-session"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1392,6 +1407,7 @@ sequenceDiagram
 <a id="table-subscription_webhook_events"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1442,6 +1458,7 @@ sequenceDiagram
 <a id="table-turns"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `已启用`（强制执行）
 
 ### 列
 
@@ -1510,7 +1527,7 @@ sequenceDiagram
   大小: `40 kB`
   定义: `CREATE UNIQUE INDEX turns_chat_turn_no_uniq ON public.turns USING btree (chat_id, turn_no)`
 - `turns_parent_candidate_uniq` [UNIQUE]
-  大小: `32 kB`
+  大小: `40 kB`
   定义: `CREATE UNIQUE INDEX turns_parent_candidate_uniq ON public.turns USING btree (parent_candidate_id) WHERE (parent_candidate_id IS NOT NULL)`
   谓词: `parent_candidate_id IS NOT NULL`
 - `turns_pkey` [PRIMARY / UNIQUE]
@@ -1522,6 +1539,7 @@ sequenceDiagram
 <a id="table-user_settings"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `已启用`（强制执行）
 
 ### 列
 
@@ -1572,6 +1590,7 @@ sequenceDiagram
 <a id="table-users"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1655,6 +1674,7 @@ sequenceDiagram
 <a id="table-verification"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
@@ -1694,6 +1714,7 @@ sequenceDiagram
 <a id="table-voice_profiles"></a>
 
 - 类型: `BASE TABLE`
+- 行级安全: `未启用`
 
 ### 列
 
