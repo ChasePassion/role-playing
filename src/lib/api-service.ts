@@ -97,7 +97,7 @@ export type VoiceSourceType = "system" | "clone" | "designed" | "imported";
 export type VoiceStatus = "creating" | "processing" | "ready" | "failed" | "deleting" | "deleted";
 
 // Phase 4: LLM Model types
-export type LLMProvider = "deepseek" | "openrouter" | "xiaomi";
+export type LLMProvider = "deepseek" | "openrouter" | "xiaomi" | "glm";
 
 export interface CharacterLLMRoute {
   provider: LLMProvider;

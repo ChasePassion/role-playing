@@ -23,6 +23,7 @@ const PROVIDER_SEARCH_ALIASES: Record<LLMProvider, string[]> = {
   deepseek: ["deepseek", "deep seek", "ds", "深度求索"],
   openrouter: ["openrouter", "open router", "or"],
   xiaomi: ["xiaomi", "mi", "mimo", "mi mo", "小米", "小米mimo"],
+  glm: ["glm", "zhipu", "智谱"],
 };
 
 const MAX_LOCAL_SEARCH_RESULTS = 50;
@@ -43,6 +44,7 @@ export function getProviderLabel(provider: LLMProvider): string {
     deepseek: "DeepSeek",
     openrouter: "OpenRouter",
     xiaomi: "Xiaomi MiMo",
+    glm: "智谱",
   };
   return providerLabels[provider] || provider;
 }
