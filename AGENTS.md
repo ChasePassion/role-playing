@@ -31,6 +31,7 @@
   * 从结构角度出发思考问题修复问题，而不是一味地调整px
   * 修改文件内容的时候先阅读再修改
   * 不要只commit代码而忽略相关文档，必须考虑是否commit文档，文档是否commit取决于文档和本次将要commit的代码改动是否相关
+  * 当你需要更新.agent文件夹下面的E:\code\parlasoul-backend\.agent\dataschema.md文档的时候，首先需要更新E:\code\parlasoul-backend\docs\database\database-semantics.md文档，然后运行python scripts/generate_database_doc.py来更新这个文档
 ---
 
 ## 1 · 总体推理与规划框架（全局规则）
