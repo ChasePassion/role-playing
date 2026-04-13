@@ -1,0 +1,90 @@
+name: deploy-frontend-production
+
+on:
+  workflow_run:
+    workflows:
+      - publish-frontend-image
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      image_sha:
+        description: "Optional image SHA to deploy (defaults to the latest published workflow SHA)"
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-frontend-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://parlasoul.com
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
+      DEPLOY_ROOT: ${{ secrets.DEPLOY_ROOT }}
+      DEPLOY_HOST_KEY_FINGERPRINT: ${{ secrets.DEPLOY_HOST_KEY_FINGERPRINT }}
+      IMAGE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.event.inputs.image_sha }}
+    steps:
+      - name: Validate deployment inputs
+        run: |
+          set -euo pipefail
+          for key in DEPLOY_HOST DEPLOY_USER DEPLOY_PASSWORD DEPLOY_ROOT DEPLOY_HOST_KEY_FINGERPRINT; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required production secret: ${key}"
+              exit 1
+            fi
+          done
+
+          if [ -z "${IMAGE_SHA:-}" ]; then
+            echo "::error::IMAGE_SHA is empty"
+            exit 1
+          fi
+
+      - name: Install SSH client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openssh-client sshpass
+
+      - name: Pin production host key
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          ssh-keyscan -t ed25519 "$DEPLOY_HOST" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          ssh-keygen -lf "$HOME/.ssh/known_hosts" | grep -F "$DEPLOY_HOST_KEY_FINGERPRINT"
+
+      - name: Deploy frontend
+        run: |
+          set -euo pipefail
+          export FRONTEND_IMAGE="ghcr.io/chasepassion/parlasoul-frontend:sha-${IMAGE_SHA}"
+
+          sshpass -p "$DEPLOY_PASSWORD" ssh \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$DEPLOY_USER@$DEPLOY_HOST" /bin/bash <<EOF
+          set -euo pipefail
+          export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
+          cd "${DEPLOY_ROOT}"
+
+          docker pull "${FRONTEND_IMAGE}"
+          docker compose -f compose.yaml -f compose.production.yaml up -d frontend nginx
+
+          test "\$(docker inspect parlasoul-frontend-1 --format '{{index .Config.Labels \"org.opencontainers.image.revision\"}}')" = "${IMAGE_SHA}"
+          curl -fsS https://parlasoul.com/login >/dev/null
+          EOF
