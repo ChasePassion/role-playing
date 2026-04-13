@@ -22,7 +22,7 @@ RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN pnpm build
+RUN pnpm exec next build
 
 # Stage 3: lean runtime
 FROM node:20-alpine AS runner
