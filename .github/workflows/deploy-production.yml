@@ -57,6 +57,10 @@ jobs:
             echo "IMAGE_SHA=$(sanitize "${IMAGE_SHA}")"
           } >> "$GITHUB_ENV"
 
+          normalized_sha="$(sanitize "${IMAGE_SHA}")"
+          normalized_sha="${normalized_sha#sha-}"
+          echo "IMAGE_TAG=sha-${normalized_sha:0:7}" >> "$GITHUB_ENV"
+
       - name: Validate deployment inputs
         run: |
           set -euo pipefail
@@ -89,7 +93,7 @@ jobs:
       - name: Deploy frontend
         run: |
           set -euo pipefail
-          export FRONTEND_IMAGE="ghcr.io/chasepassion/parlasoul-frontend:sha-${IMAGE_SHA}"
+          export FRONTEND_IMAGE="ghcr.io/chasepassion/parlasoul-frontend:${IMAGE_TAG}"
 
           sshpass -p "$DEPLOY_PASSWORD" ssh \
             -o StrictHostKeyChecking=yes \
