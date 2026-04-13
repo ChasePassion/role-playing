@@ -107,7 +107,7 @@ jobs:
           cd "${DEPLOY_ROOT}"
 
           docker pull "${FRONTEND_IMAGE}"
-          FRONTEND_IMAGE="${FRONTEND_IMAGE}" docker compose -f compose.yaml -f compose.production.yaml up -d --force-recreate frontend nginx
+          FRONTEND_IMAGE="${FRONTEND_IMAGE}" docker compose -f compose.yaml -f compose.production.yaml up -d --force-recreate frontend
 
           deployed_revision="\$(docker inspect parlasoul-frontend-1 --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
           test "\${deployed_revision}" = "${IMAGE_SHA}"
