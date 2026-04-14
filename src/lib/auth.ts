@@ -10,6 +10,7 @@ import {
 import nodemailer from "nodemailer";
 import { Pool } from "pg";
 
+import { logEmailOtpEvent } from "./auth-email-otp-log";
 import { DODO_CHECKOUT_PRODUCTS } from "./billing-plans";
 import {
   getDodoPaymentsClient,
@@ -146,12 +147,21 @@ function normalizeDeliveryError(error: unknown): string {
 
 function queueEmailOtpDelivery(params: {
   email: string;
+  otpType: string;
   subject: string;
   html: string;
 }) {
-  const { email, subject, html } = params;
+  const { email, otpType, subject, html } = params;
   const config = getPurelymailConfig();
   const transporter = getPurelymailTransporter();
+  const startedAt = Date.now();
+
+  void logEmailOtpEvent({
+    event: "email_otp.delivery_queued",
+    message: "OTP email queued for background delivery",
+    email,
+    otpType,
+  });
 
   setTimeout(() => {
     void (async () => {
@@ -162,8 +172,25 @@ function queueEmailOtpDelivery(params: {
           subject,
           html,
         });
+
+        await logEmailOtpEvent({
+          event: "email_otp.delivery_sent",
+          message: "OTP email delivered to SMTP provider",
+          email,
+          otpType,
+          durationMs: Date.now() - startedAt,
+        });
       } catch (error) {
-        console.error("Failed to deliver OTP email:", normalizeDeliveryError(error));
+        const normalizedError = normalizeDeliveryError(error);
+        console.error("Failed to deliver OTP email:", normalizedError);
+        await logEmailOtpEvent({
+          event: "email_otp.delivery_failed",
+          message: "OTP email delivery failed",
+          email,
+          otpType,
+          durationMs: Date.now() - startedAt,
+          errorMessage: normalizedError,
+        });
       }
     })();
   }, 0);
@@ -290,6 +317,7 @@ function createAuth() {
 
           queueEmailOtpDelivery({
             email: normalizedEmail,
+            otpType: type,
             subject,
             html,
           });
