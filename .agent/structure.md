@@ -47,12 +47,12 @@ flowchart TD
 
     subgraph NextApp[Next.js App Router]
         Root --> PublicPages[公开页面<br/>/login /setup /pricing]
-        Root --> AppLayout[src/app/(app)/layout.tsx]
+        Root --> AppLayout["src/app/(app)/layout.tsx"]
         AppLayout --> AppFrame[AppFrame + Sidebar]
         AppLayout --> SidebarCtx[SidebarContext]
         AppLayout --> SettingsCtx[UserSettingsProvider]
         AppLayout --> GrowthCtx[GrowthProvider]
-        AppLayout --> ProtectedPages[受保护页面<br/>/ /chat/[id] /favorites /profile /billing /stats]
+        AppLayout --> ProtectedPages["受保护页面<br/>/ /chat/[id] /favorites /profile /billing /stats"]
     end
 
     subgraph UI[页面与组件层]
@@ -105,14 +105,14 @@ flowchart TD
         APIIndex --> GrowthAPI
         Billing --> BillingAPI
         ChatPage --> Audio
-        UI --> Adapters
+        Discover --> Adapters
     end
 
     subgraph RouteHandlers[前端内部 Route Handlers]
-        AuthRoute[/api/auth/*<br/>better-auth handler]
-        OTPRoute[/api/auth/email-otp-status]
-        ShareRoute[/api/share-card-image]
-        LogRoute[/api/logs]
+        AuthRoute["/api/auth/*"<br/>better-auth handler]
+        OTPRoute["/api/auth/email-otp-status"]
+        ShareRoute["/api/share-card-image"]
+        LogRoute["/api/logs"]
         BetterAuthClient --> AuthRoute
         PublicPages --> OTPRoute
         ProtectedPages --> ShareRoute
@@ -120,12 +120,12 @@ flowchart TD
     end
 
     subgraph Rewrites[Next.js Rewrite / 同源代理]
-        V1Rewrite[/v1/* -> backend]
-        UploadRewrite[/uploads/* -> backend]
-        HttpClient --> V1Rewrite
-        APIService --> V1Rewrite
-        UI --> UploadRewrite
+        V1Rewrite["/v1/* -> backend"]
+        UploadRewrite["/uploads/* -> backend"]
     end
+    HttpClient --> V1Rewrite
+    APIService --> V1Rewrite
+    UI --> UploadRewrite
 
     subgraph External[外部系统]
         Backend[ParlaSoul Backend<br/>/v1 + /uploads]
