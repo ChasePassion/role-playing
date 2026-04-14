@@ -95,6 +95,7 @@ export default function ChatPage() {
         onGrowthDailyUpdated: updateTodaySummary,
         onGrowthShareCardReady: enqueueShareCard,
     });
+
     const isConversationReadOnly = character?.status === "UNPUBLISHED";
     const readOnlyNotice = isConversationReadOnly
         ? "该角色已被作者下架，当前聊天仅支持查看历史记录。"
