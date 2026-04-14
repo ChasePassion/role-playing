@@ -17,8 +17,15 @@ function buildCacheKey(sourceUrl: string): string {
   return `${CACHE_KEY_PREFIX}:${digest}`;
 }
 
-function decodeCachedBody(payload: CachedShareCardImage): Uint8Array {
-  return Uint8Array.from(Buffer.from(payload.bodyBase64, "base64"));
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}
+
+function decodeCachedBody(payload: CachedShareCardImage): ArrayBuffer {
+  return toArrayBuffer(Buffer.from(payload.bodyBase64, "base64"));
 }
 
 function encodeBodyBase64(bytes: Uint8Array): string {
@@ -94,7 +101,7 @@ export async function GET(request: NextRequest) {
     EX: CACHE_TTL_SECONDS,
   });
 
-  return new NextResponse(bytes, {
+  return new NextResponse(toArrayBuffer(bytes), {
     status: 200,
     headers: {
       "Content-Type": contentType,

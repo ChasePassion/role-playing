@@ -164,19 +164,22 @@ export default function ShareCardDialog() {
   }, [assetKey, assetUrls, currentCard]);
 
   useEffect(() => {
-    if (
-      !currentCard ||
-      currentCard.kind !== "character_message_milestone" ||
-      !currentCard.character_milestone_payload?.character_id
-    ) {
+    const milestonePayload =
+      currentCard?.kind === "character_message_milestone"
+        ? currentCard.character_milestone_payload
+        : null;
+    const milestoneCharacterId = milestonePayload?.character_id ?? null;
+
+    if (!milestoneCharacterId) {
       setMilestoneFirstChatDate(null);
       return;
     }
 
+    const characterId: string = milestoneCharacterId;
+
     let cancelled = false;
 
     async function loadFirstChatDate() {
-      const characterId = currentCard.character_milestone_payload!.character_id;
       let cursor: string | undefined;
       let oldestCreatedAt: string | null = null;
 
