@@ -28,6 +28,10 @@ const ERROR_MESSAGE_MAP: Record<string, ErrorMapping> = {
   "500": { message: "服务器内部错误，请稍后重试", severity: "error" },
   "502": { message: "服务暂时不可用，请稍后重试", severity: "error" },
   "503": { message: "服务暂时不可用，请稍后重试", severity: "error" },
+  llm_service_error: {
+    message: "学习助手暂时无法回答，请稍后重试",
+    severity: "error",
+  },
 
   // 阿里云语音克隆错误码
   "Audio.DurationLimitError": {

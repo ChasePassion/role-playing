@@ -242,6 +242,8 @@ export const searchLLMModels = apiService.searchLLMModels.bind(apiService);
 export const createWordCard = apiService.createWordCard.bind(apiService);
 export const createReplyCard = apiService.createReplyCard.bind(apiService);
 export const createFeedbackCard = apiService.createFeedbackCard.bind(apiService);
+export const streamLearningAssistant =
+  apiService.streamLearningAssistant.bind(apiService);
 export const createSavedItemPhase3 = apiService.createSavedItemPhase3.bind(apiService);
 export const listSavedItemsPhase3 = apiService.listSavedItemsPhase3.bind(apiService);
 
@@ -318,6 +320,8 @@ export type {
   LLMModelCatalogResponse,
   LLMModelSearchResponse,
   // Phase 3 types
+  LearningAssistantContextMessage,
+  LearningAssistantStreamRequest,
   WordCard,
   WordCardGenerateRequest,
   WordCardSense,

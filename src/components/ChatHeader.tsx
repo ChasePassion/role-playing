@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Sparkles } from "lucide-react";
 import type { Character } from "./Sidebar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import ReadingRing from "@/components/growth/ReadingRing";
@@ -9,6 +10,8 @@ interface ChatHeaderProps {
     character?: Character | null;
     chatId?: string;
     onNewChat?: () => void;
+    onToggleAssistant?: () => void;
+    isAssistantOpen?: boolean;
     onToggleHistory?: () => void;
     isHistoryOpen?: boolean;
     isNewChatDisabled?: boolean;
@@ -19,6 +22,8 @@ export default function ChatHeader({
     character,
     chatId,
     onNewChat,
+    onToggleAssistant,
+    isAssistantOpen = false,
     onToggleHistory,
     isHistoryOpen = false,
     isNewChatDisabled = false,
@@ -59,6 +64,18 @@ export default function ChatHeader({
 
             <div className="flex items-center gap-2 shrink-0">
                 {chatId && <ReadingRing chatId={chatId} />}
+                <button
+                    type="button"
+                    onClick={onToggleAssistant}
+                    className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-colors ${
+                        isAssistantOpen
+                            ? "border-[#3964FE]/20 bg-[#3964FE]/10 text-[#3964FE]"
+                            : "border-divider bg-white text-gray-600 hover:bg-sidebar-hover"
+                    }`}
+                    aria-label="学习助手"
+                >
+                    <Sparkles className="h-[17px] w-[17px]" />
+                </button>
                 <button
                     type="button"
                     onClick={onNewChat}

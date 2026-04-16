@@ -14,6 +14,18 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface LearningAssistantContextMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface LearningAssistantStreamRequest {
+  question: string;
+  character_chat_context?: LearningAssistantContextMessage[];
+  assistant_chat_context?: LearningAssistantContextMessage[];
+  chat_id?: string;
+}
+
 export interface MemoryManageRequest {
   character_id: string;
   chat_id: string;
@@ -807,6 +819,27 @@ type ChatStreamEvent =
   | ChatStreamTtsAudioDeltaEvent
   | ChatStreamTtsAudioDoneEvent
   | ChatStreamTtsErrorEvent;
+
+interface LearningAssistantChunkEvent {
+  type: "chunk";
+  content: string;
+}
+
+interface LearningAssistantDoneEvent {
+  type: "done";
+  full_content: string;
+}
+
+interface LearningAssistantErrorEvent {
+  type: "error";
+  code?: string;
+  message?: string;
+}
+
+type LearningAssistantStreamEvent =
+  | LearningAssistantChunkEvent
+  | LearningAssistantDoneEvent
+  | LearningAssistantErrorEvent;
 
 export class ApiService {
   async uploadFile(file: File): Promise<{ url: string }> {
@@ -1719,6 +1752,97 @@ export class ApiService {
     }
 
     return response.arrayBuffer();
+  }
+
+  async streamLearningAssistant(
+    request: LearningAssistantStreamRequest,
+    handlers: {
+      signal?: AbortSignal;
+      onChunk: (content: string) => void;
+      onDone: (fullContent: string) => void;
+      onError: (error: Error) => void;
+    },
+  ): Promise<void> {
+    try {
+      const response = await fetchWithBetterAuth("/v1/learning/assistant/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify(request),
+        signal: handlers.signal,
+      });
+
+      if (!response.ok) {
+        return throwApiErrorResponse(response);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      const decoder = new TextDecoder();
+      let pending = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        pending += decoder.decode(value, { stream: true });
+        const lines = pending.split("\n");
+        pending = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+
+          const payload = trimmed.slice(5).trim();
+          if (!payload) continue;
+
+          try {
+            const data = JSON.parse(payload) as LearningAssistantStreamEvent;
+            if (data.type === "chunk") {
+              handlers.onChunk(data.content);
+            } else if (data.type === "done") {
+              handlers.onDone(data.full_content);
+            } else if (data.type === "error") {
+              handlers.onError(
+                new ApiError(
+                  500,
+                  data.code ?? "llm_service_error",
+                  data.message ?? "Unknown error",
+                ),
+              );
+            }
+          } catch {
+            // Ignore malformed stream rows.
+          }
+        }
+      }
+    } catch (error) {
+      if (
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError")
+      ) {
+        return;
+      }
+
+      if (error instanceof UnauthorizedError) {
+        handlers.onError(new Error(getErrorMessage(error)));
+        return;
+      }
+
+      if (error instanceof ApiError) {
+        handlers.onError(error);
+        return;
+      }
+
+      handlers.onError(
+        error instanceof Error ? error : new Error("Unknown error"),
+      );
+    }
   }
 
   async createWordCard(

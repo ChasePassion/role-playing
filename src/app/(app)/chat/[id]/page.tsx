@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useUserSettings } from "@/lib/user-settings-context";
+import type { Message } from "@/components/ChatMessage";
 import ChatHeader from "@/components/ChatHeader";
 import ChatInput from "@/components/ChatInput";
 import ChatHistorySidebar from "@/components/chat/ChatHistorySidebar";
 import ChatMainFrame from "@/components/layout/ChatMainFrame";
 import ChatThread from "@/components/chat/ChatThread";
+import LearningAssistantDialog from "@/components/LearningAssistantDialog";
 import { useSidebar } from "../../layout";
 import { useChatSession } from "@/hooks/useChatSession";
 import { TtsPlaybackManager } from "@/lib/voice/tts-playback-manager";
@@ -20,11 +22,43 @@ import {
     getRecentChat,
     updateChat,
     type ChatResponse,
+    type LearningAssistantContextMessage,
 } from "@/lib/api";
 import { useGrowth } from "@/lib/growth-context";
 import ShareCardDialog from "@/components/growth/ShareCardDialog";
 
 const SETTLED_FRAME_TARGET = 2;
+const LEARNING_ASSISTANT_CONTEXT_LIMIT = 20;
+
+function buildLearningAssistantContext(
+    messages: Message[],
+): LearningAssistantContextMessage[] {
+    const context: LearningAssistantContextMessage[] = [];
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        if (context.length >= LEARNING_ASSISTANT_CONTEXT_LIMIT) {
+            break;
+        }
+
+        const message = messages[index];
+        if (message.isTemp || (message.role !== "user" && message.role !== "assistant")) {
+            continue;
+        }
+
+        const content = message.content.trim();
+        if (!content) {
+            continue;
+        }
+
+        context.push({
+            role: message.role,
+            content,
+        });
+    }
+
+    context.reverse();
+    return context;
+}
 
 export default function ChatPage() {
     const params = useParams();
@@ -44,6 +78,7 @@ export default function ChatPage() {
     const [ttsLoadingCandidateId, setTtsLoadingCandidateId] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
     useEffect(() => {
@@ -99,6 +134,7 @@ export default function ChatPage() {
     const readOnlyNotice = isConversationReadOnly
         ? "该角色已被作者下架，当前聊天仅支持查看历史记录。"
         : null;
+    const learningAssistantContext = buildLearningAssistantContext(messages);
 
     const handleCreateNewChat = useCallback(async () => {
         if (!characterId || isStreaming || isConversationReadOnly) {
@@ -323,6 +359,8 @@ export default function ChatPage() {
                 character={character}
                 chatId={chatId}
                 onNewChat={() => void handleCreateNewChat()}
+                onToggleAssistant={() => setIsAssistantOpen((previous) => !previous)}
+                isAssistantOpen={isAssistantOpen}
                 onToggleHistory={() => setIsHistoryOpen((previous) => !previous)}
                 isHistoryOpen={isHistoryOpen}
                 isNewChatDisabled={!characterId || isStreaming || isConversationReadOnly}
@@ -410,6 +448,13 @@ export default function ChatPage() {
                 onSelectChat={handleSelectHistoryChat}
                 onRenameChat={handleRenameChat}
                 onDeleteChat={handleDeleteHistoryChat}
+            />
+
+            <LearningAssistantDialog
+                open={isAssistantOpen}
+                onOpenChange={setIsAssistantOpen}
+                chatContext={learningAssistantContext}
+                chatId={chatId}
             />
 
             <ShareCardDialog />
