@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode } from "react";
-import { SidebarToggleIcon } from "@/components/Sidebar";
 
 interface AppFrameProps {
     sidebar: ReactNode;
@@ -9,7 +8,6 @@ interface AppFrameProps {
     isSidebarOpen: boolean;
     isOverlay: boolean;
     onCloseSidebar: () => void;
-    onToggleSidebar: () => void;
 }
 
 export default function AppFrame({
@@ -18,11 +16,12 @@ export default function AppFrame({
     isSidebarOpen,
     isOverlay,
     onCloseSidebar,
-    onToggleSidebar,
 }: AppFrameProps) {
+    const shouldUseOverlay = isSidebarOpen && isOverlay;
+
     return (
         <div className="flex h-svh w-screen flex-col">
-            {isSidebarOpen && isOverlay && (
+            {shouldUseOverlay && (
                 <div
                     className="fixed inset-0 z-40 bg-black/50 transition-opacity"
                     onClick={onCloseSidebar}
@@ -33,8 +32,8 @@ export default function AppFrame({
                     <aside
                         className={`
                             shrink-0 h-full overflow-hidden transition-all duration-300 ease-in-out
-                            ${isOverlay ? "fixed left-0 top-0 z-50" : "relative"}
-                            ${isSidebarOpen ? "w-64" : "w-0 min-[800px]:w-14"}
+                            ${shouldUseOverlay ? "fixed left-0 top-0 z-50" : "relative"}
+                            ${isSidebarOpen ? "w-64" : "w-14"}
                         `}
                     >
                         {sidebar}
@@ -44,15 +43,6 @@ export default function AppFrame({
                         className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-workspace-bg"
                         style={{ backgroundColor: "var(--workspace-bg)" }}
                     >
-                        {!isSidebarOpen && (
-                            <button
-                                onClick={onToggleSidebar}
-                                className="absolute left-4 top-4 z-30 rounded-lg p-2 text-gray-500 hover:bg-gray-100 min-[800px]:hidden"
-                                aria-label="Open Sidebar"
-                            >
-                                <SidebarToggleIcon className="h-5 w-5" />
-                            </button>
-                        )}
                         {children}
                     </section>
                 </div>

@@ -124,7 +124,6 @@ export default function AppLayout({
                         isSidebarOpen={isSidebarOpen}
                         isOverlay={isOverlay}
                         onCloseSidebar={closeSidebar}
-                        onToggleSidebar={toggleSidebar}
                     >
                         {children}
                     </AppFrame>
