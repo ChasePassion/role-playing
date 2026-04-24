@@ -34,7 +34,7 @@
   * 当你需要更新.agent文件夹下面的E:\code\parlasoul-backend\.agent\dataschema.md文档的时候，首先需要更新E:\code\parlasoul-backend\docs\database\database-semantics.md文档，然后运行python scripts/generate_database_doc.py来更新这个文档
   * 后端代码库在E:code\parlasoul-backend
   * 服务器信息可在.env.local文件中看到，让服务器上面的配置文件和代码库的配置文件键集合一致，值按照环境维护
-  * 当需要创建原型的时候，直接在 src/app/prototype/ 下创建任何原型页面，比如
+  * 当需要创建原型的时候，做一个分类考虑，如果是一个简单的组件，那么直接使用html编写原型，放在这个文件夹下面：example，如果是一个完整独立的页面，那么直接在 src/app/prototype/ 下创建任何原型页面，比如
   src/app/prototype/xxx/page.tsx, 编写原型的时候需要使用shadcn/ui, 需要使用到logo，头像，icon等资产的时候，优先在项目里面查找然后使用，禁止mock已经存在的资源，同时编写原型界面的时候需要对接真实数据，可以在原型页面里直接 import { api } from "@/lib/api"，然后在 useEffect或事件处理里调接口，和正式页面写法完全一样。编写原型的时候所有的代码只能在 src/app/prototype/ 被编写，禁止影响项目代码。
   * 当用户要求你按照原型编写代码的时候，不要修改原型代码，也不要修改项目代码去适配原型，你要做的是实现原型呈现的ui和ux，同时不要直接复制代码，而是用更高质量的代码实现相同的ui和ux，禁止画蛇添足，不要实现原型里面不存在的ui和ux
 ---
