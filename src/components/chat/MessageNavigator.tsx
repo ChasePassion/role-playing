@@ -44,7 +44,7 @@ const COLLAPSED_WIDTH = 44;
 const EXPANDED_WIDTH = 240;
 const EDGE_OFFSET = 4;
 const HOVER_PREVIEW_DELAY = 600;
-const ITEM_HEIGHT = 28;
+
 const HIGHLIGHT_SYNC_TOP_OFFSET = 20;
 const CLICK_SCROLL_TOP_GAP = 16;
 const MIN_MESSAGES = 7;
@@ -524,7 +524,7 @@ export default function MessageNavigator({
       : navigationItems.find((item) => item.id === previewItemId) ?? null;
 
   const panelHeight = Math.min(
-    navigationItems.length * ITEM_HEIGHT,
+    navigationItems.length * 30,
     viewport.maxHeight,
     NAVIGATOR_MAX_HEIGHT
   );
@@ -631,7 +631,7 @@ export default function MessageNavigator({
                   onClick={() => scrollToMessage(item.id)}
                   onMouseEnter={(event) => handleItemEnter(index, item, event)}
                   className={cn(
-                    "group relative flex h-[34px] w-full items-center rounded-[14px] text-left outline-none transition-colors duration-150",
+                    "group relative flex h-[30px] w-full items-center rounded-[14px] text-left outline-none transition-colors duration-150",
                     isCurrent
                       ? "bg-transparent"
                       : showHoveredState
