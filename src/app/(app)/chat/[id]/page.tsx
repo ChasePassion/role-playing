@@ -42,6 +42,11 @@ const SETTLED_FRAME_TARGET = 2;
 const LEARNING_ASSISTANT_CONTEXT_LIMIT = 20;
 const OLDER_MESSAGES_ROOT_MARGIN = "24px 0px 0px 0px";
 const CHAT_TURN_SELECTOR = "[data-turn-id]";
+const REALTIME_TURNS_RELOAD_DEBOUNCE_MS = 500;
+
+interface ReloadChatTurnsOptions {
+    requiredTurnIds?: Array<string | null | undefined>;
+}
 
 interface OlderMessagesRestoreSnapshot {
     previousScrollTop: number;
@@ -153,27 +158,114 @@ export default function ChatPage() {
         onGrowthShareCardReady: enqueueShareCard,
     });
 
+    const realtimeReloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const realtimeReloadInFlightRef = useRef<Promise<void> | null>(null);
+    const pendingRealtimeTurnIdsRef = useRef<Set<string>>(new Set());
+
+    const flushRealtimeChatTurnsReload = useCallback(async (options?: { force?: boolean }) => {
+        if (realtimeReloadTimerRef.current) {
+            clearTimeout(realtimeReloadTimerRef.current);
+            realtimeReloadTimerRef.current = null;
+        }
+
+        let shouldForceReload = options?.force ?? false;
+
+        while (true) {
+            if (realtimeReloadInFlightRef.current) {
+                await realtimeReloadInFlightRef.current;
+                continue;
+            }
+
+            const requiredTurnIds = Array.from(pendingRealtimeTurnIdsRef.current);
+            pendingRealtimeTurnIdsRef.current.clear();
+
+            if (!shouldForceReload && requiredTurnIds.length === 0) {
+                return;
+            }
+
+            const reloadOptions: ReloadChatTurnsOptions | undefined = requiredTurnIds.length
+                ? { requiredTurnIds }
+                : undefined;
+
+            const promise = reloadChatTurns(reloadOptions).finally(() => {
+                realtimeReloadInFlightRef.current = null;
+            });
+
+            realtimeReloadInFlightRef.current = promise;
+            shouldForceReload = false;
+            await promise;
+
+            if (pendingRealtimeTurnIdsRef.current.size === 0) {
+                return;
+            }
+        }
+    }, [reloadChatTurns]);
+
+    const scheduleRealtimeChatTurnsReload = useCallback((options?: ReloadChatTurnsOptions) => {
+        options?.requiredTurnIds?.forEach((turnId) => {
+            if (turnId) {
+                pendingRealtimeTurnIdsRef.current.add(turnId);
+            }
+        });
+
+        if (realtimeReloadTimerRef.current) {
+            clearTimeout(realtimeReloadTimerRef.current);
+        }
+
+        realtimeReloadTimerRef.current = setTimeout(() => {
+            realtimeReloadTimerRef.current = null;
+            void flushRealtimeChatTurnsReload().catch((err) => {
+                console.error("Failed to refresh realtime chat turns:", err);
+            });
+        }, REALTIME_TURNS_RELOAD_DEBOUNCE_MS);
+    }, [flushRealtimeChatTurnsReload]);
+
+    useEffect(() => {
+        const pendingRealtimeTurnIds = pendingRealtimeTurnIdsRef.current;
+
+        return () => {
+            if (realtimeReloadTimerRef.current) {
+                clearTimeout(realtimeReloadTimerRef.current);
+                realtimeReloadTimerRef.current = null;
+            }
+            pendingRealtimeTurnIds.clear();
+        };
+    }, [chatId]);
+
     const realtimeSession = useRealtimeVoiceSession({
         chatId,
         characterId: character?.id ?? null,
         translationEnabled: true,
         onSessionEnded: async () => {
-            await reloadChatTurns();
+            await flushRealtimeChatTurnsReload({ force: true });
             void refreshSidebarCharacters().catch((err) => {
                 console.error("Failed to refresh sidebar after realtime session:", err);
             });
         },
-        onConversationEvent: async (event) => {
+        onConversationEvent: (event) => {
+            if (event.chat_id !== chatId) {
+                return;
+            }
+
             shouldAutoScrollRef.current = true;
             if (event.type === "conversation.turn.created") {
-                await reloadChatTurns({
+                scheduleRealtimeChatTurnsReload({
                     requiredTurnIds: [event.user_turn_id],
                 });
                 return;
             }
-            await reloadChatTurns({
-                requiredTurnIds: [event.assistant_turn_id],
-            });
+            if (event.type === "conversation.turn.updated" && event.is_final) {
+                scheduleRealtimeChatTurnsReload({
+                    requiredTurnIds: [event.assistant_turn_id],
+                });
+                return;
+            }
+            if (event.type === "conversation.turn.failed") {
+                scheduleRealtimeChatTurnsReload({
+                    requiredTurnIds: [event.assistant_turn_id],
+                });
+                return;
+            }
         },
     });
 

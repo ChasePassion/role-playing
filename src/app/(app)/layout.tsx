@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext, useCallback } from "react";
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, isProfileComplete } from "@/lib/auth-context";
 import { getSidebarCharacters } from "@/lib/api";
@@ -87,6 +94,28 @@ export default function AppLayout({
         }
     };
 
+    const sidebarContextValue = useMemo(
+        () => ({
+            isSidebarOpen,
+            isOverlay,
+            toggleSidebar,
+            closeSidebar,
+            sidebarCharacters,
+            selectedCharacterId,
+            setSelectedCharacterId,
+            refreshSidebarCharacters,
+        }),
+        [
+            isSidebarOpen,
+            isOverlay,
+            toggleSidebar,
+            closeSidebar,
+            sidebarCharacters,
+            selectedCharacterId,
+            refreshSidebarCharacters,
+        ],
+    );
+
     // Show loading state while checking auth
     if (isAuthLoading || !user) {
         return (
@@ -99,18 +128,7 @@ export default function AppLayout({
     return (
         <UserSettingsProvider>
             <GrowthProvider>
-                <SidebarContext.Provider
-                    value={{
-                        isSidebarOpen,
-                        isOverlay,
-                        toggleSidebar,
-                        closeSidebar,
-                        sidebarCharacters,
-                        selectedCharacterId,
-                        setSelectedCharacterId,
-                        refreshSidebarCharacters,
-                    }}
-                >
+                <SidebarContext.Provider value={sidebarContextValue}>
                     <AppFrame
                         sidebar={
                             <Sidebar

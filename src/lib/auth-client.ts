@@ -6,4 +6,7 @@ import { emailOTPClient, jwtClient } from "better-auth/client/plugins";
 
 export const authClient = createAuthClient({
   plugins: [emailOTPClient(), jwtClient(), dodopaymentsClient()],
+  sessionOptions: {
+    refetchOnWindowFocus: false,
+  },
 });

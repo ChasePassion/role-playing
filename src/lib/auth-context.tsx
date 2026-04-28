@@ -85,58 +85,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     }, [refreshEntitlements, userId]);
 
-    const login = async (email: string, code: string) => {
-        const result = await authClient.signIn.emailOtp({
-            email,
-            otp: code,
-        });
+    const login = useCallback(
+        async (email: string, code: string) => {
+            const result = await authClient.signIn.emailOtp({
+                email,
+                otp: code,
+            });
 
-        if (result.error) {
-            throw new Error(result.error.message || "验证码登录失败");
-        }
+            if (result.error) {
+                throw new Error(result.error.message || "验证码登录失败");
+            }
 
-        clearBetterAuthJwt();
-        await refetch();
-    };
+            clearBetterAuthJwt();
+            await refetch();
+        },
+        [refetch],
+    );
 
-    const logout = async () => {
-        const result = await authClient.signOut();
-        if (result.error) {
-            throw new Error(result.error.message || "退出登录失败");
-        }
+    const logout = useCallback(
+        async () => {
+            const result = await authClient.signOut();
+            if (result.error) {
+                throw new Error(result.error.message || "退出登录失败");
+            }
 
-        clearBetterAuthJwt();
-        entitlementsRequestIdRef.current += 1;
-        setEntitlements(null);
-        setIsEntitlementsLoading(false);
-        await refetch();
-    };
+            clearBetterAuthJwt();
+            entitlementsRequestIdRef.current += 1;
+            setEntitlements(null);
+            setIsEntitlementsLoading(false);
+            await refetch();
+        },
+        [refetch],
+    );
 
-    const refreshUser = async () => {
-        clearBetterAuthJwt();
-        const result = await authClient.getSession();
-        if (result.error) {
-            throw new Error(result.error.message || "刷新用户信息失败");
-        }
+    const refreshUser = useCallback(
+        async () => {
+            clearBetterAuthJwt();
+            const result = await authClient.getSession();
+            if (result.error) {
+                throw new Error(result.error.message || "刷新用户信息失败");
+            }
 
-        await refetch();
-        await refreshEntitlements();
-    };
+            await refetch();
+            await refreshEntitlements();
+        },
+        [refetch, refreshEntitlements],
+    );
+
+    const authContextValue = useMemo(
+        () => ({
+            user,
+            entitlements,
+            isAuthed,
+            isLoading: isPending,
+            isEntitlementsLoading,
+            login,
+            logout,
+            refreshUser,
+            refreshEntitlements,
+        }),
+        [
+            user,
+            entitlements,
+            isAuthed,
+            isPending,
+            isEntitlementsLoading,
+            login,
+            logout,
+            refreshUser,
+            refreshEntitlements,
+        ],
+    );
 
     return (
-        <AuthContext.Provider
-            value={{
-                user,
-                entitlements,
-                isAuthed,
-                isLoading: isPending,
-                isEntitlementsLoading,
-                login,
-                logout,
-                refreshUser,
-                refreshEntitlements,
-            }}
-        >
+        <AuthContext.Provider value={authContextValue}>
             {children}
         </AuthContext.Provider>
     );

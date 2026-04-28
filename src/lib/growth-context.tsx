@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -257,26 +258,45 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
 
   const makeupCardBalance = todaySummary?.makeup_card_balance ?? 0;
 
+  const growthContextValue = useMemo(
+    () => ({
+      todaySummary,
+      isEntryPopupVisible,
+      entryPopupData,
+      closeEntryPopup,
+      openEntryPopup,
+      dismissEntryPopupForToday,
+      refreshGrowthEntry,
+      updateTodaySummary,
+      pendingShareCards,
+      enqueueShareCard,
+      dismissShareCard,
+      makeupCardBalance,
+      calendarMonth,
+      updateCalendarDay,
+      updateMakeupCardBalance,
+    }),
+    [
+      todaySummary,
+      isEntryPopupVisible,
+      entryPopupData,
+      closeEntryPopup,
+      openEntryPopup,
+      dismissEntryPopupForToday,
+      refreshGrowthEntry,
+      updateTodaySummary,
+      pendingShareCards,
+      enqueueShareCard,
+      dismissShareCard,
+      makeupCardBalance,
+      calendarMonth,
+      updateCalendarDay,
+      updateMakeupCardBalance,
+    ],
+  );
+
   return (
-    <GrowthContext.Provider
-      value={{
-        todaySummary,
-        isEntryPopupVisible,
-        entryPopupData,
-        closeEntryPopup,
-        openEntryPopup,
-        dismissEntryPopupForToday,
-        refreshGrowthEntry,
-        updateTodaySummary,
-        pendingShareCards,
-        enqueueShareCard,
-        dismissShareCard,
-        makeupCardBalance,
-        calendarMonth,
-        updateCalendarDay,
-        updateMakeupCardBalance,
-      }}
-    >
+    <GrowthContext.Provider value={growthContextValue}>
       {children}
     </GrowthContext.Provider>
   );
