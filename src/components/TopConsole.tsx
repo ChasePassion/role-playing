@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { Input } from "@/components/ui/input";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { CharacterResponse } from "@/lib/api-service";
 import { resolveCharacterAvatarSrc } from "@/lib/character-avatar";
@@ -108,7 +108,7 @@ export default function TopConsole({
           }`}
         >
           <div className="pl-3 pr-2 flex items-center justify-center text-black/40">
-            <Image src="/search.svg" alt="Search" width={18} height={18} />
+            <SpriteIcon name="search" size={18} className="text-black/40" />
           </div>
           <Input
             ref={searchInputRef}

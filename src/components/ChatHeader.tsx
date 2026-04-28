@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { Sparkles } from "lucide-react";
 import type { Character } from "./Sidebar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import ReadingRing from "@/components/growth/ReadingRing";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 
 interface ChatHeaderProps {
     character?: Character | null;
@@ -83,12 +83,7 @@ export default function ChatHeader({
                     className="h-9 w-9 flex items-center justify-center rounded-lg border border-divider bg-white hover:bg-sidebar-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     aria-label="新建聊天"
                 >
-                    <Image
-                        src="/icons/edit-square-3a5c87.svg"
-                        alt=""
-                        width={18}
-                        height={18}
-                    />
+                    <SpriteIcon name="edit-square" size={18} />
                 </button>
                 <button
                     type="button"
@@ -100,12 +95,7 @@ export default function ChatHeader({
                     }`}
                     aria-label="历史记录"
                 >
-                    <Image
-                        src="/history.svg"
-                        alt=""
-                        width={18}
-                        height={18}
-                    />
+                    <SpriteIcon name="history" size={18} />
                 </button>
             </div>
         </div>

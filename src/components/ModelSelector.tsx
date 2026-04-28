@@ -6,6 +6,7 @@ import { Check, Loader2, AlertCircle, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getLLMModelCatalog } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-map";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 import {
   groupModelsByProvider,
   getProviderLabel,
@@ -172,13 +173,7 @@ export default function ModelSelector({
           onClick={loadModels}
           className="p-1 hover:bg-red-100 rounded-md transition-colors"
         >
-          <Image
-            src="/icons/refresh-ec66f0.svg"
-            alt="重试"
-            width={20}
-            height={20}
-            className="text-red-600"
-          />
+          <SpriteIcon name="refresh" size={20} className="text-red-600" />
         </button>
       </div>
     );
@@ -211,13 +206,7 @@ export default function ModelSelector({
             {currentSelection?.label || "选择模型"}
           </p>
         </div>
-        <Image
-          src="/icons/chevron-left-8ee2e9.svg"
-          alt=""
-          width={20}
-          height={20}
-          className={`text-gray-400 transition-transform ${isOpen ? "-rotate-90" : "rotate-180"}`}
-        />
+        <SpriteIcon name="chevron-left" size={20} className={`text-gray-400 transition-transform ${isOpen ? "-rotate-90" : "rotate-180"}`} />
       </button>
 
       {isOpen && (

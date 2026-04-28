@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, KeyboardEvent } from "react";
-import Image from "next/image";
 import { LoaderCircle } from "lucide-react";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 import ReplySuggestionsBar from "./ReplySuggestionsBar";
 import { SttRecorder } from "@/lib/voice/stt-recorder";
 import type { ReplySuggestion } from "@/lib/api";
@@ -658,14 +658,7 @@ export default function ChatInput({
                                                 data-state="closed"
                                                 onClick={() => showNotice("功能开发中")}
                                             >
-                                                <Image
-                                                    src="/icons/desktop-6be74c.svg"
-                                                    width="20"
-                                                    height="20"
-                                                    aria-hidden="true"
-                                                    className="icon"
-                                                    alt=""
-                                                />
+                                                <SpriteIcon name="desktop" size={20} />
                                             </button>
                                         </span>
                                     )}
@@ -688,14 +681,7 @@ export default function ChatInput({
                                                             onClick={handleMicClick}
                                                             disabled={disabled}
                                                         >
-                                                            <Image
-                                                                src="/icons/close-29f921.svg"
-                                                                width="20"
-                                                                height="20"
-                                                                aria-label=""
-                                                                className="icon"
-                                                                alt=""
-                                                            />
+                                                            <SpriteIcon name="close" size={20} />
                                                         </button>
                                                     </span>
                                                 )}
@@ -769,14 +755,7 @@ export default function ChatInput({
                                                                         }}
                                                                     >
                                                                         {hasText ? (
-                                                                            <Image
-                                                                                src="/icons/laptop-01bab7.svg"
-                                                                                width="20"
-                                                                                height="20"
-                                                                                aria-hidden="true"
-                                                                                className="h-5 w-5 brightness-0 invert"
-                                                                                alt=""
-                                                                            />
+                                                                            <SpriteIcon name="laptop" size={20} className="brightness-0 invert" />
                                                                         ) : isVoiceConnecting ? (
                                                                             <span className="flex items-center gap-2 whitespace-nowrap">
                                                                                 <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" />
@@ -789,23 +768,9 @@ export default function ChatInput({
                                                                                 getAnalyserNode={getRealtimeMicAnalyserNode}
                                                                             />
                                                                         ) : isVoiceActive ? (
-                                                                            <Image
-                                                                                src="/hangup.svg"
-                                                                                width="24"
-                                                                                height="24"
-                                                                                aria-hidden="true"
-                                                                                className="h-6 w-6"
-                                                                                alt=""
-                                                                            />
+                                                                            <SpriteIcon name="hangup" size={24} className="h-6 w-6" />
                                                                         ) : (
-                                                                            <Image
-                                                                                src="/icons/sliders-f8aa74.svg"
-                                                                                width="20"
-                                                                                height="20"
-                                                                                aria-hidden="true"
-                                                                                className="h-5 w-5 brightness-0 invert"
-                                                                                alt=""
-                                                                            />
+                                                                            <SpriteIcon name="sliders" size={20} className="brightness-0 invert" />
                                                                         )}
                                                                     </button>
                                                                 )}
@@ -827,13 +792,7 @@ export default function ChatInput({
                                                     aria-label="取消录音"
                                                 >
                                                     <span className="text-token-text-secondary flex items-center justify-center">
-                                                        <Image
-                                                            src="/icons/close-recording-85f94b.svg"
-                                                            width={20}
-                                                            height={20}
-                                                            alt=""
-                                                            className="icon"
-                                                        />
+                                                        <SpriteIcon name="close-recording" size={20} />
                                                     </span>
                                                 </button>
 
@@ -846,13 +805,7 @@ export default function ChatInput({
                                                     aria-label="确认录音"
                                                 >
                                                     <span className="text-white flex items-center justify-center">
-                                                        <Image
-                                                            src="/icons/check-recording-fa1dbd.svg"
-                                                            width={20}
-                                                            height={20}
-                                                            alt=""
-                                                            className="h-5 w-5 brightness-0 invert"
-                                                        />
+                                                        <SpriteIcon name="check-recording" size={20} className="brightness-0 invert" />
                                                     </span>
                                                 </button>
                                             </>
@@ -976,13 +929,7 @@ function VoiceSpeakingGlyph({
 function MicCaptureStatusGlyph({ muted }: { muted: boolean }) {
     return (
         <span className="relative flex h-5 w-5 items-center justify-center" aria-hidden="true">
-            <Image
-                src="/icons/close-29f921.svg"
-                width="20"
-                height="20"
-                className="h-5 w-5"
-                alt=""
-            />
+            <SpriteIcon name="close" size={20} className="h-5 w-5" />
             {muted ? (
                 <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <span className="h-px w-5 rotate-[45deg] rounded-full bg-current" />

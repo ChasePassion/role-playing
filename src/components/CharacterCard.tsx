@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { Character } from "./Sidebar";
 import { MoreHorizontal } from "lucide-react";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 import { CHARACTER_CARD_VISIBLE_TAGS, normalizeCharacterTag } from "@/lib/character-tags";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -83,7 +84,7 @@ export default function CharacterCard({
                   ? `${(character.distinct_user_count / 1000).toFixed(1)}k`
                   : String(character.distinct_user_count)
                 : '-'}
-              <svg width="14" height="14" viewBox="0 0 1024 1024" style={{ color: 'currentColor' }}><path d="M512 838c-39.98 0-78.592-5.132-115.02-14.686-23.648-6.2-88.642 15.36-194.98 64.686 28.444-92.068 35.188-144.976 20.232-158.724C153.926 666.49 112 581.53 112 488c0-193.3 179.086-350 400-350s400 156.7 400 350-179.086 350-400 350z m-159-304c24.852 0 45-20.148 45-45S377.852 444 353 444 308 464.148 308 489s20.148 45 45 45z m160 0c24.852 0 45-20.148 45-45S537.852 444 513 444 468 464.148 468 489s20.148 45 45 45z m160 0c24.852 0 45-20.148 45-45S697.852 444 673 444 628 464.148 628 489s20.148 45 45 45z" fill="currentColor"></path></svg>
+              <SpriteIcon name="chat-bubble" size={14} className="text-current" />
             </span>
           </div>
 
@@ -163,7 +164,7 @@ export default function CharacterCard({
                 onSelect={() => onEdit?.(character)}
                 className="w-full py-2 px-[10px] flex items-center gap-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-(--cc-dropdown-item-hover) focus:bg-(--cc-dropdown-item-hover) focus:outline-none"
               >
-                <Image src="/edit.svg" alt="Edit" width={16} height={16} />
+                <SpriteIcon name="edit" size={16} />
                 <span className="text-sm text-gray-700">编辑</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -172,13 +173,7 @@ export default function CharacterCard({
                 }}
                 className="w-full py-2 px-[10px] flex items-center gap-2 rounded-lg bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-(--cc-dropdown-item-danger-hover) focus:bg-(--cc-dropdown-item-danger-hover) focus:outline-none text-red-600 focus:text-red-600 data-highlighted:text-red-600 hover:text-red-600"
               >
-                <Image
-                  src="/delete.svg"
-                  alt="Delete"
-                  width={16}
-                  height={16}
-                  style={{ filter: "invert(16%) sepia(96%) saturate(6932%) hue-rotate(357deg) brightness(90%) contrast(125%)" }}
-                />
+                <SpriteIcon name="delete" size={16} className="text-red-600" />
                 <span className="text-sm">下架</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

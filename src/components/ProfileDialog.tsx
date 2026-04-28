@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import Image from "next/image";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +65,7 @@ export default function ProfileDialog({
                     onClick={handleNavigateToProfile}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
                 >
-                    <Image src="/me.svg" alt="Profile" width={20} height={20} className="shrink-0" />
+                    <SpriteIcon name="me" size={20} className="shrink-0" />
                     <span className="text-sm font-medium text-gray-700">个人资料</span>
                 </DropdownMenuItem>
 
@@ -73,7 +73,7 @@ export default function ProfileDialog({
                     onClick={handleOpenSettings}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
                 >
-                    <Image src="/setting.svg" alt="Settings" width={20} height={20} className="shrink-0" />
+                    <SpriteIcon name="setting" size={20} className="shrink-0" />
                     <span className="text-sm font-medium text-gray-700">设置</span>
                 </DropdownMenuItem>
 
@@ -81,7 +81,7 @@ export default function ProfileDialog({
                     onClick={handleOpenFavorites}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
                 >
-                    <Image src="/mark.svg" alt="Favorites" width={20} height={20} className="shrink-0" />
+                    <SpriteIcon name="mark" size={20} className="shrink-0" />
                     <span className="text-sm font-medium text-gray-700">收藏夹</span>
                 </DropdownMenuItem>
 
@@ -91,7 +91,7 @@ export default function ProfileDialog({
                     onClick={handleLogout}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent text-destructive"
                 >
-                    <Image src="/out.svg" alt="Logout" width={20} height={20} className="shrink-0" />
+                    <SpriteIcon name="out" size={20} className="shrink-0" />
                     <span className="text-sm font-medium">退出登录</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { InputTransform, ReplyCard, ReplySuggestion, DisplayMode } from "@/lib/api";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 
 export type MessageActionStatus = "idle" | "loading" | "ready" | "error";
 export type MessageStreamStatus = "idle" | "streaming" | "done" | "error";
@@ -89,12 +90,6 @@ export default function ChatMessage({
     messageActionProfile = "text",
 }: ChatMessageProps) {
     const userActionRowHideDelayMs = 500;
-    const chevronLeftIcon = "/icons/chevron-left-8ee2e9.svg";
-    const duplicateIcon = "/icons/duplicate-ce3544.svg";
-    const checkIcon = "/icons/check-recording-fa1dbd.svg";
-    const editIcon = "/icons/edit-6d87e1.svg";
-    const ideaIcon = "/icons/os-icon-idea.svg";
-    const replyCardIcon = "/book.svg";
 
     const branchButtonClass =
         "text-token-text-secondary hover:bg-token-bg-secondary rounded-md disabled:opacity-50";
@@ -113,24 +108,9 @@ export default function ChatMessage({
     const [isUserMessageHovering, setIsUserMessageHovering] = useState(false);
     const [isTouchLikeDevice, setIsTouchLikeDevice] = useState(false);
     const isActionRowVisible = !isUser || isTouchLikeDevice || isUserMessageHovering;
-    const renderActionIcon = (iconSrc: string, className = "", size: "branch" | "action" = "action") => (
+    const renderActionIcon = (iconName: string, className = "", size: "branch" | "action" = "action") => (
         <span className={`flex items-center justify-center ${size === "branch" ? "h-[30px] w-[24px]" : "h-8 w-8"}`}>
-            <span
-                aria-hidden="true"
-                className={`inline-block h-5 w-5 shrink-0 ${className}`}
-                style={{
-                    backgroundColor: "#5D5D5D",
-                    WebkitMaskImage: `url(${iconSrc})`,
-                    maskImage: `url(${iconSrc})`,
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskPosition: "center",
-                    maskPosition: "center",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                }}
-                data-icon-src={iconSrc}
-            />
+            <SpriteIcon name={iconName} size={20} className={`text-[#5D5D5D] ${className}`} />
         </span>
     );
     const renderLoadingSpinner = () => (
@@ -477,7 +457,7 @@ export default function ChatMessage({
                                         disabled={actionsDisabled || k <= 1}
                                         aria-label="上一分支"
                                     >
-                                        {renderActionIcon(chevronLeftIcon, "", "branch")}
+                                        {renderActionIcon("chevron-left", "", "branch")}
                                     </button>
                                     <div className="px-0.5 text-sm font-semibold tabular-nums text-text-secondary">
                                         {k}/{n}
@@ -493,7 +473,7 @@ export default function ChatMessage({
                                         }
                                         aria-label="下一分支"
                                     >
-                                        {renderActionIcon(chevronLeftIcon, "rotate-180", "branch")}
+                                        {renderActionIcon("chevron-left", "rotate-180", "branch")}
                                     </button>
                                 </div>
                             )}
@@ -508,7 +488,7 @@ export default function ChatMessage({
                                     disabled={actionsDisabled || !message.content}
                                     aria-label="复制原文"
                                 >
-                                    {renderActionIcon(isCopySuccess ? checkIcon : duplicateIcon)}
+                                    {renderActionIcon(isCopySuccess ? "check-recording" : "duplicate")}
                                 </button>
                             )}
 
@@ -522,7 +502,7 @@ export default function ChatMessage({
                                 >
                                     {feedbackStatus === "loading"
                                         ? renderLoadingSpinner()
-                                        : renderActionIcon(ideaIcon)}
+                                        : renderActionIcon("idea")}
                                 </button>
                             )}
 
@@ -534,7 +514,7 @@ export default function ChatMessage({
                                     disabled={actionsDisabled || editDisabled || n >= 10}
                                     aria-label="编辑"
                                 >
-                                    {renderActionIcon(editIcon)}
+                                    {renderActionIcon("edit")}
                                 </button>
                             )}
 
@@ -555,7 +535,7 @@ export default function ChatMessage({
                                 >
                                     {replyCardStatus === "loading"
                                         ? renderLoadingSpinner()
-                                        : renderActionIcon(replyCardIcon)}
+                                        : renderActionIcon("book")}
                                 </button>
                             )}
 

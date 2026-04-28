@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CreditCard } from "lucide-react";
@@ -99,7 +99,7 @@ export default function Sidebar({
                 onClick={() => { window.location.href = "/profile"; }}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
-                <Image src="/me.svg" alt="Profile" width={20} height={20} />
+                <SpriteIcon name="me" size={20} />
                 <span className="text-sm font-medium text-gray-700">个人资料</span>
             </DropdownMenuItem>
 
@@ -107,7 +107,7 @@ export default function Sidebar({
                 onClick={() => setIsSettingsOpen(true)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
-                <Image src="/setting.svg" alt="Settings" width={20} height={20} />
+                <SpriteIcon name="setting" size={20} />
                 <span className="text-sm font-medium text-gray-700">设置</span>
             </DropdownMenuItem>
 
@@ -115,7 +115,7 @@ export default function Sidebar({
                 onClick={() => { window.location.href = "/favorites"; }}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
-                <Image src="/mark.svg" alt="Favorites" width={20} height={20} />
+                <SpriteIcon name="mark" size={20} />
                 <span className="text-sm font-medium text-gray-700">收藏夹</span>
             </DropdownMenuItem>
 
@@ -134,7 +134,7 @@ export default function Sidebar({
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <div className="flex h-[20px] w-[20px] items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+                    <SpriteIcon name="bar-chart" size={18} className="text-gray-700" />
                 </div>
                 <span className="text-sm font-medium text-gray-700">数据总览</span>
             </DropdownMenuItem>
@@ -153,7 +153,7 @@ export default function Sidebar({
                 }}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
-                <Image src="/out.svg" alt="Logout" width={20} height={20} />
+                <SpriteIcon name="out" size={20} />
                 <span className="text-sm font-medium text-gray-700">退出登录</span>
             </DropdownMenuItem>
         </>
@@ -169,7 +169,7 @@ export default function Sidebar({
                         className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-sidebar-hover text-gray-500 shrink-0 outline-none"
                         aria-label="Toggle Sidebar"
                     >
-                        <Image src="/sidebar.svg" alt="Toggle Sidebar" width={16} height={16} />
+                        <SpriteIcon name="sidebar" size={16} />
                     </button>
                 </div>
 
@@ -181,7 +181,7 @@ export default function Sidebar({
                         } text-text-primary`}
                     >
                         <div className="flex items-center justify-center shrink-0 w-8 h-10">
-                            <Image src="/find.svg" alt="Discover" width={20} height={20} />
+                            <SpriteIcon name="find" size={20} />
                         </div>
                         <span
                             className={`font-medium block min-w-[150px] transition-all duration-300 ease-in-out ${isCollapsed ? "opacity-0 ml-2" : "opacity-100 ml-3"}`}
@@ -198,7 +198,7 @@ export default function Sidebar({
                         className={`flex items-center w-full px-1 rounded-lg hover:bg-sidebar-hover transition-all duration-300 ease-in-out overflow-hidden outline-none h-10 text-text-primary text-left`}
                     >
                         <div className="flex items-center justify-center shrink-0 w-8 h-10">
-                            <Image src="/calender.svg" alt="Check-in Calendar" width={20} height={20} />
+                            <SpriteIcon name="calender" size={20} />
                         </div>
                         <span
                             className={`font-medium block min-w-[150px] transition-all duration-300 ease-in-out ${isCollapsed ? "opacity-0 ml-2" : "opacity-100 ml-3"}`}

@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, Sparkles, X } from "lucide-react";
+import { SpriteIcon } from "@/components/ui/sprite-icon";
 
 import Markdown from "@/components/Markdown";
 import { Textarea } from "@/components/ui/textarea";
@@ -454,12 +454,7 @@ export default function LearningAssistantDialog({
             className="mr-2 flex h-9 w-9 items-center justify-center rounded-lg border border-divider bg-white transition-colors hover:bg-sidebar-hover"
             aria-label="新建助教会话"
           >
-            <Image
-              src="/icons/edit-square-3a5c87.svg"
-              alt=""
-              width={18}
-              height={18}
-            />
+            <SpriteIcon name="edit-square" size={18} />
           </button>
 
           <button
@@ -568,14 +563,7 @@ export default function LearningAssistantDialog({
                   aria-label="发送问题"
                   className="composer-submit-button-color text-submit-btn-text flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:opacity-70 focus-visible:outline-black focus-visible:outline-none disabled:text-[#f4f4f4] disabled:opacity-30 dark:focus-visible:outline-white"
                 >
-                  <Image
-                    src="/icons/laptop-01bab7.svg"
-                    width={20}
-                    height={20}
-                    aria-hidden="true"
-                    className="h-5 w-5 brightness-0 invert"
-                    alt=""
-                  />
+                  <SpriteIcon name="laptop" size={20} className="brightness-0 invert" />
                 </button>
               )}
             </div>
@@ -588,14 +576,7 @@ export default function LearningAssistantDialog({
           className="absolute right-0 bottom-0 flex h-8 w-8 touch-none cursor-nwse-resize items-end justify-end"
           aria-label="右下角调整AI智能助教大小"
         >
-          <Image
-            src="/icons/resize-corner.svg"
-            width={32}
-            height={32}
-            aria-hidden="true"
-            className="pointer-events-none h-8 w-8 opacity-70"
-            alt=""
-          />
+          <SpriteIcon name="resize-corner" size={32} className="pointer-events-none h-8 w-8 opacity-70" />
         </button>
       </div>
     </>
