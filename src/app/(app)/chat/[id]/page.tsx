@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { useUserSettings } from "@/lib/user-settings-context";
 import type { Message } from "@/components/ChatMessage";
@@ -19,7 +20,6 @@ import {
     ApiError,
     createChatInstance,
     deleteChat,
-    getRecentChat,
     updateChat,
     type ChatResponse,
     type LearningAssistantContextMessage,
@@ -37,6 +37,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ERROR_MESSAGE_MAP } from "@/lib/error-map";
+import { queryKeys, recentChatQueryOptions } from "@/lib/query";
 
 const SETTLED_FRAME_TARGET = 2;
 const LEARNING_ASSISTANT_CONTEXT_LIMIT = 20;
@@ -88,6 +89,7 @@ function buildLearningAssistantContext(
 export default function ChatPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { user, isAuthed } = useAuth();
     const { autoReadAloudEnabled } = useUserSettings();
     const {
@@ -104,7 +106,6 @@ export default function ChatPage() {
     const [isRecording, setIsRecording] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-    const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
     const [micDialogMessage, setMicDialogMessage] = useState<string | null>(null);
 
     useEffect(() => {
@@ -281,9 +282,30 @@ export default function ChatPage() {
         }
 
         const created = await createChatInstance({ character_id: characterId });
-        setHistoryRefreshKey((previous) => previous + 1);
+        queryClient.setQueryData(
+            queryKeys.chats.recent(user?.id, characterId),
+            {
+                chat: created.chat,
+                character: created.character,
+            },
+        );
+        await Promise.all([
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.chats.history(user?.id, characterId),
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.sidebar.characters(user?.id),
+            }),
+        ]);
         router.push(`/chat/${created.chat.id}`);
-    }, [characterId, isConversationReadOnly, isStreaming, router]);
+    }, [
+        characterId,
+        isConversationReadOnly,
+        isStreaming,
+        queryClient,
+        router,
+        user?.id,
+    ]);
 
     const handleSendMessage = useCallback(
         async (content: string) => {
@@ -318,10 +340,17 @@ export default function ChatPage() {
             if (targetChatId === chatId) {
                 setCurrentChatTitle(updated.title);
             }
-            setHistoryRefreshKey((previous) => previous + 1);
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.chats.history(user?.id, characterId),
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.sidebar.characters(user?.id),
+                }),
+            ]);
             return updated;
         },
-        [chatId, setCurrentChatTitle],
+        [chatId, characterId, queryClient, setCurrentChatTitle, user?.id],
     );
 
     const handleDeleteHistoryChat = useCallback(async (targetChatId: string) => {
@@ -330,13 +359,25 @@ export default function ChatPage() {
         }
 
         await deleteChat(targetChatId);
+        await Promise.all([
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.chats.history(user?.id, characterId),
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.sidebar.characters(user?.id),
+            }),
+        ]);
 
         if (targetChatId !== chatId) {
-            setHistoryRefreshKey((previous) => previous + 1);
             return;
         }
 
-        const recent = await getRecentChat(characterId);
+        queryClient.removeQueries({
+            queryKey: queryKeys.chats.recent(user?.id, characterId),
+        });
+        const recent = await queryClient.fetchQuery(
+            recentChatQueryOptions(user?.id, characterId),
+        );
         if (recent?.chat?.id && recent.chat.id !== targetChatId) {
             router.push(`/chat/${recent.chat.id}`);
         } else {
@@ -345,6 +386,13 @@ export default function ChatPage() {
             } else {
                 try {
                     const created = await createChatInstance({ character_id: characterId });
+                    queryClient.setQueryData(
+                        queryKeys.chats.recent(user?.id, characterId),
+                        {
+                            chat: created.chat,
+                            character: created.character,
+                        },
+                    );
                     router.push(`/chat/${created.chat.id}`);
                 } catch (err) {
                     if (err instanceof ApiError && err.code === "resource_conflict") {
@@ -356,8 +404,7 @@ export default function ChatPage() {
             }
         }
 
-        setHistoryRefreshKey((previous) => previous + 1);
-    }, [character?.status, characterId, chatId, router]);
+    }, [character?.status, characterId, chatId, queryClient, router, user?.id]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesStartRef = useRef<HTMLDivElement | null>(null);
@@ -781,7 +828,6 @@ export default function ChatPage() {
                 character={character}
                 activeChatId={chatId}
                 activeChatTitle={chat?.title ?? ""}
-                refreshKey={historyRefreshKey}
                 onClose={() => setIsHistoryOpen(false)}
                 onSelectChat={handleSelectHistoryChat}
                 onRenameChat={handleRenameChat}

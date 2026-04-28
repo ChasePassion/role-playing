@@ -28,14 +28,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getErrorMessage } from "@/lib/error-map";
-import { listChats, type ChatHistoryItem, type ChatResponse } from "@/lib/api";
+import type { ChatHistoryItem, ChatResponse } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { useChatHistoryInfiniteQuery } from "@/lib/query";
 
 interface ChatHistorySidebarProps {
   isOpen: boolean;
   character: Character | null;
   activeChatId: string;
   activeChatTitle: string;
-  refreshKey: number;
   onClose: () => void;
   onSelectChat: (chatId: string) => void;
   onRenameChat: (chatId: string, title: string) => Promise<ChatResponse>;
@@ -83,18 +84,24 @@ export default function ChatHistorySidebar({
   character,
   activeChatId,
   activeChatTitle,
-  refreshKey,
   onClose,
   onSelectChat,
   onRenameChat,
   onDeleteChat,
 }: ChatHistorySidebarProps) {
-  const [items, setItems] = useState<ChatHistoryItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const historyQuery = useChatHistoryInfiniteQuery(
+    user?.id,
+    character?.id,
+    isOpen,
+    PAGE_SIZE,
+  );
+  const items = useMemo(
+    () => historyQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [historyQuery.data],
+  );
+  const isLoading = historyQuery.isLoading;
+  const isLoadingMore = historyQuery.isFetchingNextPage;
 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -103,45 +110,13 @@ export default function ChatHistorySidebar({
 
   const [deleteTarget, setDeleteTarget] = useState<ChatHistoryItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const loadPage = useCallback(
-    async (cursor?: string, append = false) => {
-      if (!character) return;
-
-      if (append) {
-        setIsLoadingMore(true);
-      } else {
-        setIsLoading(true);
-      }
-      setError(null);
-
-      try {
-        const page = await listChats({
-          character_id: character.id,
-          cursor,
-          limit: PAGE_SIZE,
-        });
-
-        setItems((prev) => (append ? [...prev, ...page.items] : page.items));
-        setNextCursor(page.next_cursor ?? null);
-        setHasMore(page.has_more);
-      } catch (err) {
-        setError(getErrorMessage(err));
-      } finally {
-        if (append) {
-          setIsLoadingMore(false);
-        } else {
-          setIsLoading(false);
-        }
-      }
-    },
-    [character],
-  );
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = actionError ?? (historyQuery.isError ? getErrorMessage(historyQuery.error) : null);
 
   useEffect(() => {
     if (!isOpen || !character) return;
-    void loadPage();
-  }, [character, isOpen, loadPage, refreshKey]);
+    setActionError(null);
+  }, [character, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -192,16 +167,8 @@ export default function ChatHistorySidebar({
       setRenameError(null);
       try {
         const updated = await onRenameChat(chatId, trimmedTitle);
-        setItems((prev) =>
-          prev.map((item) =>
-            item.chat.id === chatId
-              ? {
-                  ...item,
-                  chat: updated,
-                }
-              : item,
-          ),
-        );
+        void updated;
+        setActionError(null);
         cancelRename();
       } catch (err) {
         setRenameError(getErrorMessage(err));
@@ -216,16 +183,15 @@ export default function ChatHistorySidebar({
     if (!deleteTarget) return;
 
     setIsDeleting(true);
-    setError(null);
+    setActionError(null);
     try {
       await onDeleteChat(deleteTarget.chat.id);
-      setItems((prev) => prev.filter((item) => item.chat.id !== deleteTarget.chat.id));
       if (renamingChatId === deleteTarget.chat.id) {
         cancelRename();
       }
       setDeleteTarget(null);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setActionError(getErrorMessage(err));
     } finally {
       setIsDeleting(false);
     }
@@ -384,7 +350,7 @@ export default function ChatHistorySidebar({
               })}
             </div>
 
-            {hasMore ? (
+            {historyQuery.hasNextPage ? (
               <div className="pt-3 pb-2 px-1">
                 <TooltipProvider delayDuration={300}>
                   <Tooltip>
@@ -392,7 +358,7 @@ export default function ChatHistorySidebar({
                       <button
                         type="button"
                         className="w-full py-2 rounded-lg border border-border/80 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
-                        onClick={() => void loadPage(nextCursor ?? undefined, true)}
+                        onClick={() => void historyQuery.fetchNextPage()}
                         disabled={isLoadingMore}
                       >
                         {isLoadingMore ? "加载中..." : "加载更多"}

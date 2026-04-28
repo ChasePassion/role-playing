@@ -14,8 +14,6 @@ import {
   createDodoCheckoutSession,
   createDodoCustomerPortal,
   createWechatCheckoutSession,
-  getWechatPaymentOrder,
-  getWechatPaymentProducts,
 } from "@/lib/api";
 import type { WechatPaymentProduct } from "@/lib/api-service";
 import {
@@ -30,6 +28,10 @@ import {
 } from "@/lib/billing-plans";
 import { getErrorMessage } from "@/lib/error-map";
 import { cn } from "@/lib/utils";
+import {
+  useWechatPaymentOrderQuery,
+  useWechatPaymentProductsQuery,
+} from "@/lib/query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,8 +113,6 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
 
   const [checkoutError, setCheckoutError] = useState("");
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [wechatProducts, setWechatProducts] = useState<WechatPaymentProduct[]>([]);
-  const [isWechatProductsLoading, setIsWechatProductsLoading] = useState(true);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [checkoutBanner, setCheckoutBanner] = useState<{
     type: "success" | "pending" | "failed" | "loading";
@@ -123,6 +123,14 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   const checkoutStatus = searchParams.get("checkout");
   const checkoutChannel = searchParams.get("channel");
   const checkoutOrderId = searchParams.get("order_id");
+  const wechatProductsQuery = useWechatPaymentProductsQuery();
+  const checkoutOrderQuery = useWechatPaymentOrderQuery(
+    user?.id,
+    checkoutOrderId,
+    checkoutStatus === "success" &&
+      checkoutChannel === "wechat" &&
+      Boolean(checkoutOrderId),
+  );
 
   const selectedPeriod = getBillingPeriodFromValue(searchParams.get("period"));
   const selectedMode = getPricingModeFromValue(searchParams.get("mode"));
@@ -132,6 +140,8 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   const currentTier = entitlements?.tier ?? "free";
   const busyWithEntitlements = Boolean(user) && isEntitlementsLoading;
   const hasActiveSubscription = currentTier === "plus" || currentTier === "pro";
+  const wechatProducts = wechatProductsQuery.data?.items ?? [];
+  const isWechatProductsLoading = wechatProductsQuery.isLoading;
 
   const plusPlan = visiblePlans.find((p) => p.tier === "plus");
   const proPlan = visiblePlans.find((p) => p.tier === "pro");
@@ -183,25 +193,11 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
     }
   }
 
-  /* ── effects ── */
-
   useEffect(() => {
-    let cancelled = false;
-    setIsWechatProductsLoading(true);
-    void getWechatPaymentProducts()
-      .then((res) => {
-        if (!cancelled) setWechatProducts(res.items);
-      })
-      .catch((err) => {
-        if (!cancelled) setCheckoutError(getErrorMessage(err));
-      })
-      .finally(() => {
-        if (!cancelled) setIsWechatProductsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (wechatProductsQuery.isError) {
+      setCheckoutError(getErrorMessage(wechatProductsQuery.error));
+    }
+  }, [wechatProductsQuery.error, wechatProductsQuery.isError]);
 
   /* ── checkout callback: sync status + refresh entitlements ── */
 
@@ -216,11 +212,13 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
 
       try {
         if (checkoutChannel === "wechat" && checkoutOrderId) {
-          const order = await getWechatPaymentOrder(checkoutOrderId);
+          const order = checkoutOrderQuery.data;
+          if (!order) return;
           if (cancelled) return;
 
           if (order.status === "succeeded") {
             setCheckoutBanner({ type: "success", message: "微信支付已完成，权益已刷新。" });
+            await refreshEntitlements();
           } else if (order.status === "created" || order.status === "checkout_created" || order.status === "pending") {
             setCheckoutBanner({ type: "pending", message: "订单已创建，正在等待支付最终确认。" });
           } else {
@@ -247,8 +245,15 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
 
     void processCheckout();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkoutStatus, checkoutChannel, checkoutOrderId, user]);
+  }, [
+    checkoutStatus,
+    checkoutChannel,
+    checkoutOrderId,
+    checkoutOrderQuery.data,
+    entitlements?.tier,
+    refreshEntitlements,
+    user,
+  ]);
 
   useEffect(() => {
     if (!user || !checkoutSlug) return;

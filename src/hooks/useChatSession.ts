@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   Message,
   MessageActionStatus,
@@ -13,15 +14,16 @@ import {
   UnauthorizedError,
   createReplyCard,
   editUserTurnAndStreamReply,
-  getChatTurns,
   regenAssistantTurn,
   selectTurnCandidateWithSnapshot,
   streamChatMessage,
   type TurnsPageResponse,
 } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { mapCharacterToSidebar } from "@/lib/character-adapter";
 import { snapshotContainsTurnIds } from "@/lib/chat-turn-snapshot";
 import { getErrorMessage } from "@/lib/error-map";
+import { chatTurnsQueryOptions, queryKeys } from "@/lib/query";
 import type { TtsPlaybackManager } from "@/lib/voice/tts-playback-manager";
 
 interface UseChatSessionArgs {
@@ -130,6 +132,8 @@ export function useChatSession({
   onGrowthDailyUpdated,
   onGrowthShareCardReady,
 }: UseChatSessionArgs): UseChatSessionResult {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [chat, setChat] = useState<ChatResponse | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -326,7 +330,9 @@ export function useChatSession({
 
     setError(null);
 
-    const data: TurnsPageResponse = await getChatTurns(chatId, { limit: 50 });
+    const data: TurnsPageResponse = await queryClient.fetchQuery(
+      chatTurnsQueryOptions(user?.id, chatId, { limit: 50 }),
+    );
 
     if (
       options?.requiredTurnIds &&
@@ -339,7 +345,7 @@ export function useChatSession({
     setHasOlderMessages(data.has_more);
 
     applyTurnsPage(data);
-  }, [applyTurnsPage, chatId, isAuthed]);
+  }, [applyTurnsPage, chatId, isAuthed, queryClient, user?.id]);
 
   const loadOlderMessages = useCallback(async () => {
     if (!chatId || !isAuthed || isLoadingOlder || !hasOlderMessages) return;
@@ -349,10 +355,12 @@ export function useChatSession({
     loadOlderInFlightRef.current = true;
     setIsLoadingOlder(true);
     try {
-      const data = await getChatTurns(chatId, {
-        before_turn_id: beforeTurnIdRef.current,
-        limit: 50,
-      });
+      const data = await queryClient.fetchQuery(
+        chatTurnsQueryOptions(user?.id, chatId, {
+          beforeTurnId: beforeTurnIdRef.current,
+          limit: 50,
+        }),
+      );
 
       beforeTurnIdRef.current = data.next_before_turn_id ?? null;
       setHasOlderMessages(data.has_more);
@@ -380,7 +388,14 @@ export function useChatSession({
       setIsLoadingOlder(false);
       loadOlderInFlightRef.current = false;
     }
-  }, [chatId, isAuthed, isLoadingOlder, hasOlderMessages]);
+  }, [
+    chatId,
+    hasOlderMessages,
+    isAuthed,
+    isLoadingOlder,
+    queryClient,
+    user?.id,
+  ]);
 
   useEffect(() => {
     async function loadChat() {
@@ -438,6 +453,13 @@ export function useChatSession({
           { candidate_no: candidateNo },
           { limit: 50, include_learning_data: true },
         );
+        queryClient.setQueryData(
+          queryKeys.chats.turns(user?.id, chatId, {
+            limit: 50,
+            includeLearningData: true,
+          }),
+          result.snapshot,
+        );
         applyTurnsPage(result.snapshot);
       } catch (err) {
         console.error("Failed to select candidate:", err);
@@ -446,7 +468,15 @@ export function useChatSession({
         selectCandidateInFlightRef.current = false;
       }
     },
-    [abortAllTrackedControllers, applyTurnsPage, clearReplySuggestions, isStreaming],
+    [
+      abortAllTrackedControllers,
+      applyTurnsPage,
+      chatId,
+      clearReplySuggestions,
+      isStreaming,
+      queryClient,
+      user?.id,
+    ],
   );
 
   const handleRetryReplyCard = useCallback(

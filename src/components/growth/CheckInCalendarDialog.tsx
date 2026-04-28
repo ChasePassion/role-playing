@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -18,9 +18,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 import { useGrowth } from "@/lib/growth-context";
-import { applyGrowthMakeUp, getGrowthCalendar } from "@/lib/growth-api";
 import { getErrorMessage } from "@/lib/error-map";
+import {
+  useApplyGrowthMakeUpMutation,
+  useGrowthCalendarQuery,
+} from "@/lib/query";
 import type {
   GrowthCalendarDay,
   GrowthCalendarMonth,
@@ -147,6 +151,7 @@ function DayCell({
 }
 
 export default function CheckInCalendarDialog() {
+  const { user } = useAuth();
   const {
     isEntryPopupVisible,
     entryPopupData,
@@ -160,6 +165,7 @@ export default function CheckInCalendarDialog() {
 
   const [displayedCalendar, setDisplayedCalendar] =
     useState<GrowthCalendarMonth | null>(null);
+  const [requestedMonth, setRequestedMonth] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [makingUpDate, setMakingUpDate] = useState<string | null>(null);
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
@@ -172,39 +178,55 @@ export default function CheckInCalendarDialog() {
 
   const calendar = displayedCalendar ?? calendarMonth;
   const currentMonth = calendar?.month;
+  const calendarQuery = useGrowthCalendarQuery(
+    user?.id,
+    requestedMonth,
+    Boolean(requestedMonth),
+  );
+  const makeUpMutation = useApplyGrowthMakeUpMutation(user?.id);
   const calendarDays = calendar ? buildCalendarGridDays(calendar) : [];
   const streak = todaySummary?.current_natural_streak ?? 0;
   const balance = todaySummary?.makeup_card_balance ?? 0;
 
   const loadCalendarMonth = useCallback(
-    async (
+    (
       targetMonth: string,
       direction: "forward" | "backward" | "jump",
     ) => {
       if (isNavigating) return;
       setIsNavigating(true);
       setActionMessage(null);
-      try {
-        const res = await getGrowthCalendar(targetMonth);
-        setDisplayedCalendar(res.calendar);
-        setCalendarAnimationDirection(direction);
-        setCalendarAnimationKey((prev) => prev + 1);
-      } catch (err) {
-        console.error("Failed to navigate month:", err);
-        setActionMessage("加载月份失败，请稍后重试");
-      } finally {
-        setIsNavigating(false);
-      }
+      setCalendarAnimationDirection(direction);
+      setCalendarAnimationKey((prev) => prev + 1);
+      setRequestedMonth(targetMonth);
     },
     [isNavigating],
   );
+
+  useEffect(() => {
+    if (!calendarQuery.data) {
+      return;
+    }
+
+    setDisplayedCalendar(calendarQuery.data.calendar);
+    setIsNavigating(false);
+  }, [calendarQuery.data]);
+
+  useEffect(() => {
+    if (!calendarQuery.isError) {
+      return;
+    }
+
+    setIsNavigating(false);
+    setActionMessage("加载月份失败，请稍后重试");
+  }, [calendarQuery.isError]);
 
   const navigateMonth = useCallback(
     async (direction: -1 | 1) => {
       if (!currentMonth) return;
       const { year, month } = parseMonthKey(currentMonth);
       const nextDate = new Date(year, month - 1 + direction, 1);
-      await loadCalendarMonth(
+      loadCalendarMonth(
         formatMonthKey(nextDate.getFullYear(), nextDate.getMonth() + 1),
         direction > 0 ? "forward" : "backward",
       );
@@ -231,7 +253,7 @@ export default function CheckInCalendarDialog() {
     }
 
     setMonthPickerOpen(false);
-    await loadCalendarMonth(targetMonth, "jump");
+    loadCalendarMonth(targetMonth, "jump");
   }, [currentMonth, loadCalendarMonth, pickerMonth, pickerYearInput]);
 
   const handleMakeUp = useCallback(
@@ -251,7 +273,7 @@ export default function CheckInCalendarDialog() {
 
       setMakingUpDate(targetDay.date);
       try {
-        const res = await applyGrowthMakeUp(targetDay.date);
+        const res = await makeUpMutation.mutateAsync(targetDay.date);
         updateCalendarDay(res.updated_day);
         updateMakeupCardBalance(res.makeup_card_balance);
 
@@ -277,6 +299,7 @@ export default function CheckInCalendarDialog() {
     [
       balance,
       displayedCalendar,
+      makeUpMutation,
       makingUpDate,
       updateCalendarDay,
       updateMakeupCardBalance,
@@ -285,6 +308,7 @@ export default function CheckInCalendarDialog() {
 
   const handleClose = useCallback(() => {
     setDisplayedCalendar(null);
+    setRequestedMonth(null);
     setMonthPickerOpen(false);
     setActionMessage(null);
     closeEntryPopup();
@@ -292,6 +316,7 @@ export default function CheckInCalendarDialog() {
 
   const handleDismissToday = useCallback(() => {
     setDisplayedCalendar(null);
+    setRequestedMonth(null);
     setMonthPickerOpen(false);
     setActionMessage(null);
     dismissEntryPopupForToday();

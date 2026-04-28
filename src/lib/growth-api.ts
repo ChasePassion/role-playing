@@ -10,6 +10,10 @@ import type {
   GrowthShareCardsPageResponse,
 } from "./growth-types";
 
+type ApiRequestOptions = {
+  signal?: AbortSignal;
+};
+
 // ── 1. Entry (进站弹窗) ──
 
 export async function consumeGrowthEntry(
@@ -22,12 +26,14 @@ export async function consumeGrowthEntry(
 
 export async function getGrowthCalendar(
   month?: string,
+  options: ApiRequestOptions = {},
 ): Promise<GrowthCalendarResponse> {
   const params = new URLSearchParams();
   if (month) params.set("month", month);
   const qs = params.toString();
   return httpClient.get<GrowthCalendarResponse>(
     `/v1/growth/calendar${qs ? `?${qs}` : ""}`,
+    options,
   );
 }
 
@@ -45,9 +51,11 @@ export async function applyGrowthMakeUp(
 
 export async function getGrowthChatHeader(
   chatId: string,
+  options: ApiRequestOptions = {},
 ): Promise<GrowthChatHeaderResponse> {
   return httpClient.get<GrowthChatHeaderResponse>(
     `/v1/growth/chats/${chatId}/header`,
+    options,
   );
 }
 
@@ -55,12 +63,14 @@ export async function getGrowthChatHeader(
 
 export async function getGrowthOverview(
   focusCharacterId?: string,
+  options: ApiRequestOptions = {},
 ): Promise<GrowthOverviewResponse> {
   const params = new URLSearchParams();
   if (focusCharacterId) params.set("focus_character_id", focusCharacterId);
   const qs = params.toString();
   return httpClient.get<GrowthOverviewResponse>(
     `/v1/growth/overview${qs ? `?${qs}` : ""}`,
+    options,
   );
 }
 
@@ -70,7 +80,7 @@ export async function listGrowthCharacters(params: {
   cursor?: string;
   limit?: number;
   sort_by?: GrowthCharacterSortBy;
-}): Promise<GrowthCharactersPageResponse> {
+}, options: ApiRequestOptions = {}): Promise<GrowthCharactersPageResponse> {
   const sp = new URLSearchParams();
   if (params.cursor) sp.set("cursor", params.cursor);
   if (params.limit !== undefined) sp.set("limit", String(params.limit));
@@ -78,6 +88,7 @@ export async function listGrowthCharacters(params: {
   const qs = sp.toString();
   return httpClient.get<GrowthCharactersPageResponse>(
     `/v1/growth/characters${qs ? `?${qs}` : ""}`,
+    options,
   );
 }
 
@@ -86,13 +97,14 @@ export async function listGrowthCharacters(params: {
 export async function listPendingShareCards(params: {
   chat_id?: string;
   limit?: number;
-}): Promise<GrowthShareCardsPageResponse> {
+}, options: ApiRequestOptions = {}): Promise<GrowthShareCardsPageResponse> {
   const sp = new URLSearchParams();
   if (params.chat_id) sp.set("chat_id", params.chat_id);
   if (params.limit !== undefined) sp.set("limit", String(params.limit));
   const qs = sp.toString();
   return httpClient.get<GrowthShareCardsPageResponse>(
     `/v1/growth/share-cards/pending${qs ? `?${qs}` : ""}`,
+    options,
   );
 }
 

@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { getGrowthOverview } from "@/lib/growth-api";
-import type { GrowthOverviewResponse } from "@/lib/growth-types";
+import { useEffect } from "react";
 import StatsOverviewChart from "@/components/growth/StatsOverviewChart";
 import StatsOverviewSummary from "@/components/growth/StatsOverviewSummary";
 import StatsOverviewRankings from "@/components/growth/StatsOverviewRankings";
 import { Loader2 } from "lucide-react";
 import { useSidebar } from "../layout";
+import { useAuth } from "@/lib/auth-context";
+import { useGrowthOverviewQuery } from "@/lib/query";
 
 export default function StatsPage() {
-  const [data, setData] = useState<GrowthOverviewResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { user } = useAuth();
+  const overviewQuery = useGrowthOverviewQuery(user?.id);
+  const data = overviewQuery.data ?? null;
 
   // Close sidebar on mobile
   const { isSidebarOpen, closeSidebar, isOverlay } = useSidebar();
@@ -22,25 +22,7 @@ export default function StatsPage() {
     }
   }, [isSidebarOpen, isOverlay, closeSidebar]);
 
-  const loadOverview = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await getGrowthOverview();
-      setData(res);
-    } catch (err) {
-      console.error("Failed to fetch growth overview:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
-
-  if (isLoading) {
+  if (overviewQuery.isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-[var(--workspace-bg)]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -48,12 +30,12 @@ export default function StatsPage() {
     );
   }
 
-  if (error || !data) {
+  if (overviewQuery.isError || !data) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-[var(--workspace-bg)] p-6 text-center">
         <p className="text-rose-500 font-medium">数据加载失败。</p>
         <p className="mt-2 text-sm text-[var(--text-tertiary)]">
-          {error?.message ?? "请稍后重试"}
+          {overviewQuery.error?.message ?? "请稍后重试"}
         </p>
       </div>
     );

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -17,7 +18,6 @@ import type {
   GrowthCalendarMonth,
   GrowthCalendarDay,
 } from "./growth-types";
-import { consumeGrowthEntry, listPendingShareCards } from "./growth-api";
 import {
   dismissGrowthEntryForToday as persistGrowthEntryDismissal,
   getGrowthEntrySessionHandledKey,
@@ -25,6 +25,10 @@ import {
   shouldEvaluateGrowthEntryAutoOpenForSession,
   shouldAutoOpenGrowthEntryPopup,
 } from "./growth-entry-prompt";
+import {
+  useConsumeGrowthEntryMutation,
+  usePendingShareCardsQuery,
+} from "./query";
 
 // ── Context shape ──
 
@@ -65,6 +69,12 @@ export function useGrowth(): GrowthContextType {
 
 export function GrowthProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const pendingShareCardsQuery = usePendingShareCardsQuery(user?.id, {
+    limit: 10,
+  });
+  const { mutateAsync: consumeGrowthEntry } = useConsumeGrowthEntryMutation(
+    user?.id,
+  );
   const [todaySummary, setTodaySummary] = useState<GrowthTodaySummary | null>(
     null,
   );
@@ -77,9 +87,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
   );
   const [calendarMonth, setCalendarMonth] =
     useState<GrowthCalendarMonth | null>(null);
-  const [handledAutoOpenStatDate, setHandledAutoOpenStatDate] = useState<
-    string | null
-  >(null);
+  const handledAutoOpenStatDateRef = useRef<string | null>(null);
 
   const readHandledAutoOpenStatDate = useCallback((userId?: string | null) => {
     if (!userId || typeof window === "undefined") {
@@ -102,7 +110,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setHandledAutoOpenStatDate(statDate);
+      handledAutoOpenStatDateRef.current = statDate;
 
       if (typeof window === "undefined") {
         return;
@@ -125,7 +133,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
     setEntryPopupData(null);
     setCalendarMonth(null);
     setTodaySummary(null);
-    setHandledAutoOpenStatDate(null);
+    handledAutoOpenStatDateRef.current = null;
 
     if (!user?.id) {
       setPendingShareCards([]);
@@ -137,32 +145,14 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setHandledAutoOpenStatDate(readHandledAutoOpenStatDate(user.id));
+    handledAutoOpenStatDateRef.current = readHandledAutoOpenStatDate(user.id);
   }, [readHandledAutoOpenStatDate, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) {
-      return;
+    if (pendingShareCardsQuery.data) {
+      setPendingShareCards(pendingShareCardsQuery.data.items);
     }
-
-    let cancelled = false;
-
-    async function restorePendingShareCards() {
-      try {
-        const pendingRes = await listPendingShareCards({ limit: 10 });
-        if (cancelled) return;
-        setPendingShareCards(pendingRes.items);
-      } catch (pendingErr) {
-        console.error("Failed to restore pending share cards:", pendingErr);
-      }
-    }
-
-    void restorePendingShareCards();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
+  }, [pendingShareCardsQuery.data]);
 
   const refreshGrowthEntry = useCallback(
     async (options?: { autoOpenPopup?: boolean }) => {
@@ -170,7 +160,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const data = await consumeGrowthEntry();
+      const data = await consumeGrowthEntry(undefined);
       setTodaySummary(data.today);
       setEntryPopupData(data.popup);
       setCalendarMonth(data.popup.calendar);
@@ -180,7 +170,8 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
       }
 
       const lastHandledStatDate =
-        handledAutoOpenStatDate ?? readHandledAutoOpenStatDate(user.id);
+        handledAutoOpenStatDateRef.current ??
+        readHandledAutoOpenStatDate(user.id);
       if (
         !shouldEvaluateGrowthEntryAutoOpenForSession({
           statDate: data.today.stat_date,
@@ -200,7 +191,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
       );
     },
     [
-      handledAutoOpenStatDate,
+      consumeGrowthEntry,
       persistHandledAutoOpenStatDate,
       readHandledAutoOpenStatDate,
       user?.id,

@@ -10,16 +10,18 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, isProfileComplete } from "@/lib/auth-context";
-import { getSidebarCharacters } from "@/lib/api";
 import Sidebar, { Character } from "@/components/Sidebar";
 import AppFrame from "@/components/layout/AppFrame";
 import { useSidebarShell } from "@/hooks/useSidebarShell";
 import { mapCharacterToSidebar } from "@/lib/character-adapter";
-import { getOrCreateChatId } from "@/lib/chat-helpers";
 import { isSetupBypassPath } from "@/lib/billing-plans";
 import { UserSettingsProvider } from "@/lib/user-settings-context";
 import { GrowthProvider } from "@/lib/growth-context";
 import CheckInCalendarDialog from "@/components/growth/CheckInCalendarDialog";
+import {
+    useGetOrCreateChatMutation,
+    useSidebarCharactersQuery,
+} from "@/lib/query";
 
 // Context for sidebar state
 interface SidebarContextType {
@@ -53,8 +55,19 @@ export default function AppLayout({
     const pathname = usePathname();
 
     const { isSidebarOpen, isOverlay, toggle: toggleSidebar, close: closeSidebar } = useSidebarShell();
-    const [sidebarCharacters, setSidebarCharacters] = useState<Character[]>([]);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+    const {
+        data: sidebarApiCharacters,
+        refetch: refetchSidebarCharacters,
+    } = useSidebarCharactersQuery(user?.id);
+    const openChatMutation = useGetOrCreateChatMutation(user?.id);
+    const sidebarCharacters = useMemo<Character[]>(
+        () =>
+            (sidebarApiCharacters ?? []).map((character) =>
+                mapCharacterToSidebar(character),
+            ),
+        [sidebarApiCharacters],
+    );
 
     // Redirect if not authenticated or profile incomplete
     useEffect(() => {
@@ -67,27 +80,14 @@ export default function AppLayout({
         }
     }, [user, isAuthLoading, pathname, router]);
 
-    // Load sidebar characters
     const refreshSidebarCharacters = useCallback(async () => {
         if (!user) return;
-        try {
-            const apiCharacters = await getSidebarCharacters();
-            const mapped: Character[] = apiCharacters.map((character) =>
-                mapCharacterToSidebar(character),
-            );
-            setSidebarCharacters(mapped);
-        } catch (err) {
-            console.error("Failed to load sidebar characters:", err);
-        }
-    }, [user]);
-
-    useEffect(() => {
-        refreshSidebarCharacters();
-    }, [refreshSidebarCharacters]);
+        await refetchSidebarCharacters();
+    }, [refetchSidebarCharacters, user]);
 
     const handleSelectCharacter = async (character: Character) => {
         try {
-            const chatId = await getOrCreateChatId(character.id);
+            const chatId = await openChatMutation.mutateAsync(character.id);
             router.push(`/chat/${chatId}`);
         } catch (err) {
             console.error("Failed to open chat:", err);

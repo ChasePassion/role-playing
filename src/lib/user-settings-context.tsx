@@ -10,8 +10,12 @@ import {
     useState,
     type ReactNode,
 } from "react";
-import { getMySettings, updateMySettings } from "@/lib/api";
 import type { DisplayMode } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import {
+    useUpdateUserSettingsMutation,
+    useUserSettingsQuery,
+} from "@/lib/query";
 
 const USER_SETTINGS_STORAGE_KEY = "user_settings_v2";
 const DEFAULT_MESSAGE_FONT_SIZE = 16;
@@ -94,6 +98,17 @@ const saveToLocalStorage = (state: SettingsState) => {
 };
 
 export function UserSettingsProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth();
+    const userId = user?.id ?? null;
+    const {
+        data: remoteSettings,
+        isError: isSettingsError,
+        isLoading: isSettingsLoading,
+        refetch: refetchSettings,
+    } = useUserSettingsQuery(userId);
+    const { mutateAsync: updateRemoteSettings, isPending: isSaving } =
+        useUpdateUserSettingsMutation(userId);
+
     const [messageFontSize, setMessageFontSizeState] = useState(defaultState.messageFontSize);
     const [displayMode, setDisplayModeState] = useState<DisplayMode>(defaultState.displayMode);
     const [memoryEnabled, setMemoryEnabledState] = useState(defaultState.memoryEnabled);
@@ -102,8 +117,7 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     const [autoReadAloudEnabled, setAutoReadAloudEnabledState] = useState(defaultState.autoReadAloudEnabled);
     const [preferredExpressionBiasEnabled, setPreferredExpressionBiasEnabledState] = useState(defaultState.preferredExpressionBiasEnabled);
 
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
+    const [hasLoadedLocalSettings, setHasLoadedLocalSettings] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [changeVersion, setChangeVersion] = useState(0);
 
@@ -165,103 +179,96 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
             }
         }
 
-        setIsSaving(true);
         try {
-            await updateMySettings(payload);
+            await updateRemoteSettings(payload);
             for (const field of dirtyFields) {
                 dirtyFieldsRef.current.delete(field);
             }
             setError(null);
         } catch {
             setError("未同步到云端，可重试");
+        }
+    }, [updateRemoteSettings]);
+
+    // Bootstrap local storage first; remote state is provided by React Query.
+    useEffect(() => {
+        try {
+            const raw = window.localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw) as Partial<SettingsState>;
+                if (typeof parsed.messageFontSize === "number") {
+                    setMessageFontSizeState(clampMessageFontSize(parsed.messageFontSize));
+                }
+                if (parsed.displayMode === "concise" || parsed.displayMode === "detailed") {
+                    setDisplayModeState(parsed.displayMode);
+                }
+                if (typeof parsed.memoryEnabled === "boolean") {
+                    setMemoryEnabledState(parsed.memoryEnabled);
+                }
+                if (typeof parsed.replyCardEnabled === "boolean") {
+                    setReplyCardEnabledState(parsed.replyCardEnabled);
+                }
+                if (typeof parsed.mixedInputAutoTranslateEnabled === "boolean") {
+                    setMixedInputAutoTranslateEnabledState(parsed.mixedInputAutoTranslateEnabled);
+                }
+                if (typeof parsed.autoReadAloudEnabled === "boolean") {
+                    setAutoReadAloudEnabledState(parsed.autoReadAloudEnabled);
+                }
+                if (typeof parsed.preferredExpressionBiasEnabled === "boolean") {
+                    setPreferredExpressionBiasEnabledState(parsed.preferredExpressionBiasEnabled);
+                }
+            }
+        } catch {
+            // Ignore malformed/blocked local storage reads.
         } finally {
-            setIsSaving(false);
+            setHasLoadedLocalSettings(true);
         }
     }, []);
 
-    // Bootstrap: load from localStorage then remote
     useEffect(() => {
-        let cancelled = false;
+        const remote = remoteSettings as RemoteUserSettingsResponse | undefined;
+        if (!remote || !hasLoadedLocalSettings) {
+            return;
+        }
 
-        const bootstrap = async () => {
-            // 1. Local storage (instant)
-            try {
-                const raw = window.localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
-                if (raw) {
-                    const parsed = JSON.parse(raw) as Partial<SettingsState>;
-                    if (typeof parsed.messageFontSize === "number") {
-                        setMessageFontSizeState(clampMessageFontSize(parsed.messageFontSize));
-                    }
-                    if (parsed.displayMode === "concise" || parsed.displayMode === "detailed") {
-                        setDisplayModeState(parsed.displayMode);
-                    }
-                    if (typeof parsed.memoryEnabled === "boolean") {
-                        setMemoryEnabledState(parsed.memoryEnabled);
-                    }
-                    if (typeof parsed.replyCardEnabled === "boolean") {
-                        setReplyCardEnabledState(parsed.replyCardEnabled);
-                    }
-                    if (typeof parsed.mixedInputAutoTranslateEnabled === "boolean") {
-                        setMixedInputAutoTranslateEnabledState(parsed.mixedInputAutoTranslateEnabled);
-                    }
-                    if (typeof parsed.autoReadAloudEnabled === "boolean") {
-                        setAutoReadAloudEnabledState(parsed.autoReadAloudEnabled);
-                    }
-                    if (typeof parsed.preferredExpressionBiasEnabled === "boolean") {
-                        setPreferredExpressionBiasEnabledState(parsed.preferredExpressionBiasEnabled);
-                    }
-                }
-            } catch {
-                // Ignore malformed/blocked local storage reads.
-            }
+        if (dirtyFieldsRef.current.size > 0) {
+            return;
+        }
 
-            // 2. Remote
-            try {
-                const remote = (await getMySettings()) as RemoteUserSettingsResponse;
-                if (!cancelled) {
-                    const nextFontSize = clampMessageFontSize(remote.message_font_size);
-                    const nextMemoryEnabled = typeof remote.memory_enabled === "boolean"
-                        ? remote.memory_enabled
-                        : DEFAULT_MEMORY_ENABLED;
-                    setMessageFontSizeState(nextFontSize);
-                    setDisplayModeState(remote.display_mode ?? DEFAULT_DISPLAY_MODE);
-                    setMemoryEnabledState(nextMemoryEnabled);
-                    setReplyCardEnabledState(remote.reply_card_enabled ?? DEFAULT_REPLY_CARD_ENABLED);
-                    setMixedInputAutoTranslateEnabledState(remote.mixed_input_auto_translate_enabled ?? DEFAULT_MIXED_INPUT_AUTO_TRANSLATE_ENABLED);
-                    setAutoReadAloudEnabledState(remote.auto_read_aloud_enabled ?? DEFAULT_AUTO_READ_ALOUD_ENABLED);
-                    setPreferredExpressionBiasEnabledState(remote.preferred_expression_bias_enabled ?? DEFAULT_PREFERRED_EXPRESSION_BIAS_ENABLED);
-                    saveToLocalStorage({
-                        messageFontSize: nextFontSize,
-                        displayMode: remote.display_mode ?? DEFAULT_DISPLAY_MODE,
-                        memoryEnabled: nextMemoryEnabled,
-                        replyCardEnabled: remote.reply_card_enabled ?? DEFAULT_REPLY_CARD_ENABLED,
-                        mixedInputAutoTranslateEnabled: remote.mixed_input_auto_translate_enabled ?? DEFAULT_MIXED_INPUT_AUTO_TRANSLATE_ENABLED,
-                        autoReadAloudEnabled: remote.auto_read_aloud_enabled ?? DEFAULT_AUTO_READ_ALOUD_ENABLED,
-                        preferredExpressionBiasEnabled: remote.preferred_expression_bias_enabled ?? DEFAULT_PREFERRED_EXPRESSION_BIAS_ENABLED,
-                    });
-                    setError(null);
-                }
-            } catch {
-                if (!cancelled) {
-                    setError("设置同步失败，已使用本地配置");
-                }
-            } finally {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            }
+        const nextFontSize = clampMessageFontSize(remote.message_font_size);
+        const nextMemoryEnabled = typeof remote.memory_enabled === "boolean"
+            ? remote.memory_enabled
+            : DEFAULT_MEMORY_ENABLED;
+        const nextState = {
+            messageFontSize: nextFontSize,
+            displayMode: remote.display_mode ?? DEFAULT_DISPLAY_MODE,
+            memoryEnabled: nextMemoryEnabled,
+            replyCardEnabled: remote.reply_card_enabled ?? DEFAULT_REPLY_CARD_ENABLED,
+            mixedInputAutoTranslateEnabled: remote.mixed_input_auto_translate_enabled ?? DEFAULT_MIXED_INPUT_AUTO_TRANSLATE_ENABLED,
+            autoReadAloudEnabled: remote.auto_read_aloud_enabled ?? DEFAULT_AUTO_READ_ALOUD_ENABLED,
+            preferredExpressionBiasEnabled: remote.preferred_expression_bias_enabled ?? DEFAULT_PREFERRED_EXPRESSION_BIAS_ENABLED,
         };
 
-        void bootstrap();
+        setMessageFontSizeState(nextState.messageFontSize);
+        setDisplayModeState(nextState.displayMode);
+        setMemoryEnabledState(nextState.memoryEnabled);
+        setReplyCardEnabledState(nextState.replyCardEnabled);
+        setMixedInputAutoTranslateEnabledState(nextState.mixedInputAutoTranslateEnabled);
+        setAutoReadAloudEnabledState(nextState.autoReadAloudEnabled);
+        setPreferredExpressionBiasEnabledState(nextState.preferredExpressionBiasEnabled);
+        saveToLocalStorage(nextState);
+        setError(null);
+    }, [hasLoadedLocalSettings, remoteSettings]);
 
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+    useEffect(() => {
+        if (isSettingsError) {
+            setError("设置同步失败，已使用本地配置");
+        }
+    }, [isSettingsError]);
 
     // Persist to localStorage on every change after loading
     useEffect(() => {
-        if (isLoading) return;
+        if (!hasLoadedLocalSettings) return;
         saveToLocalStorage({
             messageFontSize,
             displayMode,
@@ -272,7 +279,7 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
             preferredExpressionBiasEnabled,
         });
     }, [
-        isLoading,
+        hasLoadedLocalSettings,
         messageFontSize,
         displayMode,
         memoryEnabled,
@@ -355,8 +362,17 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     }, [markDirty]);
 
     const retrySync = useCallback(async () => {
+        if (dirtyFieldsRef.current.size === 0) {
+            await refetchSettings();
+            return;
+        }
+
         await syncSettings();
-    }, [syncSettings]);
+    }, [refetchSettings, syncSettings]);
+
+    const isLoading =
+        !hasLoadedLocalSettings ||
+        (Boolean(userId) && isSettingsLoading && !remoteSettings);
 
     const contextValue = useMemo(
         () => ({

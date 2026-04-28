@@ -6,56 +6,43 @@ import { useAuth } from "@/lib/auth-context";
 import { useGrowth } from "@/lib/growth-context";
 import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
 import { useSidebar } from "./layout";
-import { getOrCreateChatId } from "@/lib/chat-helpers";
 import TopConsole from "@/components/TopConsole";
 import HeroCarousel from "@/components/HeroCarousel";
 import HorizontalSection from "@/components/HorizontalSection";
 import {
-  fetchAllMarketCharacters,
-  getDiscoverConfig,
   selectHeroCharacters,
   filterCharactersByName,
 } from "@/lib/discover-data";
 import type { CharacterResponse } from "@/lib/api-service";
 import type { Character } from "@/components/Sidebar";
 import { resolveCharacterAvatarSrc } from "@/lib/character-avatar";
+import {
+  useAllMarketCharactersQuery,
+  useDiscoverConfigQuery,
+  useGetOrCreateChatMutation,
+} from "@/lib/query";
 
 export default function DiscoverPage() {
   const { user } = useAuth();
   const { refreshGrowthEntry } = useGrowth();
   const router = useRouter();
-  const { setSelectedCharacterId, refreshSidebarCharacters, sidebarCharacters } =
-    useSidebar();
+  const { setSelectedCharacterId } = useSidebar();
   const userId = user?.id ?? null;
+  const discoverConfigQuery = useDiscoverConfigQuery();
+  const marketCharactersQuery = useAllMarketCharactersQuery();
+  const openChatMutation = useGetOrCreateChatMutation(userId);
 
-  const [discoverCharacters, setDiscoverCharacters] = useState<CharacterResponse[]>([]);
-  const [heroCharacterIds, setHeroCharacterIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  // 初始化获取全量角色和 Discover 配置
-  useEffect(() => {
-    async function initData() {
-      try {
-        setIsLoading(true);
-        const [config, characters] = await Promise.all([
-          getDiscoverConfig().catch(() => ({ hero_character_ids: [] })),
-          fetchAllMarketCharacters().catch(() => []),
-        ]);
-
-        setHeroCharacterIds(config.hero_character_ids || []);
-        setDiscoverCharacters(characters);
-      } catch (err) {
-        console.error("Failed to load discover data:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    if (userId) {
-      initData();
-    }
-  }, [userId]);
+  const discoverCharacters = useMemo(
+    () => marketCharactersQuery.data ?? [],
+    [marketCharactersQuery.data],
+  );
+  const heroCharacterIds = useMemo(
+    () => discoverConfigQuery.data?.hero_character_ids ?? [],
+    [discoverConfigQuery.data],
+  );
+  const isLoading =
+    discoverConfigQuery.isLoading || marketCharactersQuery.isLoading;
 
   useEffect(() => {
     if (!userId) {
@@ -66,13 +53,6 @@ export default function DiscoverPage() {
       console.error("Failed to refresh growth entry:", err);
     });
   }, [refreshGrowthEntry, userId]);
-
-  // 同步侧边栏的字符
-  useEffect(() => {
-    if (userId && sidebarCharacters.length === 0) {
-      refreshSidebarCharacters();
-    }
-  }, [userId, sidebarCharacters.length, refreshSidebarCharacters]);
 
   // 当处于 Discover 页时清除选中的角色
   useEffect(() => {
@@ -92,7 +72,7 @@ export default function DiscoverPage() {
   // 处理角色选择
   const handleSelectCharacter = async (character: CharacterResponse | Character) => {
     try {
-      const chatId = await getOrCreateChatId(character.id);
+      const chatId = await openChatMutation.mutateAsync(character.id);
       router.push(`/chat/${chatId}`);
     } catch (err) {
       console.error("Failed to open chat:", err);

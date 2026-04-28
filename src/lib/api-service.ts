@@ -865,34 +865,58 @@ type LearningAssistantStreamEvent =
   | LearningAssistantDoneEvent
   | LearningAssistantErrorEvent;
 
+type ApiRequestOptions = {
+  signal?: AbortSignal;
+};
+
 export class ApiService {
-  async uploadFile(file: File): Promise<{ url: string }> {
-    return httpClient.upload<{ url: string }>("/v1/upload", file);
+  async uploadFile(
+    file: File,
+    options: ApiRequestOptions = {},
+  ): Promise<{ url: string }> {
+    return httpClient.upload<{ url: string }>("/v1/upload", file, options);
   }
 
-  async updateUserProfile(data: UpdateProfileRequest): Promise<User> {
-    return httpClient.put<User>("/v1/users/me", data);
+  async updateUserProfile(
+    data: UpdateProfileRequest,
+    options: ApiRequestOptions = {},
+  ): Promise<User> {
+    return httpClient.put<User>("/v1/users/me", data, options);
   }
 
-  async getMySettings(): Promise<UserSettingsResponse> {
-    return httpClient.get<UserSettingsResponse>("/v1/users/me/settings");
+  async getMySettings(
+    options: ApiRequestOptions = {},
+  ): Promise<UserSettingsResponse> {
+    return httpClient.get<UserSettingsResponse>("/v1/users/me/settings", options);
   }
 
   async updateMySettings(
     data: UpdateUserSettingsRequest,
+    options: ApiRequestOptions = {},
   ): Promise<UserSettingsResponse> {
     return httpClient.patch<UserSettingsResponse, UpdateUserSettingsRequest>(
       "/v1/users/me/settings",
       data,
+      options,
     );
   }
 
-  async getMyEntitlements(): Promise<UserEntitlementsResponse> {
-    return httpClient.get<UserEntitlementsResponse>("/v1/users/me/entitlements");
+  async getMyEntitlements(
+    options: ApiRequestOptions = {},
+  ): Promise<UserEntitlementsResponse> {
+    return httpClient.get<UserEntitlementsResponse>(
+      "/v1/users/me/entitlements",
+      options,
+    );
   }
 
-  async getWechatPaymentProducts(): Promise<WechatPaymentProductListResponse> {
-    return httpClient.get<WechatPaymentProductListResponse>("/v1/payments/wechat/products");
+  async getWechatPaymentProducts(
+    options: ApiRequestOptions = {},
+  ): Promise<WechatPaymentProductListResponse> {
+    return httpClient.get<WechatPaymentProductListResponse>(
+      "/v1/payments/wechat/products",
+      options,
+    );
   }
 
   async createWechatCheckoutSession(params: {
@@ -904,15 +928,21 @@ export class ApiService {
     >("/v1/payments/wechat/checkout-session", params);
   }
 
-  async getWechatPaymentOrder(orderId: string): Promise<PaymentOrderResponse> {
-    return httpClient.get<PaymentOrderResponse>(`/v1/payments/orders/${orderId}`);
+  async getWechatPaymentOrder(
+    orderId: string,
+    options: ApiRequestOptions = {},
+  ): Promise<PaymentOrderResponse> {
+    return httpClient.get<PaymentOrderResponse>(
+      `/v1/payments/orders/${orderId}`,
+      options,
+    );
   }
 
   async listWechatPaymentOrders(params?: {
     channel?: "wechat_pay";
     skip?: number;
     limit?: number;
-  }): Promise<PaymentOrderResponse[]> {
+  }, options: ApiRequestOptions = {}): Promise<PaymentOrderResponse[]> {
     const searchParams = new URLSearchParams();
     if (params?.channel) {
       searchParams.set("channel", params.channel);
@@ -925,7 +955,10 @@ export class ApiService {
     }
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : "";
-    return httpClient.get<PaymentOrderResponse[]>(`/v1/payments/orders${suffix}`);
+    return httpClient.get<PaymentOrderResponse[]>(
+      `/v1/payments/orders${suffix}`,
+      options,
+    );
   }
 
   async createCharacter(
@@ -937,23 +970,30 @@ export class ApiService {
   async getMarketCharacters(
     skip = 0,
     limit = 20,
+    options: ApiRequestOptions = {},
   ): Promise<CharacterResponse[]> {
     return httpClient.get<CharacterResponse[]>(
       `/v1/characters/market?skip=${skip}&limit=${limit}`,
+      options,
     );
   }
 
-  async getCharacterById(id: string): Promise<CharacterResponse> {
-    return httpClient.get<CharacterResponse>(`/v1/characters/${id}`);
+  async getCharacterById(
+    id: string,
+    options: ApiRequestOptions = {},
+  ): Promise<CharacterResponse> {
+    return httpClient.get<CharacterResponse>(`/v1/characters/${id}`, options);
   }
 
   async getUserCharacters(
     creatorId: string,
     skip = 0,
     limit = 20,
+    options: ApiRequestOptions = {},
   ): Promise<CharacterResponse[]> {
     return httpClient.get<CharacterResponse[]>(
       `/v1/users/${creatorId}/characters?skip=${skip}&limit=${limit}`,
+      options,
     );
   }
 
@@ -968,9 +1008,13 @@ export class ApiService {
     return httpClient.post<CharacterResponse>(`/v1/characters/${id}/unpublish`, {});
   }
 
-  async getRecentChat(characterId: string): Promise<ChatDetailResponse | null> {
+  async getRecentChat(
+    characterId: string,
+    options: ApiRequestOptions = {},
+  ): Promise<ChatDetailResponse | null> {
     return httpClient.get<ChatDetailResponse | null>(
       `/v1/chats/recent?character_id=${characterId}`,
+      options,
     );
   }
 
@@ -985,7 +1029,7 @@ export class ApiService {
     character_id: string;
     cursor?: string;
     limit?: number;
-  }): Promise<ChatsPageResponse> {
+  }, options: ApiRequestOptions = {}): Promise<ChatsPageResponse> {
     const searchParams = new URLSearchParams();
     searchParams.set("character_id", params.character_id);
     if (params.cursor) {
@@ -998,7 +1042,7 @@ export class ApiService {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : "";
 
-    return httpClient.get<ChatsPageResponse>(`/v1/chats${suffix}`);
+    return httpClient.get<ChatsPageResponse>(`/v1/chats${suffix}`, options);
   }
 
   async updateChat(
@@ -1017,16 +1061,24 @@ export class ApiService {
 
   async getChatTurns(
     chatId: string,
-    options: { before_turn_id?: string; limit?: number } = {},
+    options: {
+      before_turn_id?: string;
+      limit?: number;
+      include_learning_data?: boolean;
+      signal?: AbortSignal;
+    } = {},
   ): Promise<TurnsPageResponse> {
     const params = new URLSearchParams();
     if (options.before_turn_id)
       params.set("before_turn_id", String(options.before_turn_id));
+    if (options.include_learning_data !== undefined)
+      params.set("include_learning_data", String(options.include_learning_data));
     params.set("limit", String(options.limit ?? 20));
     const qs = params.toString();
     const suffix = qs ? `?${qs}` : "";
     return httpClient.get<TurnsPageResponse>(
       `/v1/chats/${chatId}/turns${suffix}`,
+      { signal: options.signal },
     );
   }
 
@@ -1606,7 +1658,7 @@ export class ApiService {
     chat_id?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<SavedItemsPage> {
+  }, options: ApiRequestOptions = {}): Promise<SavedItemsPage> {
     const qs = new URLSearchParams();
     if (params?.kind) qs.set("kind", params.kind);
     if (params?.role_id) qs.set("role_id", params.role_id);
@@ -1614,7 +1666,7 @@ export class ApiService {
     if (params?.cursor) qs.set("cursor", params.cursor);
     if (params?.limit) qs.set("limit", String(params.limit));
     const suffix = qs.toString() ? `?${qs}` : "";
-    return httpClient.get<SavedItemsPage>(`/v1/saved-items${suffix}`);
+    return httpClient.get<SavedItemsPage>(`/v1/saved-items${suffix}`, options);
   }
 
   async deleteSavedItem(id: string): Promise<void> {
@@ -1747,12 +1799,16 @@ export class ApiService {
   }
 
   // Phase 2.1: Voice APIs
-  async getMyCharacters(): Promise<CharacterResponse[]> {
-    return httpClient.get<CharacterResponse[]>("/v1/characters");
+  async getMyCharacters(
+    options: ApiRequestOptions = {},
+  ): Promise<CharacterResponse[]> {
+    return httpClient.get<CharacterResponse[]>("/v1/characters", options);
   }
 
-  async getSidebarCharacters(): Promise<CharacterResponse[]> {
-    return httpClient.get<CharacterResponse[]>("/v1/chats/characters");
+  async getSidebarCharacters(
+    options: ApiRequestOptions = {},
+  ): Promise<CharacterResponse[]> {
+    return httpClient.get<CharacterResponse[]>("/v1/chats/characters", options);
   }
 
   async listMyVoices(params?: {
@@ -1760,27 +1816,30 @@ export class ApiService {
     source_type?: VoiceSourceType;
     cursor?: string;
     limit?: number;
-  }): Promise<VoiceProfilesPage> {
+  }, options: ApiRequestOptions = {}): Promise<VoiceProfilesPage> {
     const qs = new URLSearchParams();
     if (params?.status) qs.set("status", params.status);
     if (params?.source_type) qs.set("source_type", params.source_type);
     if (params?.cursor) qs.set("cursor", params.cursor);
     if (params?.limit) qs.set("limit", String(params.limit));
     const suffix = qs.toString() ? `?${qs}` : "";
-    return httpClient.get<VoiceProfilesPage>(`/v1/voices${suffix}`);
+    return httpClient.get<VoiceProfilesPage>(`/v1/voices${suffix}`, options);
   }
 
   async listSelectableVoices(params?: {
     provider?: string;
     include_system?: boolean;
     include_user_custom?: boolean;
-  }): Promise<VoiceCatalogResponse> {
+  }, options: ApiRequestOptions = {}): Promise<VoiceCatalogResponse> {
     const qs = new URLSearchParams();
     if (params?.provider) qs.set("provider", params.provider);
     if (params?.include_system !== undefined) qs.set("include_system", String(params.include_system));
     if (params?.include_user_custom !== undefined) qs.set("include_user_custom", String(params.include_user_custom));
     const suffix = qs.toString() ? `?${qs}` : "";
-    return httpClient.get<VoiceCatalogResponse>(`/v1/voices/catalog${suffix}`);
+    return httpClient.get<VoiceCatalogResponse>(
+      `/v1/voices/catalog${suffix}`,
+      options,
+    );
   }
 
   async createVoiceClone(formData: FormData): Promise<VoiceProfile> {
@@ -1804,12 +1863,23 @@ export class ApiService {
     return payload as VoiceProfile;
   }
 
-  async getVoiceById(voiceId: string): Promise<VoiceProfile> {
-    return httpClient.get<VoiceProfile>(`/v1/voices/${voiceId}`);
+  async getVoiceById(
+    voiceId: string,
+    options: ApiRequestOptions = {},
+  ): Promise<VoiceProfile> {
+    return httpClient.get<VoiceProfile>(`/v1/voices/${voiceId}`, options);
   }
 
-  async patchVoiceById(voiceId: string, data: VoiceProfileUpdate): Promise<VoiceProfile> {
-    return httpClient.patch<VoiceProfile>(`/v1/voices/${voiceId}`, data);
+  async patchVoiceById(
+    voiceId: string,
+    data: VoiceProfileUpdate,
+    options: ApiRequestOptions = {},
+  ): Promise<VoiceProfile> {
+    return httpClient.patch<VoiceProfile>(
+      `/v1/voices/${voiceId}`,
+      data,
+      options,
+    );
   }
 
   async deleteVoiceById(voiceId: string): Promise<void> {
@@ -1965,7 +2035,7 @@ export class ApiService {
     chat_id?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<SavedItemsPagePhase3> {
+  }, options: ApiRequestOptions = {}): Promise<SavedItemsPagePhase3> {
     const qs = new URLSearchParams();
     if (params?.kind) qs.set("kind", params.kind);
     if (params?.role_id) qs.set("role_id", params.role_id);
@@ -1973,11 +2043,19 @@ export class ApiService {
     if (params?.cursor) qs.set("cursor", params.cursor);
     if (params?.limit) qs.set("limit", String(params.limit));
     const suffix = qs.toString() ? `?${qs}` : "";
-    return httpClient.get<SavedItemsPagePhase3>(`/v1/saved-items${suffix}`);
+    return httpClient.get<SavedItemsPagePhase3>(
+      `/v1/saved-items${suffix}`,
+      options,
+    );
   }
 
-  async getLLMModelCatalog(): Promise<LLMModelCatalogResponse> {
-    return httpClient.get<LLMModelCatalogResponse>("/v1/llm-models/catalog");
+  async getLLMModelCatalog(
+    options: ApiRequestOptions = {},
+  ): Promise<LLMModelCatalogResponse> {
+    return httpClient.get<LLMModelCatalogResponse>(
+      "/v1/llm-models/catalog",
+      options,
+    );
   }
 
   async searchLLMModels(modelId: string): Promise<LLMModelSearchResponse> {

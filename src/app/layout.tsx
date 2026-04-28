@@ -42,6 +42,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/lib/auth-context";
+import { QueryProvider } from "@/lib/query";
 
 export default function RootLayout({
   children,
@@ -51,7 +52,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <QueryProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   CreditCard,
@@ -16,13 +17,7 @@ import {
 
 import type { PaymentItems, SubscriptionItems } from "@dodopayments/better-auth";
 
-import {
-  createDodoCustomerPortal,
-  getWechatPaymentOrder,
-  listDodoPayments,
-  listDodoSubscriptions,
-  listWechatPaymentOrders,
-} from "@/lib/api";
+import { createDodoCustomerPortal } from "@/lib/api";
 import type { PaymentOrderResponse } from "@/lib/api-service";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -41,6 +36,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  queryKeys,
+  useDodoPaymentsQuery,
+  useDodoSubscriptionsQuery,
+  useWechatPaymentOrderQuery,
+  useWechatPaymentOrdersQuery,
+} from "@/lib/query";
 
 type SubscriptionRecord = SubscriptionItems["items"][number];
 type PaymentRecord = PaymentItems["items"][number];
@@ -126,14 +128,9 @@ function formatEffectiveSource(value: string | null | undefined) {
 
 export default function BillingPageContent() {
   const { user, entitlements, refreshEntitlements } = useAuth();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
 
-  const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [wechatOrders, setWechatOrders] = useState<PaymentOrderResponse[]>([]);
-  const [checkoutOrder, setCheckoutOrder] = useState<PaymentOrderResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -143,56 +140,97 @@ export default function BillingPageContent() {
   const checkoutChannel = searchParams.get("channel");
   const checkoutOrderId = searchParams.get("order_id");
   const canManageBilling = Boolean(user?.email_verified);
-
-  const loadBillingData = useCallback(async (isBackgroundRefresh = false) => {
-    if (isBackgroundRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
-    setError("");
-
-    try {
-      const [
-        orderItems,
-        orderDetail,
-        subscriptionsResponse,
-        paymentsResponse,
-      ] = await Promise.all([
-        listWechatPaymentOrders({ channel: "wechat_pay", skip: 0, limit: 20 }),
-        checkoutChannel === "wechat" && checkoutOrderId
-          ? getWechatPaymentOrder(checkoutOrderId)
-          : Promise.resolve(null),
-        canManageBilling
-          ? listDodoSubscriptions({ page: 1, limit: 20 })
-          : Promise.resolve(null),
-        canManageBilling
-          ? listDodoPayments({ page: 1, limit: 20 })
-          : Promise.resolve(null),
-      ]);
-
-      setWechatOrders(orderItems);
-      setCheckoutOrder(orderDetail);
-      setSubscriptions(subscriptionsResponse?.items ?? []);
-      setPayments(paymentsResponse?.items ?? []);
-
-      try {
-        await refreshEntitlements();
-      } catch (refreshError) {
-        setError(getErrorMessage(refreshError));
-      }
-    } catch (loadError) {
-      setError(getErrorMessage(loadError));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [canManageBilling, checkoutChannel, checkoutOrderId, refreshEntitlements]);
+  const wechatOrdersQuery = useWechatPaymentOrdersQuery(user?.id, {
+    channel: "wechat_pay",
+    skip: 0,
+    limit: 20,
+  });
+  const checkoutOrderQuery = useWechatPaymentOrderQuery(
+    user?.id,
+    checkoutOrderId,
+    checkoutChannel === "wechat" && Boolean(checkoutOrderId),
+  );
+  const subscriptionsQuery = useDodoSubscriptionsQuery(
+    user?.id,
+    { page: 1, limit: 20 },
+    canManageBilling,
+  );
+  const paymentsQuery = useDodoPaymentsQuery(
+    user?.id,
+    { page: 1, limit: 20 },
+    canManageBilling,
+  );
+  const subscriptions = useMemo<SubscriptionRecord[]>(
+    () => subscriptionsQuery.data?.items ?? [],
+    [subscriptionsQuery.data],
+  );
+  const payments = useMemo<PaymentRecord[]>(
+    () => paymentsQuery.data?.items ?? [],
+    [paymentsQuery.data],
+  );
+  const wechatOrders = wechatOrdersQuery.data ?? [];
+  const checkoutOrder = checkoutOrderQuery.data ?? null;
+  const isLoading =
+    wechatOrdersQuery.isLoading ||
+    checkoutOrderQuery.isLoading ||
+    (canManageBilling &&
+      (subscriptionsQuery.isLoading || paymentsQuery.isLoading));
+  const isRefreshing =
+    wechatOrdersQuery.isFetching ||
+    checkoutOrderQuery.isFetching ||
+    subscriptionsQuery.isFetching ||
+    paymentsQuery.isFetching;
 
   useEffect(() => {
-    void loadBillingData(checkoutStatus === "success");
-  }, [checkoutStatus, loadBillingData]);
+    if (checkoutStatus !== "success") {
+      return;
+    }
+
+    void refreshEntitlements().catch((refreshError) => {
+      setError(getErrorMessage(refreshError));
+    });
+  }, [checkoutStatus, refreshEntitlements]);
+
+  useEffect(() => {
+    const queryError =
+      wechatOrdersQuery.error ||
+      checkoutOrderQuery.error ||
+      subscriptionsQuery.error ||
+      paymentsQuery.error;
+    if (queryError) {
+      setError(getErrorMessage(queryError));
+    }
+  }, [
+    checkoutOrderQuery.error,
+    paymentsQuery.error,
+    subscriptionsQuery.error,
+    wechatOrdersQuery.error,
+  ]);
+
+  async function handleRefreshBillingData() {
+    setError("");
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.billing.wechatOrders(user?.id, {
+          channel: "wechat_pay",
+          skip: 0,
+          limit: 20,
+        }),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.billing.wechatOrder(user?.id, checkoutOrderId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.billing.dodoSubscriptions(user?.id),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.billing.dodoPayments(user?.id),
+      }),
+      refreshEntitlements(),
+    ]).catch((refreshError) => {
+      setError(getErrorMessage(refreshError));
+    });
+  }
 
   async function handleOpenPortal() {
     if (!canManageBilling) {
@@ -248,7 +286,7 @@ export default function BillingPageContent() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => void loadBillingData(true)}
+                  onClick={() => void handleRefreshBillingData()}
                   disabled={isLoading || isRefreshing}
                 >
                   {isRefreshing ? (

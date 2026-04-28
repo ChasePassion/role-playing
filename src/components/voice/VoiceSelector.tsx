@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo } from "react";
 import { Check, Loader2, AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import AudioPreviewButton from "./AudioPreviewButton";
-import { listSelectableVoices } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { resolveVoiceAvatarSrc } from "@/lib/character-avatar";
 import { getErrorMessage } from "@/lib/error-map";
+import { useSelectableVoicesQuery } from "@/lib/query";
 import {
   groupVoicesBySource,
   type VoiceGroup,
@@ -21,46 +22,30 @@ interface VoiceSelectorProps {
   disabled?: boolean;
 }
 
-type FetchState = "idle" | "loading" | "success" | "error";
-
 export default function VoiceSelector({
   selectedVoiceId,
   onSelectVoice,
   disabled = false,
 }: VoiceSelectorProps) {
-  const [fetchState, setFetchState] = useState<FetchState>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [voiceGroups, setVoiceGroups] = useState<VoiceGroup[]>([]);
-
-  const loadVoices = useCallback(async () => {
-    setFetchState("loading");
-    setError(null);
-
-    try {
-      const response = await listSelectableVoices({
-        include_system: true,
-        include_user_custom: true,
-      });
-      const groups = groupVoicesBySource(response.items);
-      setVoiceGroups(groups);
-      setFetchState("success");
-    } catch (err) {
-      setError(getErrorMessage(err));
-      setFetchState("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!disabled) {
-      loadVoices();
-    }
-  }, [loadVoices, disabled]);
+  const { user } = useAuth();
+  const voicesQuery = useSelectableVoicesQuery(
+    user?.id,
+    {
+      includeSystem: true,
+      includeUserCustom: true,
+    },
+    !disabled,
+  );
+  const voiceGroups = useMemo<VoiceGroup[]>(
+    () => (voicesQuery.data ? groupVoicesBySource(voicesQuery.data.items) : []),
+    [voicesQuery.data],
+  );
 
   if (disabled) {
     return null;
   }
 
-  if (fetchState === "loading") {
+  if (voicesQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
@@ -69,19 +54,25 @@ export default function VoiceSelector({
     );
   }
 
-  if (fetchState === "error") {
+  if (voicesQuery.isError) {
     return (
       <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-red-600">
         <AlertCircle className="h-5 w-5" />
-        <span className="text-sm">{error}</span>
-        <Button variant="ghost" size="sm" onClick={loadVoices}>
+        <span className="text-sm">{getErrorMessage(voicesQuery.error)}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            void voicesQuery.refetch();
+          }}
+        >
           重试
         </Button>
       </div>
     );
   }
 
-  if (fetchState === "success" && voiceGroups.length === 0) {
+  if (voicesQuery.isSuccess && voiceGroups.length === 0) {
     return (
       <div className="rounded-lg bg-gray-50 p-4 text-center">
         <p className="text-sm text-gray-500">暂无可用音色</p>

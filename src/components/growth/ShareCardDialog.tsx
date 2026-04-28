@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { LoaderCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import { useAuth } from "@/lib/auth-context";
 import { listChats } from "@/lib/api";
 import { consumeShareCard } from "@/lib/growth-api";
 import { useGrowth } from "@/lib/growth-context";
+import { queryKeys } from "@/lib/query";
 import {
   getShareCardAssetUrls,
   preloadShareCardAssets,
@@ -119,11 +121,56 @@ export default function ShareCardDialog() {
   const { pendingShareCards, dismissShareCard } = useGrowth();
   const [isDownloading, setIsDownloading] = useState(false);
   const [readyAssetKey, setReadyAssetKey] = useState<string | null>(null);
-  const [milestoneFirstChatDate, setMilestoneFirstChatDate] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const currentCard =
     pendingShareCards.length > 0 ? pendingShareCards[0] : null;
+  const milestonePayload =
+    currentCard?.kind === "character_message_milestone"
+      ? currentCard.character_milestone_payload
+      : null;
+  const milestoneCharacterId = milestonePayload?.character_id ?? null;
+  const firstChatDateQuery = useQuery({
+    queryKey: [
+      ...queryKeys.chats.history(user?.id, milestoneCharacterId, 100),
+      "first-chat-date",
+    ] as const,
+    queryFn: async ({ signal }) => {
+      if (!milestoneCharacterId) {
+        return null;
+      }
+
+      let cursor: string | undefined;
+      let oldestCreatedAt: string | null = null;
+
+      while (true) {
+        const page = await listChats(
+          {
+            character_id: milestoneCharacterId,
+            cursor,
+            limit: 100,
+          },
+          { signal },
+        );
+
+        if (page.items.length > 0) {
+          oldestCreatedAt =
+            page.items[page.items.length - 1]?.chat.created_at ?? oldestCreatedAt;
+        }
+
+        if (!page.has_more || !page.next_cursor) {
+          break;
+        }
+
+        cursor = page.next_cursor;
+      }
+
+      return oldestCreatedAt;
+    },
+    enabled: Boolean(user?.id && milestoneCharacterId),
+    staleTime: 5 * 60 * 1000,
+  });
+  const milestoneFirstChatDate = firstChatDateQuery.data ?? null;
   const userAvatar = user?.avatar_url || "/default-avatar.svg";
   const assetKey = useMemo(
     () => (currentCard ? `${currentCard.id}:${currentCard.kind}` : null),
@@ -162,63 +209,6 @@ export default function ShareCardDialog() {
       cancelled = true;
     };
   }, [assetKey, assetUrls, currentCard]);
-
-  useEffect(() => {
-    const milestonePayload =
-      currentCard?.kind === "character_message_milestone"
-        ? currentCard.character_milestone_payload
-        : null;
-    const milestoneCharacterId = milestonePayload?.character_id ?? null;
-
-    if (!milestoneCharacterId) {
-      setMilestoneFirstChatDate(null);
-      return;
-    }
-
-    const characterId: string = milestoneCharacterId;
-
-    let cancelled = false;
-
-    async function loadFirstChatDate() {
-      let cursor: string | undefined;
-      let oldestCreatedAt: string | null = null;
-
-      try {
-        while (true) {
-          const page = await listChats({
-            character_id: characterId,
-            cursor,
-            limit: 100,
-          });
-
-          if (page.items.length > 0) {
-            oldestCreatedAt = page.items[page.items.length - 1]?.chat.created_at ?? oldestCreatedAt;
-          }
-
-          if (!page.has_more || !page.next_cursor) {
-            break;
-          }
-
-          cursor = page.next_cursor;
-        }
-
-        if (!cancelled) {
-          setMilestoneFirstChatDate(oldestCreatedAt);
-        }
-      } catch (error) {
-        console.error("Failed to resolve milestone first chat date:", error);
-        if (!cancelled) {
-          setMilestoneFirstChatDate(null);
-        }
-      }
-    }
-
-    void loadFirstChatDate();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentCard]);
 
   const handleDismiss = useCallback(async () => {
     if (!currentCard) return;

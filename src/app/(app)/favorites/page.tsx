@@ -1,74 +1,45 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { X } from "lucide-react";
 import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
 import { useSidebar } from "../layout";
-import {
-    deleteSavedItem,
-    listSavedItemsPhase3,
-    type SavedItemKind,
-    type SavedItemResponse,
-} from "@/lib/api";
+import type { SavedItemKindPhase3, SavedItemResponsePhase3 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import {
+    useDeleteSavedItemMutation,
+    useSavedItemsInfiniteQuery,
+} from "@/lib/query";
 
 export default function FavoritesPage() {
-    const { isAuthed } = useAuth();
+    const { user } = useAuth();
     const { setSelectedCharacterId } = useSidebar();
-
-    const [savedItems, setSavedItems] = useState<SavedItemResponse[]>([]);
-    const [favoritesLoading, setFavoritesLoading] = useState(false);
-    const [favoritesNextCursor, setFavoritesNextCursor] = useState<string | null>(null);
-    const [favoritesHasMore, setFavoritesHasMore] = useState(false);
+    const favoritesQuery = useSavedItemsInfiniteQuery(user?.id, { limit: 20 });
+    const deleteFavoriteMutation = useDeleteSavedItemMutation(user?.id);
+    const savedItems =
+        favoritesQuery.data?.pages.flatMap((page) => page.items) ?? [];
+    const favoritesLoading =
+        favoritesQuery.isLoading || favoritesQuery.isFetchingNextPage;
 
     useEffect(() => {
         setSelectedCharacterId(null);
     }, [setSelectedCharacterId]);
 
-    const loadFavorites = useCallback(async (cursor?: string) => {
-        if (!isAuthed) return;
-        setFavoritesLoading(true);
-        try {
-            const page = await listSavedItemsPhase3({
-                cursor: cursor ?? undefined,
-                limit: 20,
-            });
-            if (cursor) {
-                setSavedItems((prev) => [...prev, ...page.items]);
-            } else {
-                setSavedItems(page.items);
-            }
-            setFavoritesNextCursor(page.next_cursor ?? null);
-            setFavoritesHasMore(page.has_more);
-        } catch (err) {
-            console.error("Failed to load favorites:", err);
-        } finally {
-            setFavoritesLoading(false);
-        }
-    }, [isAuthed]);
-
-    useEffect(() => {
-        void loadFavorites();
-    }, [loadFavorites]);
-
     const handleDeleteFavorite = useCallback(async (id: string) => {
-        const previous = savedItems;
-        setSavedItems((prev) => prev.filter((item) => item.id !== id));
         try {
-            await deleteSavedItem(id);
+            await deleteFavoriteMutation.mutateAsync(id);
         } catch (err) {
             console.error("Failed to delete favorite:", err);
-            setSavedItems(previous);
         }
-    }, [savedItems]);
+    }, [deleteFavoriteMutation]);
 
-    const kindLabel: Record<SavedItemKind, string> = {
+    const kindLabel: Record<SavedItemKindPhase3, string> = {
         reply_card: "回复卡",
         word_card: "单词卡",
         feedback_card: "更好表达",
     };
 
-    const renderSavedItemBody = (item: SavedItemResponse) => {
+    const renderSavedItemBody = (item: SavedItemResponsePhase3) => {
         if (item.kind === "word_card" && "pos_groups" in item.card) {
             return (
                 <div className="mt-3 pt-2 border-t border-gray-100">
@@ -158,14 +129,12 @@ export default function FavoritesPage() {
                                 ))}
                             </div>
 
-                            {favoritesHasMore && (
+                            {favoritesQuery.hasNextPage && (
                                 <div className="mt-6 flex justify-center">
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            if (favoritesNextCursor) {
-                                                void loadFavorites(favoritesNextCursor);
-                                            }
+                                            void favoritesQuery.fetchNextPage();
                                         }}
                                         disabled={favoritesLoading}
                                         className="px-6 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors disabled:opacity-50"

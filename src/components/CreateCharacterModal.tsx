@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useRef, ChangeEvent, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import {
     createCharacter,
-    getMyCharacters,
-    getVoiceById,
     patchVoiceById,
     updateCharacter,
     uploadFile,
@@ -36,6 +35,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { X, Plus, Loader2, Users } from "lucide-react";
+import {
+    useMyCharactersQuery,
+    useVoiceDetailQuery,
+    voiceDetailQueryOptions,
+} from "@/lib/query";
 
 interface CreateCharacterModalProps {
     isOpen: boolean;
@@ -87,7 +91,8 @@ export default function CreateCharacterModal({
     character,
     mode = 'create'
 }: CreateCharacterModalProps) {
-    const { isAuthed } = useAuth();
+    const { user, isAuthed } = useAuth();
+    const queryClient = useQueryClient();
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [greetingMessage, setGreetingMessage] = useState("");
@@ -112,6 +117,14 @@ export default function CreateCharacterModal({
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const manageableVoiceId = isManageableLocalVoice(selectedVoice) ? selectedVoice.id : null;
+    const voiceUsageDetailQuery = useVoiceDetailQuery(
+        user?.id,
+        manageableVoiceId,
+        isOpen && Boolean(manageableVoiceId),
+    );
+    const myCharactersQuery = useMyCharactersQuery(user?.id, {
+        enabled: isOpen && Boolean(manageableVoiceId),
+    });
 
     useEffect(() => {
         if (isOpen && mode === 'edit' && character) {
@@ -251,14 +264,24 @@ export default function CreateCharacterModal({
         setError(null);
 
         try {
-            const [voiceDetail, characters] = await Promise.all([
-                getVoiceById(manageableVoiceId),
-                getMyCharacters(),
+            const [voiceDetailResult, charactersResult] = await Promise.all([
+                voiceUsageDetailQuery.refetch(),
+                myCharactersQuery.refetch(),
             ]);
+            if (voiceDetailResult.error) {
+                throw voiceDetailResult.error;
+            }
+            if (charactersResult.error) {
+                throw charactersResult.error;
+            }
+            if (!voiceDetailResult.data) {
+                throw new Error("音色详情加载失败");
+            }
+            const voiceDetail = voiceDetailResult.data;
             const nextCharacterIds = (voiceDetail.bound_character_ids ?? []).filter(
                 (characterId) => characterId !== character?.id,
             );
-            setVoiceUsageCharacters(characters);
+            setVoiceUsageCharacters(charactersResult.data ?? []);
             setVoiceUsageCharacterIds(nextCharacterIds);
             setVoiceUsageVoiceId(manageableVoiceId);
             setIsVoiceUsageDialogOpen(true);
@@ -349,7 +372,9 @@ export default function CreateCharacterModal({
             let manageableSelectedVoiceId: string | null = manageableVoiceId;
 
             if (selectedVoice.source_type === "clone") {
-                const voiceProfile = await getVoiceById(selectedVoice.id);
+                const voiceProfile = await queryClient.fetchQuery(
+                    voiceDetailQueryOptions(user?.id, selectedVoice.id),
+                );
                 voiceProvider = voiceProfile.provider;
                 voiceModel = voiceProfile.provider_model;
                 voiceProviderVoiceId = voiceProfile.provider_voice_id;

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getGrowthChatHeader } from "@/lib/growth-api";
-import type { GrowthChatHeaderResponse } from "@/lib/growth-types";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth-context";
+import { queryKeys, useGrowthChatHeaderQuery } from "@/lib/query";
 import ReadingRingPopover from "./ReadingRingPopover";
 
 interface ReadingRingProps {
@@ -15,41 +16,41 @@ const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export default function ReadingRing({ chatId }: ReadingRingProps) {
-  const [data, setData] = useState<GrowthChatHeaderResponse | null>(null);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const headerQuery = useGrowthChatHeaderQuery(user?.id, chatId);
+  const data = headerQuery.data ?? null;
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [animateLoop, setAnimateLoop] = useState(false);
   const prevLoopsRef = useRef<number | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await getGrowthChatHeader(chatId);
-      if (
-        prevLoopsRef.current !== null &&
-        res.completed_loops > prevLoopsRef.current
-      ) {
-        setAnimateLoop(true);
-        setTimeout(() => setAnimateLoop(false), 1200);
-      }
-      prevLoopsRef.current = res.completed_loops;
-      setData(res);
-    } catch (err) {
-      console.error("Failed to fetch chat header growth:", err);
-    }
-  }, [chatId]);
-
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!data) {
+      return;
+    }
+
+    if (
+      prevLoopsRef.current !== null &&
+      data.completed_loops > prevLoopsRef.current
+    ) {
+      setAnimateLoop(true);
+      setTimeout(() => setAnimateLoop(false), 1200);
+    }
+
+    prevLoopsRef.current = data.completed_loops;
+  }, [data]);
 
   // Provide a way for SSE updates to refresh ring data
   useEffect(() => {
     const handler = () => {
-      fetchData();
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.growth.chatHeader(user?.id, chatId),
+      });
     };
     window.addEventListener("growth:header:refresh", handler);
     return () => window.removeEventListener("growth:header:refresh", handler);
-  }, [fetchData]);
+  }, [chatId, queryClient, user?.id]);
 
   if (!data) return null;
 

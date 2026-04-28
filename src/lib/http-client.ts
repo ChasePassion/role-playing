@@ -15,6 +15,8 @@ interface ErrorEnvelope {
     status?: number;
 }
 
+type HttpRequestOptions = Omit<RequestInit, "body" | "method">;
+
 export async function parseJsonResponse(response: Response): Promise<unknown> {
     return response.json().catch(() => undefined);
 }
@@ -83,40 +85,60 @@ class HttpClient {
         return unwrapEnvelopePayload<T>(payload);
     }
 
-    async get<T>(endpoint: string): Promise<T> {
-        return this.request<T>(endpoint, { method: "GET" });
+    async get<T>(endpoint: string, options: HttpRequestOptions = {}): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: "GET" });
     }
 
-    async post<T, B = unknown>(endpoint: string, data?: B): Promise<T> {
+    async post<T, B = unknown>(
+        endpoint: string,
+        data?: B,
+        options: HttpRequestOptions = {},
+    ): Promise<T> {
         return this.request<T>(endpoint, {
+            ...options,
             method: "POST",
             body: data ? JSON.stringify(data) : undefined,
         });
     }
 
-    async put<T, B = unknown>(endpoint: string, data?: B): Promise<T> {
+    async put<T, B = unknown>(
+        endpoint: string,
+        data?: B,
+        options: HttpRequestOptions = {},
+    ): Promise<T> {
         return this.request<T>(endpoint, {
+            ...options,
             method: "PUT",
             body: data ? JSON.stringify(data) : undefined,
         });
     }
 
-    async patch<T, B = unknown>(endpoint: string, data?: B): Promise<T> {
+    async patch<T, B = unknown>(
+        endpoint: string,
+        data?: B,
+        options: HttpRequestOptions = {},
+    ): Promise<T> {
         return this.request<T>(endpoint, {
+            ...options,
             method: "PATCH",
             body: data ? JSON.stringify(data) : undefined,
         });
     }
 
-    async delete<T>(endpoint: string): Promise<T> {
-        return this.request<T>(endpoint, { method: "DELETE" });
+    async delete<T>(endpoint: string, options: HttpRequestOptions = {}): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: "DELETE" });
     }
 
-    async upload<T = unknown>(endpoint: string, file: File): Promise<T> {
+    async upload<T = unknown>(
+        endpoint: string,
+        file: File,
+        options: HttpRequestOptions = {},
+    ): Promise<T> {
         const formData = new FormData();
         formData.append("file", file);
 
         const response = await fetchWithBetterAuth(`${this.baseURL}${endpoint}`, {
+            ...options,
             method: "POST",
             body: formData,
         });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Mic2, Plus, Trash2, UserRound } from "lucide-react";
 
 import AvatarCropper from "@/components/AvatarCropper";
@@ -12,9 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getMyCharacters, type CharacterResponse, uploadFile } from "@/lib/api";
+import { uploadFile } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { resolveCharacterAvatarSrc, resolveVoiceAvatarSrc } from "@/lib/character-avatar";
 import { getErrorMessage } from "@/lib/error-map";
+import { useMyCharactersQuery } from "@/lib/query";
 
 interface VoiceAvatarFieldProps {
   value: string | null;
@@ -27,13 +29,17 @@ export default function VoiceAvatarField({
   onChange,
   disabled = false,
 }: VoiceAvatarFieldProps) {
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isCharacterDialogOpen, setIsCharacterDialogOpen] = useState(false);
-  const [characterOptions, setCharacterOptions] = useState<CharacterResponse[]>([]);
-  const [isCharacterLoading, setIsCharacterLoading] = useState(false);
+  const charactersQuery = useMyCharactersQuery(user?.id, {
+    enabled: isCharacterDialogOpen,
+  });
+  const characterOptions = charactersQuery.data ?? [];
+  const isCharacterLoading = charactersQuery.isLoading;
 
   const avatarSrc = useMemo(() => resolveVoiceAvatarSrc(value), [value]);
 
@@ -67,22 +73,15 @@ export default function VoiceAvatarField({
     }
   };
 
-  const handleOpenCharacterDialog = async () => {
-    setIsCharacterDialogOpen(true);
-    if (characterOptions.length > 0) {
-      return;
+  useEffect(() => {
+    if (charactersQuery.error) {
+      setAvatarError(getErrorMessage(charactersQuery.error));
     }
+  }, [charactersQuery.error]);
 
-    setIsCharacterLoading(true);
+  const handleOpenCharacterDialog = () => {
+    setIsCharacterDialogOpen(true);
     setAvatarError(null);
-    try {
-      const items = await getMyCharacters();
-      setCharacterOptions(items);
-    } catch (error) {
-      setAvatarError(getErrorMessage(error));
-    } finally {
-      setIsCharacterLoading(false);
-    }
   };
 
   return (

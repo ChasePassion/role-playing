@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useDeferredValue, useRef } from "react";
+import { useState, useEffect, useDeferredValue, useMemo, useRef } from "react";
 import Image from "next/image";
 import { Check, Loader2, AlertCircle, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { getLLMModelCatalog } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-map";
+import { useLLMModelCatalogQuery } from "@/lib/query";
 import { SpriteIcon } from "@/components/ui/sprite-icon";
 import {
   groupModelsByProvider,
@@ -27,8 +27,6 @@ interface ModelSelectorProps {
   disabled?: boolean;
 }
 
-type FetchState = "idle" | "loading" | "success" | "error";
-
 export default function ModelSelector({
   selectedProvider,
   selectedModel,
@@ -36,10 +34,14 @@ export default function ModelSelector({
   onSelectSystemDefault,
   disabled = false,
 }: ModelSelectorProps) {
-  const [fetchState, setFetchState] = useState<FetchState>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
-  const [defaultRoute, setDefaultRoute] = useState<CharacterLLMRoute | null>(null);
+  const catalogQuery = useLLMModelCatalogQuery(!disabled);
+  const modelGroups = useMemo<ModelGroup[]>(
+    () =>
+      catalogQuery.data ? groupModelsByProvider(catalogQuery.data.items) : [],
+    [catalogQuery.data],
+  );
+  const defaultRoute: CharacterLLMRoute | null =
+    catalogQuery.data?.default_route ?? null;
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [collapsedProviders, setCollapsedProviders] = useState<Set<LLMProvider>>(new Set());
@@ -47,28 +49,11 @@ export default function ModelSelector({
   const containerRef = useRef<HTMLDivElement>(null);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
-  const loadModels = async () => {
-    setFetchState("loading");
-    setError(null);
-
-    try {
-      const response = await getLLMModelCatalog();
-      const groups = groupModelsByProvider(response.items);
-      setModelGroups(groups);
-      setDefaultRoute(response.default_route);
-      setCollapsedProviders(new Set(groups.map((group) => group.provider)));
-      setFetchState("success");
-    } catch (err) {
-      setError(getErrorMessage(err));
-      setFetchState("error");
-    }
-  };
-
   useEffect(() => {
-    if (!disabled) {
-      void loadModels();
+    if (catalogQuery.data) {
+      setCollapsedProviders(new Set(modelGroups.map((group) => group.provider)));
     }
-  }, [disabled]);
+  }, [catalogQuery.data, modelGroups]);
 
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
@@ -152,7 +137,7 @@ export default function ModelSelector({
     return null;
   }
 
-  if (fetchState === "loading") {
+  if (catalogQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-4">
         <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
@@ -161,16 +146,18 @@ export default function ModelSelector({
     );
   }
 
-  if (fetchState === "error") {
+  if (catalogQuery.isError) {
     return (
       <div className="flex items-center justify-between gap-2 rounded-lg bg-red-50 p-4">
         <div className="flex items-center gap-2 text-red-600">
           <AlertCircle className="h-5 w-5" />
-          <span className="text-sm">{error || "服务器内部错误，请重试"}</span>
+          <span className="text-sm">{getErrorMessage(catalogQuery.error)}</span>
         </div>
         <button
           type="button"
-          onClick={loadModels}
+          onClick={() => {
+            void catalogQuery.refetch();
+          }}
           className="p-1 hover:bg-red-100 rounded-md transition-colors"
         >
           <SpriteIcon name="refresh" size={20} className="text-red-600" />
@@ -179,7 +166,7 @@ export default function ModelSelector({
     );
   }
 
-  if (fetchState === "success" && modelGroups.length === 0) {
+  if (catalogQuery.isSuccess && modelGroups.length === 0) {
     return (
       <div className="rounded-lg bg-gray-50 p-4 text-center">
         <p className="text-sm text-gray-500">暂无可用模型</p>

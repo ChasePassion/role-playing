@@ -11,12 +11,18 @@ export interface DiscoverConfig {
 /**
  * 分页拉取全部 market 角色数据
  */
-export async function fetchAllMarketCharacters(): Promise<CharacterResponse[]> {
+export async function fetchAllMarketCharacters(
+  options: { signal?: AbortSignal } = {},
+): Promise<CharacterResponse[]> {
   const all: CharacterResponse[] = [];
   let skip = 0;
 
   while (true) {
-    const batch = await getMarketCharacters(skip, DISCOVER_PAGE_SIZE);
+    const batch = await getMarketCharacters(
+      skip,
+      DISCOVER_PAGE_SIZE,
+      options,
+    );
     all.push(...batch);
 
     if (batch.length < DISCOVER_PAGE_SIZE) {
@@ -32,8 +38,10 @@ export async function fetchAllMarketCharacters(): Promise<CharacterResponse[]> {
 /**
  * 获取 Discover 页运行时配置（Hero 角色 ID 列表等）
  */
-export async function getDiscoverConfig(): Promise<DiscoverConfig> {
-  return httpClient.get<DiscoverConfig>("/v1/discover/config");
+export async function getDiscoverConfig(
+  options: { signal?: AbortSignal } = {},
+): Promise<DiscoverConfig> {
+  return httpClient.get<DiscoverConfig>("/v1/discover/config", options);
 }
 
 /**

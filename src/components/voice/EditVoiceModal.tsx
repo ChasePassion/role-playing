@@ -2,14 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Loader2, Users } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getMyCharacters, getVoiceById, patchVoiceById, type CharacterResponse } from "@/lib/api";
+import { patchVoiceById } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { getErrorMessage } from "@/lib/error-map";
+import {
+  queryKeys,
+  useMyCharactersQuery,
+  useVoiceDetailQuery,
+} from "@/lib/query";
 import type { VoiceCardDisplay } from "@/lib/voice-adapter";
 import VoiceAvatarField from "./VoiceAvatarField";
 import VoiceUsageManagerDialog from "./VoiceUsageManagerDialog";
@@ -27,61 +34,47 @@ export default function EditVoiceModal({
   onSuccess,
   voice,
 }: EditVoiceModalProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const voiceDetailQuery = useVoiceDetailQuery(user?.id, voice?.id, isOpen);
+  const charactersQuery = useMyCharactersQuery(user?.id, {
+    enabled: isOpen && Boolean(voice),
+  });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
   const [previewText, setPreviewText] = useState("");
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
-  const [characters, setCharacters] = useState<CharacterResponse[]>([]);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUsageDialogOpen, setIsUsageDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const characters = useMemo(
+    () => charactersQuery.data ?? [],
+    [charactersQuery.data],
+  );
+  const isLoadingDetails = voiceDetailQuery.isLoading || charactersQuery.isLoading;
+
   useEffect(() => {
-    if (!isOpen || !voice) {
+    const voiceDetail = voiceDetailQuery.data;
+    if (!isOpen || !voiceDetail) {
       return;
     }
 
-    let cancelled = false;
+    setName(voiceDetail.display_name);
+    setDescription(voiceDetail.description || "");
+    setAvatarFileName(voiceDetail.avatar_file_name ?? null);
+    setPreviewText(voiceDetail.preview_text || "");
+    setSelectedCharacterIds(voiceDetail.bound_character_ids ?? []);
+    setError(null);
+  }, [isOpen, voiceDetailQuery.data]);
 
-    const loadData = async () => {
-      setIsLoadingDetails(true);
-      setError(null);
-
-      try {
-        const [voiceDetail, myCharacters] = await Promise.all([
-          getVoiceById(voice.id),
-          getMyCharacters(),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        setName(voiceDetail.display_name);
-        setDescription(voiceDetail.description || "");
-        setAvatarFileName(voiceDetail.avatar_file_name ?? null);
-        setPreviewText(voiceDetail.preview_text || "");
-        setSelectedCharacterIds(voiceDetail.bound_character_ids ?? []);
-        setCharacters(myCharacters);
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(getErrorMessage(loadError));
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingDetails(false);
-        }
-      }
-    };
-
-    void loadData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, voice]);
+  useEffect(() => {
+    const loadError = voiceDetailQuery.error || charactersQuery.error;
+    if (loadError) {
+      setError(getErrorMessage(loadError));
+    }
+  }, [charactersQuery.error, voiceDetailQuery.error]);
 
   const managedCharacterCount = useMemo(
     () => characters.filter((character) => selectedCharacterIds.includes(character.id)).length,
@@ -122,13 +115,28 @@ export default function EditVoiceModal({
     setError(null);
 
     try {
-      await patchVoiceById(voice.id, {
+      const updatedVoice = await patchVoiceById(voice.id, {
         display_name: name.trim(),
         description: description.trim() || null,
         avatar_file_name: avatarFileName,
         preview_text: previewText.trim(),
         character_ids: selectedCharacterIds,
       });
+      queryClient.setQueryData(
+        queryKeys.voices.detail(user?.id, voice.id),
+        updatedVoice,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.voices.all(user?.id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.characters.mine(user?.id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.sidebar.characters(user?.id),
+        }),
+      ]);
       onSuccess();
       handleClose();
     } catch (saveError) {

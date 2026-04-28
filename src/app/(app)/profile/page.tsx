@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import CharacterCard from "@/components/CharacterCard";
 import CreateCharacterModal from "@/components/CreateCharacterModal";
 import ConfirmActionDialog from "@/components/DeleteConfirmDialog";
@@ -12,11 +13,8 @@ import EditVoiceModal from "@/components/voice/EditVoiceModal";
 import { Button } from "@/components/ui/button";
 import CreateItemCard from "@/components/CreateItemCard";
 import {
-    getMyCharacters,
     unpublishCharacter,
-    listMyVoices,
     deleteVoiceById,
-    type CharacterResponse,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
@@ -27,15 +25,19 @@ import {
     mapVoiceProfileToCardDisplay,
     type VoiceCardDisplay,
 } from "@/lib/voice-adapter";
+import {
+    queryKeys,
+    useMyCharactersQuery,
+    useMyVoicesInfiniteQuery,
+} from "@/lib/query";
 
 type TabType = 'works' | 'voices';
 
 export default function ProfilePage() {
     const { user, isAuthed, entitlements, isEntitlementsLoading } = useAuth();
+    const queryClient = useQueryClient();
     const canUseVoiceClone = entitlements?.features.voice_clone ?? null;
-    const { setSelectedCharacterId, refreshSidebarCharacters } = useSidebar();
-
-    const [characters, setCharacters] = useState<Character[]>([]);
+    const { setSelectedCharacterId } = useSidebar();
 
     // Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -51,15 +53,66 @@ export default function ProfilePage() {
 
     // Tab State
     const [activeTab, setActiveTab] = useState<TabType>('works');
-
-    // Voice State
-    const [voices, setVoices] = useState<VoiceCardDisplay[]>([]);
-    const [voicesLoading, setVoicesLoading] = useState(false);
-    const [voicesHasMore, setVoicesHasMore] = useState(false);
-    const [voicesCursor, setVoicesCursor] = useState<string | null>(null);
-    const [isLoadingMoreVoices, setIsLoadingMoreVoices] = useState(false);
     const [voiceToDelete, setVoiceToDelete] = useState<string | null>(null);
-    const [isDeletingVoice, setIsDeletingVoice] = useState(false);
+    const charactersQuery = useMyCharactersQuery(user?.id, {
+        enabled: activeTab === "works",
+    });
+    const voicesQuery = useMyVoicesInfiniteQuery(
+        user?.id,
+        { limit: 20 },
+        { enabled: activeTab === "voices" },
+    );
+    const characters = useMemo<Character[]>(
+        () =>
+            (charactersQuery.data ?? []).map((c) =>
+                mapCharacterToSidebar(c, { creatorUsername: user?.username }),
+            ),
+        [charactersQuery.data, user?.username],
+    );
+    const voices = useMemo<VoiceCardDisplay[]>(
+        () =>
+            voicesQuery.data?.pages
+                .flatMap((page) => page.items)
+                .map(mapVoiceProfileToCardDisplay) ?? [],
+        [voicesQuery.data],
+    );
+    const voicesLoading = activeTab === "voices" && voicesQuery.isLoading;
+    const isLoadingMoreVoices = voicesQuery.isFetchingNextPage;
+
+    const invalidateCharacterData = useCallback(async () => {
+        await Promise.all([
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.characters.mine(user?.id),
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.sidebar.characters(user?.id),
+            }),
+        ]);
+    }, [queryClient, user?.id]);
+
+    const invalidateVoiceData = useCallback(async () => {
+        await Promise.all([
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.voices.all(user?.id),
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.auth.entitlements(user?.id),
+            }),
+        ]);
+    }, [queryClient, user?.id]);
+
+    const unpublishCharacterMutation = useMutation({
+        mutationFn: (characterId: string) => unpublishCharacter(characterId),
+        onSuccess: invalidateCharacterData,
+    });
+
+    const deleteVoiceMutation = useMutation({
+        mutationFn: (voiceId: string) => deleteVoiceById(voiceId),
+        onSuccess: async () => {
+            await invalidateVoiceData();
+            await invalidateCharacterData();
+        },
+    });
 
     const handleCreateVoiceClick = useCallback(() => {
         if (isEntitlementsLoading) {
@@ -79,68 +132,6 @@ export default function ProfilePage() {
         setSelectedCharacterId(null);
     }, [setSelectedCharacterId]);
 
-    // Load User Characters using getMyCharacters
-    const loadUserCharacters = useCallback(async () => {
-        if (!isAuthed) return;
-        try {
-            const apiCharacters = await getMyCharacters();
-            const mapped: Character[] = apiCharacters.map((c: CharacterResponse) =>
-                mapCharacterToSidebar(c, { creatorUsername: user?.username })
-            );
-            setCharacters(mapped);
-        } catch (err) {
-            console.error("Failed to load user characters:", err);
-        }
-    }, [user, isAuthed]);
-
-    // Load Voices
-    const loadVoices = useCallback(async (reset = false) => {
-        if (!isAuthed) return;
-
-        if (reset) {
-            setVoicesLoading(true);
-            setVoicesCursor(null);
-        } else {
-            setIsLoadingMoreVoices(true);
-        }
-
-        try {
-            const cursor = reset ? undefined : voicesCursor;
-            const response = await listMyVoices({
-                cursor: cursor || undefined,
-                limit: 20,
-            });
-
-            const mappedVoices = response.items.map(mapVoiceProfileToCardDisplay);
-
-            if (reset) {
-                setVoices(mappedVoices);
-            } else {
-                setVoices((prev) => [...prev, ...mappedVoices]);
-            }
-
-            setVoicesHasMore(response.has_more);
-            setVoicesCursor(response.next_cursor);
-        } catch (err) {
-            console.error("Failed to load voices:", err);
-        } finally {
-            setVoicesLoading(false);
-            setIsLoadingMoreVoices(false);
-        }
-    }, [isAuthed, voicesCursor]);
-
-    useEffect(() => {
-        if (user && activeTab === 'works') {
-            loadUserCharacters();
-        }
-    }, [user, activeTab, loadUserCharacters]);
-
-    useEffect(() => {
-        if (activeTab === 'voices' && isAuthed) {
-            loadVoices(true);
-        }
-    }, [activeTab, isAuthed, loadVoices]);
-
     // Actions
     const handleEdit = (character: Character) => {
         setEditCharacter(character);
@@ -157,9 +148,7 @@ export default function ProfilePage() {
 
         setIsUnpublishing(true);
         try {
-            await unpublishCharacter(characterToUnpublish.id);
-            await loadUserCharacters();
-            await refreshSidebarCharacters();
+            await unpublishCharacterMutation.mutateAsync(characterToUnpublish.id);
             setIsUnpublishDialogOpen(false);
             setCharacterToUnpublish(null);
         } catch (err) {
@@ -176,12 +165,11 @@ export default function ProfilePage() {
     };
 
     const handleModalSuccess = () => {
-        loadUserCharacters();
-        refreshSidebarCharacters();
+        void invalidateCharacterData();
     };
 
     const handleVoiceCloneSuccess = () => {
-        loadVoices(true);
+        void invalidateVoiceData();
     };
 
     const handleEditVoice = (voice: VoiceCardDisplay) => {
@@ -196,16 +184,12 @@ export default function ProfilePage() {
     const handleConfirmDeleteVoice = async () => {
         if (!voiceToDelete || !isAuthed) return;
 
-        setIsDeletingVoice(true);
         try {
-            await deleteVoiceById(voiceToDelete);
-            setVoices((prev) => prev.filter((v) => v.id !== voiceToDelete));
+            await deleteVoiceMutation.mutateAsync(voiceToDelete);
             setVoiceToDelete(null);
         } catch (err) {
             console.error("Delete voice failed:", err);
             alert("删除音色失败，请稍后重试");
-        } finally {
-            setIsDeletingVoice(false);
         }
     };
 
@@ -303,11 +287,13 @@ export default function ProfilePage() {
                                         ))}
                                     </div>
 
-                                    {voicesHasMore && (
+                                    {voicesQuery.hasNextPage && (
                                         <div className="flex justify-center pt-4">
                                             <Button
                                                 variant="outline"
-                                                onClick={() => loadVoices(false)}
+                                                onClick={() => {
+                                                    void voicesQuery.fetchNextPage();
+                                                }}
                                                 disabled={isLoadingMoreVoices}
                                             >
                                                 {isLoadingMoreVoices ? (
@@ -365,7 +351,9 @@ export default function ProfilePage() {
                     setIsEditVoiceModalOpen(false);
                     setVoiceToEdit(null);
                 }}
-                onSuccess={() => loadVoices(true)}
+                onSuccess={() => {
+                    void invalidateVoiceData();
+                }}
                 voice={voiceToEdit}
             />
 
@@ -375,7 +363,7 @@ export default function ProfilePage() {
                 entityLabel="音色"
                 onConfirm={handleConfirmDeleteVoice}
                 onCancel={() => setVoiceToDelete(null)}
-                isDeleting={isDeletingVoice}
+                isDeleting={deleteVoiceMutation.isPending}
             />
         </WorkspaceFrame>
     );
