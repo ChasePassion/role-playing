@@ -2,7 +2,7 @@
 
 本文档由脚本直接连接 PostgreSQL 实例并基于实时元数据生成。
 
-- 生成时间: `2026-04-28 17:47:55 北京时间`
+- 生成时间: `2026-04-29 04:05:59 北京时间`
 - 目标数据库: `localhost:5432/role_play_mem`
 - Schema: `public`
 - 表数量: `22`
@@ -17,13 +17,13 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
   - 负责 `better-auth` 登录、定价与账单页、角色发现页、聊天页、收藏页、个人中心、成长统计页。
   - 通过同源 `/api/auth/*` 处理认证，通过 `/v1/*` 调用后端业务 API。
 - 后端仓库 `E:\code\parlasoul-backend`
-  - 负责角色、聊天树、学习卡、收藏、音色、成长系统、订阅权益同步、Webhook 处理。
+  - 负责角色、聊天树、学习卡、收藏、音色、成长系统、订阅 / 一次性权益同步、Webhook 处理、R2 媒体上传与读取。
 - PostgreSQL
   - 同时承载两类表：
     - `better-auth` 维护的认证表
     - FastAPI 维护的业务表
 - Redis
-  - 保存前端邮箱 OTP 的短期投递状态。
+  - 保存前端分享卡图片代理缓存。
   - 保存后端媒体上传会话、上传互斥锁、AVIF 热点对象缓存和短期 404 缓存，不保存业务主数据。
 - Cloudflare R2
   - 保存用户头像、角色头像、音色头像等需要持久化的媒体对象。
@@ -31,7 +31,7 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
 - Milvus / Zilliz
   - 保存 memory system 的向量与记忆正文，不在 PostgreSQL 里落“记忆业务表”。
 - Dodo Payments
-  - 保存完整订阅与支付流水；本地库只保存用户订阅摘要和 webhook 审计记录。
+  - 保存完整订阅与支付流水；本地库保存用户订阅摘要、微信一次性支付订单、一次性权益通行证和 webhook 审计记录。
 - 本地文件系统
   - 不再作为头像等持久化媒体资源的运行时存储。
 
@@ -46,7 +46,7 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
   - 收藏：[`saved_items`](#table-saved_items)
   - 音色：[`voice_profiles`](#table-voice_profiles)
   - 成长系统：[`growth_user_stats`](#table-growth_user_stats) 等 5 张统计表
-  - 订阅审计：[`subscription_webhook_events`](#table-subscription_webhook_events)
+  - 订阅与支付权益：[`subscription_webhook_events`](#table-subscription_webhook_events)、[`payment_orders`](#table-payment_orders)、[`payment_webhook_events`](#table-payment_webhook_events)、[`user_access_passes`](#table-user_access_passes)
   - 媒体资源：Cloudflare R2 存对象，Redis 做短期会话和热点缓存，业务表记录 `avatar_image_key`
 - 当前非前端主链路 / 兼容遗留
   - 当前旧验证码登录链路已经从代码库与数据库 schema 中移除，认证统一收敛到 `better-auth`。
@@ -59,12 +59,12 @@ flowchart TD
     B --> C[better-auth 路由 /api/auth/*]
     B --> D[FastAPI /v1/*]
     C --> E[(PostgreSQL 认证表)]
-    C --> F[Redis OTP 投递状态]
-    C --> G[Dodo Payments API]
+    C --> F[Redis 分享卡图片缓存]
+    C --> G[Dodo Payments API / 托管订阅]
     D --> H[(PostgreSQL 业务表)]
     D --> I[Milvus / Memory System]
     D --> J[LLM / TTS / STT 上游]
-    D --> K[Dodo Webhook]
+    D --> K[Dodo Subscription / Payment Webhook]
     D --> L[(Redis 媒体缓存)]
     D --> M[(Cloudflare R2)]
     K --> D
@@ -174,10 +174,14 @@ sequenceDiagram
 #### 4.5 订阅与权益
 
 - 定价页与账单页主要通过前端 `better-auth + Dodo` 直接拿远端数据。
-- 本地库只保留两层状态：
+- 微信一次性权益由后端 `/v1/payments/wechat/*` 创建 Dodo checkout session，并通过支付 webhook 完成订单状态与权益发放。
+- 本地库保留四层状态：
   - [`users`](#table-users) 上的订阅摘要字段
-  - [`subscription_webhook_events`](#table-subscription_webhook_events) webhook 审计与幂等记录
-- 真正的“功能是否可用”由后端 `SubscriptionService` 根据 `subscription_tier + subscription_status + subscription_current_period_end` 计算。
+  - [`subscription_webhook_events`](#table-subscription_webhook_events) 订阅 webhook 审计与幂等记录
+  - [`payment_orders`](#table-payment_orders) 微信一次性支付订单镜像
+  - [`payment_webhook_events`](#table-payment_webhook_events) 支付 / 退款 webhook 审计与幂等记录
+  - [`user_access_passes`](#table-user_access_passes) 已生效的一次性权益通行证
+- 真正的“功能是否可用”由后端 `SubscriptionService` 同时计算 recurring subscription 与 active one-time pass，返回 `effective_source`。
 
 ### 5. 数据域分组
 
@@ -202,8 +206,11 @@ sequenceDiagram
   - [`growth_character_daily_stats`](#table-growth_character_daily_stats)
   - [`growth_character_stats`](#table-growth_character_stats)
   - [`growth_share_triggers`](#table-growth_share_triggers)
-- 订阅审计域
+- 订阅与支付权益域
   - [`subscription_webhook_events`](#table-subscription_webhook_events)
+  - [`payment_webhook_events`](#table-payment_webhook_events)
+  - [`payment_orders`](#table-payment_orders)
+  - [`user_access_passes`](#table-user_access_passes)
 - 基础设施域
   - [`alembic_version`](#table-alembic_version)
 
@@ -646,7 +653,7 @@ sequenceDiagram
 | `consumed_at` | 前端已消费时间。 | 待办队列过滤。 |
 | `created_at` | 创建时间。 | 审计。 |
 
-### 订阅审计域
+### 订阅与支付权益域
 
 #### [subscription_webhook_events](#table-subscription_webhook_events)
 
@@ -673,6 +680,100 @@ sequenceDiagram
 | `processed_at` | 本地完成处理时间。 | 审计。 |
 | `created_at` | 本地接收时间。 | 审计。 |
 
+#### [payment_webhook_events](#table-payment_webhook_events)
+
+- 表职责
+  - 记录 Dodo 一次性支付 / 退款 webhook 的原始事件、处理状态和幂等主键。
+  - 这是支付链路的“审计 + 幂等 + 补偿判断”表，不直接作为用户权益表。
+- 表协作
+  - webhook 路由验签后先写这里。
+  - `WechatPaymentService` 根据 `payment_id/refund_id/dodo_product_id` 更新 [`payment_orders`](#table-payment_orders)，并在成功支付后创建或更新 [`user_access_passes`](#table-user_access_passes)。
+- 当前地位
+  - 主链路支撑表。
+
+| 字段 | 业务语义 | 典型读写场景 |
+| --- | --- | --- |
+| `id` | 本地事件记录主键。 | 审计。 |
+| `webhook_id` | Dodo webhook 唯一事件 ID。 | 幂等去重。 |
+| `event_type` | webhook 类型。 | 区分 payment、refund 等处理路径。 |
+| `webhook_timestamp` | 上游 webhook 时间。 | 审计与时序诊断。 |
+| `customer_id` | Dodo customer id。 | 反查本地用户和订单。 |
+| `payment_id` | 上游 payment id。 | 与订单支付结果关联。 |
+| `refund_id` | 上游 refund id。 | 退款审计与权益回收判断。 |
+| `dodo_product_id` | 上游商品 ID。 | 映射 plus / pro 与有效期。 |
+| `payload_json` | 原始 webhook 负载快照。 | 追查支付问题时复盘。 |
+| `processing_status` | 本地处理状态，如 `received/processed/ignored`。 | 运维与补偿判断。 |
+| `processed_at` | 本地完成处理时间。 | 审计。 |
+| `created_at` | 本地接收时间。 | 审计。 |
+
+#### [payment_orders](#table-payment_orders)
+
+- 表职责
+  - 保存微信一次性权益购买订单在本地的状态镜像。
+  - 这是用户账单页的一次性支付订单来源，也是支付 webhook 更新和 access pass 发放的核心锚点。
+- 表协作
+  - 由 `/v1/payments/wechat/checkout-session` 创建。
+  - 支付 / 退款 webhook 会回写 `status`、支付金额、结算金额和原始 payload。
+  - 支付成功后与 [`user_access_passes`](#table-user_access_passes) 形成一对一权益来源关系。
+- 当前地位
+  - 主链路核心表。
+
+| 字段 | 业务语义 | 典型读写场景 |
+| --- | --- | --- |
+| `id` | 本地订单主键，也是前端查询订单详情的 ID。 | 创建 checkout、账单页详情。 |
+| `user_id` | 订单归属用户。 | 账单列表、权限隔离。 |
+| `provider` | 支付 provider，当前固定为 `dodo`。 | 多 provider 预留。 |
+| `channel` | 支付渠道，当前固定为 `wechat_pay`。 | 定价页和账单页区分支付方式。 |
+| `order_kind` | 订单种类，当前固定为 `one_time_pass`。 | 区分订阅和一次性权益。 |
+| `dodo_product_id` | Dodo 商品 ID。 | 映射 tier、有效期和上游对账。 |
+| `tier` | 本次购买获得的权益档位。 | `plus/pro` access pass 发放。 |
+| `duration_days` | 一次性权益有效天数。 | 计算 `ends_at`。 |
+| `base_price_minor` | 商品目录中的基础价格最小货币单位。 | 价格展示和审计。 |
+| `base_price_currency` | 基础价格币种。 | 价格展示和审计。 |
+| `billing_currency` | checkout 使用的计费币种，当前主要是 `CNY`。 | 前端账单展示。 |
+| `dodo_customer_id` | Dodo customer id。 | webhook 反查与对账。 |
+| `dodo_checkout_session_id` | Dodo checkout session id。 | 创建 checkout 后保存，唯一去重。 |
+| `dodo_payment_id` | Dodo payment id。 | 支付成功后回写，唯一去重。 |
+| `dodo_refund_id` | Dodo refund id。 | 退款后回写。 |
+| `checkout_url` | 前端跳转到的托管支付地址。 | 定价页跳转。 |
+| `charged_total_minor` | 实际扣款金额最小货币单位。 | 账单和对账。 |
+| `charged_currency` | 实际扣款币种。 | 账单和对账。 |
+| `settlement_total_minor` | 上游结算金额最小货币单位。 | 财务审计。 |
+| `settlement_currency` | 上游结算币种。 | 财务审计。 |
+| `status` | 本地订单状态：`created/checkout_created/pending/succeeded/failed/cancelled/refunded/expired`。 | 账单页展示、权益发放判断。 |
+| `paid_at` | 支付成功时间。 | 权益生效与账单展示。 |
+| `refunded_at` | 退款时间。 | 权益回收与账单展示。 |
+| `checkout_payload_json` | 创建 checkout session 的上游响应快照。 | 排障和对账。 |
+| `last_event_payload_json` | 最近一次支付 webhook payload 快照。 | 排障和对账。 |
+| `created_at` | 本地订单创建时间。 | 账单排序。 |
+| `updated_at` | 本地订单最后更新时间。 | 状态变化审计。 |
+
+#### [user_access_passes](#table-user_access_passes)
+
+- 表职责
+  - 保存由一次性支付授予的限时权益通行证。
+  - 它是 `SubscriptionService` 计算 `effective_source=one_time_pass` 的直接数据来源。
+- 表协作
+  - 每条记录通过 `source_order_id` 唯一关联一笔 [`payment_orders`](#table-payment_orders)。
+  - 用户权益接口 `/v1/users/me/entitlements` 会读取当前 active pass，与 recurring subscription 一起计算最终档位。
+- 当前地位
+  - 主链路核心表。
+
+| 字段 | 业务语义 | 典型读写场景 |
+| --- | --- | --- |
+| `id` | access pass 主键。 | 权益响应中的 `active_pass.id`。 |
+| `user_id` | 权益归属用户。 | 权限隔离和权益查询。 |
+| `source_order_id` | 来源订单，唯一。 | 一笔成功订单最多生成一张 pass。 |
+| `source_type` | 来源类型，当前固定为 `one_time_payment`。 | 未来扩展来源预留。 |
+| `channel` | 支付渠道，当前固定为 `wechat_pay`。 | 账单展示和审计。 |
+| `dodo_product_id` | Dodo 商品 ID。 | 上游对账和权益映射。 |
+| `tier` | 权益档位：`plus/pro`。 | 功能 gating。 |
+| `starts_at` | 权益开始时间。 | 生效判断。 |
+| `ends_at` | 权益结束时间。 | 过期判断。 |
+| `status` | 权益状态：`active/expired/refunded/revoked`。 | 权益计算和退款回收。 |
+| `created_at` | 创建时间。 | 审计。 |
+| `updated_at` | 最后更新时间。 | 状态变化审计。 |
+
 ### 基础设施域
 
 #### [alembic_version](#table-alembic_version)
@@ -695,7 +796,7 @@ sequenceDiagram
 - 如果你想理解某条链路：
   - 聊天看 [`chats`](#table-chats) / [`turns`](#table-turns) / [`candidates`](#table-candidates)
   - 成长看 [`growth_daily_stats`](#table-growth_daily_stats) 与 [`growth_character_stats`](#table-growth_character_stats)
-  - 订阅看 [`users`](#table-users) 与 [`subscription_webhook_events`](#table-subscription_webhook_events)
+  - 订阅与一次性权益看 [`users`](#table-users)、[`subscription_webhook_events`](#table-subscription_webhook_events)、[`payment_orders`](#table-payment_orders) 与 [`user_access_passes`](#table-user_access_passes)
   - 音色看 [`voice_profiles`](#table-voice_profiles) 与 [`characters`](#table-characters)
 - 如果你想核对真实结构：
   - 直接往下看“实时结构快照”部分，它来自当前真实数据库。

@@ -1,6 +1,6 @@
 # ParlaSoul 系统 API 契约（前后端统一）
 
-更新时间：2026-04-14
+更新时间：2026-04-29
 
 ## 1. 文档范围
 
@@ -9,12 +9,11 @@
 - 当前系统的 HTTP 面分成两类：
   - 前端仓库负责：
     - `/api/auth/*`
-    - `/api/auth/email-otp-status`
     - `/api/share-card-image`
     - `/api/logs`
   - 后端仓库负责：
     - `/v1/*`
-    - `/uploads/*`
+    - `/media/*`
     - `/health`
 - 旧的“后端邮箱验证码登录接口”已经不在当前代码库里，认证主链路已收敛到 `better-auth`。
 
@@ -35,11 +34,10 @@
   - `GET /v1/discover/config`
   - `GET /v1/characters/market`
   - `GET /v1/payments/wechat/products`
+  - `GET /media/*`
   - `POST /v1/webhooks/dodo/subscriptions`
   - `POST /v1/webhooks/dodo/payments`
   - `GET /health`
-  - `GET /uploads/*`
-  - `GET /api/auth/email-otp-status`
   - `GET /api/share-card-image`
 
 ### 2.2 成功响应包裹
@@ -113,7 +111,6 @@
 | 路由 | 所有者 | 当前作用 | 备注 |
 | --- | --- | --- | --- |
 | `ALL /api/auth/*` | 前端 | `better-auth` 认证、会话、JWT、Dodo 托管能力 | 路由由 `src/app/api/auth/[...all]/route.ts` 统一代理；前端通过 `authClient` 调用，而不是手写 URL |
-| `GET /api/auth/email-otp-status?email={email}&type={type}` | 前端 | 登录页查询 OTP 邮件投递状态 | `type` 当前主要是 `sign-in` |
 | `GET /api/share-card-image?src={url}` | 前端 | 拉取并缓存分享卡远程图片 | 允许 `http/https`，Redis 缓存 7 天 |
 | `POST /api/logs` | 前端 | 将前端结构化日志落到本地文件 | 写入 `logs/{module}.log` |
 
@@ -132,6 +129,7 @@
 
 - 这些具体子路径由 `better-auth` 生成和托管。
 - 当前代码不直接手写这些 URL，因此本文档把它们视为一个前端拥有的认证 API 面，而不是手写路由集合。
+- 邮箱 OTP 投递事件由 `better-auth` 发送钩子直接写入 `logs/auth.email-otp.log`，当前没有单独的 `/api/auth/email-otp-status` route handler。
 
 ## 4. 后端仓库拥有的 HTTP 路由
 
@@ -141,7 +139,7 @@
 | --- | --- | --- | --- | --- |
 | `GET` | `/v1/auth/me` | 必需 | 兼容保留 | 返回轻量用户摘要；当前正式前端不直接调用 |
 | `GET` | `/v1/users/me` | 必需 | 外部/兼容保留 | 返回完整个人资料 |
-| `PUT` | `/v1/users/me` | 必需 | `setup` 页 | 更新 `username`、`avatar_url` |
+| `PUT` | `/v1/users/me` | 必需 | `setup` 页 | 更新 `username`、`avatar_image_key` |
 | `GET` | `/v1/users/me/settings` | 必需 | `UserSettingsProvider` | 懒创建并返回用户设置 |
 | `PATCH` | `/v1/users/me/settings` | 必需 | `UserSettingsProvider` | 局部更新设置 |
 | `GET` | `/v1/users/me/entitlements` | 必需 | `AuthProvider`、账单/音色权限判断 | 返回订阅与一次性权益汇总 |
@@ -183,15 +181,18 @@
 | --- | --- | --- | --- | --- |
 | `POST` | `/v1/learning/word-card` | 必需 | 划词卡片 | 选中文本必须包含英文 |
 | `POST` | `/v1/learning/reply-card/candidates/{candidate_id}` | 必需 | 回复卡补拉与重试 | 候选级回复卡 |
+| `POST` | `/v1/learning/assistant/stream` | 必需 | `LearningAssistantDialog` | 学习助手对话流式回答 |
 | `POST` | `/v1/saved-items` | 必需 | 收藏按钮 | 创建收藏 |
 | `GET` | `/v1/saved-items?kind={kind}&role_id={id}&chat_id={id}&cursor={cursor}&limit={limit}` | 必需 | Favorites 页 | 收藏分页 |
 | `DELETE` | `/v1/saved-items/{saved_item_id}` | 必需 | Favorites 页、卡片取消收藏 | 删除收藏 |
 
-### 4.5 语音与音色
+### 4.5 媒体、语音与音色
 
 | 方法 | 路径 | 鉴权 | 当前消费者 | 说明 |
 | --- | --- | --- | --- | --- |
-| `POST` | `/v1/upload` | 必需 | setup、角色头像、音色头像 | 通用文件上传 |
+| `POST` | `/v1/uploads/presign` | 必需 | setup、角色头像、音色头像 | 创建 R2 presigned PUT 上传会话 |
+| `POST` | `/v1/uploads/complete` | 必需 | setup、角色头像、音色头像 | 校验上传会话，生成 AVIF 头像变体并返回 `image_key/avatar_urls` |
+| `GET` | `/media/{object_key}` | 无需 | 头像与分享卡渲染 | 读取公开 AVIF 媒体对象，Redis 热点缓存命中时直接返回 |
 | `POST` | `/v1/voice/stt/transcriptions` | 必需 | `ChatInput` 麦克风 | STT 转写 |
 | `GET` | `/v1/voice/tts/messages/{assistant_candidate_id}/audio?audio_format=opus\|mp3` | 必需 | 单条消息手动朗读 | 二进制音频流 |
 | `GET` | `/v1/voices?status={status}&source_type={source_type}&cursor={cursor}&limit={limit}` | 必需 | Profile 音色页 | 我的音色分页 |
@@ -246,7 +247,7 @@
 | `POST` | `/v1/webhooks/dodo/subscriptions` | 无需 | Dodo webhook | 订阅 webhook |
 | `POST` | `/v1/webhooks/dodo/payments` | 无需 | Dodo webhook | 一次性支付 webhook |
 | `GET` | `/health` | 无需 | 基础设施 | 健康检查 |
-| `GET` | `/uploads/{path}` | 无需 | 前端资源访问 | 上传文件静态访问 |
+| `GET` | `/media/{object_key}` | 无需 | 前端资源访问 | R2 公开 AVIF 媒体读取 |
 
 ## 5. 关键请求契约
 
@@ -257,14 +258,15 @@
 ```json
 {
   "username": "chase",
-  "avatar_url": "/uploads/xxx.jpg"
+  "avatar_image_key": "images/avatars/users/{user_id}/{image_id}"
 }
 ```
 
 规则：
 
 - `username` 长度：`2-50`
-- `username` 和 `avatar_url` 至少提供一个
+- `username` 和 `avatar_image_key` 至少提供一个
+- `avatar_image_key` 必须来自 `/v1/uploads/complete`，并且前缀归属当前用户
 
 ### 5.2 用户设置
 
@@ -312,7 +314,7 @@
   "description": "温柔的英语陪练",
   "system_prompt": "...",
   "greeting_message": "...",
-  "avatar_file_name": "/uploads/xxx.jpg",
+  "avatar_image_key": "images/avatars/characters/{user_id}/{image_id}",
   "tags": ["陪练", "日常"],
   "visibility": "PUBLIC",
   "voice_provider": "dashscope",
@@ -329,6 +331,7 @@
 - `name`：`1-20`
 - `description`：`1-35`
 - `tags`：最多 `3` 个，每个 tag 最长 `24`
+- `avatar_image_key` 必须来自 `/v1/uploads/complete`，并且前缀归属当前用户的角色头像空间
 - `llm_provider` 与 `llm_model` 必须同时出现或同时为 `null`
 - `voice_source_type=clone` 时，后端会校验该音色是否属于当前用户且已就绪
 
@@ -437,7 +440,42 @@
 - `word_card`
 - `feedback_card`
 
-### 5.11 STT
+### 5.11 媒体上传
+
+`POST /v1/uploads/presign`
+
+```json
+{
+  "kind": "user_avatar",
+  "mime_type": "image/png",
+  "size_bytes": 123456
+}
+```
+
+规则：
+
+- `kind`: `user_avatar | character_avatar | voice_avatar`
+- `mime_type` 默认允许 `image/jpeg,image/png,image/webp,image/avif`
+- `size_bytes` 不能超过 `MEDIA_MAX_UPLOAD_BYTES`，当前默认 `5MB`
+- 返回 `upload_url` 和 `required_headers` 后，浏览器直接 `PUT` 原图到 R2
+
+`POST /v1/uploads/complete`
+
+```json
+{
+  "upload_id": "uuid-or-hex",
+  "etag": "\"optional-etag\""
+}
+```
+
+语义：
+
+- 后端读取 R2 原图，生成 AVIF 变体。
+- 当前标准变体由 `MEDIA_IMAGE_VARIANTS` 控制，默认是 `96,192,512`。
+- 返回 `image_key` 和 `avatar_urls`，业务表只保存 `image_key`。
+- 头像展示 URL 通过 `/media/{image_key}/{size}.avif` 读取。
+
+### 5.12 STT
 
 `POST /v1/voice/stt/transcriptions`
 
@@ -449,7 +487,7 @@
 - `sample_rate`
   - 当前只允许 `8000` 或 `16000`
 
-### 5.12 音色克隆
+### 5.13 音色克隆
 
 `POST /v1/voices/clones`
 
@@ -461,7 +499,7 @@
 - `source_audio`
 - `source_audio_format`
 - `description`
-- `avatar_file_name`
+- `avatar_image_key`
 - `language_hint`
 - `idempotency_key`
 
@@ -472,7 +510,7 @@
 - `source_audio`
 - `source_audio_format`
 - `description`（可选）
-- `avatar_file_name`（可选）
+- `avatar_image_key`（可选，来自 `/v1/uploads/complete`）
 
 当前前端不会发送：
 
@@ -490,7 +528,7 @@
 - `provider_request_id`
 - `estimated_ready_seconds`
 
-### 5.13 音色更新
+### 5.14 音色更新
 
 `PATCH /v1/voices/{voice_id}`
 
@@ -499,10 +537,10 @@
 - `display_name`
 - `description`
 - `preview_text`
-- `avatar_file_name`
+- `avatar_image_key`
 - `character_ids`
 
-### 5.14 Growth
+### 5.15 Growth
 
 关键请求：
 
@@ -521,7 +559,7 @@
 - `reading_equivalence`
 - `share_cards`
 
-### 5.15 微信一次性支付
+### 5.16 微信一次性支付
 
 `POST /v1/payments/wechat/checkout-session`
 
@@ -542,7 +580,7 @@
 - `billing_currency`
 - `channel`
 
-### 5.16 Realtime ICE 配置
+### 5.17 Realtime ICE 配置
 
 `GET /v1/realtime/config`
 
@@ -559,7 +597,7 @@
 - 返回当前用户发起 WebRTC realtime 会话所需的 `ice_servers`。
 - 前端会在创建 `RTCPeerConnection` 之前先请求这个接口。
 
-### 5.17 Realtime 会话创建
+### 5.18 Realtime 会话创建
 
 `POST /v1/realtime/session`
 
@@ -630,7 +668,8 @@
   - `description`
   - `system_prompt`
   - `greeting_message`
-  - `avatar_file_name`
+  - `avatar_image_key`
+  - `avatar_urls`
   - `tags`
   - `visibility`
   - `creator_id`
@@ -663,7 +702,8 @@
 - `source_type`
 - `display_name`
 - `description`
-- `avatar_file_name`
+- `avatar_image_key`
+- `avatar_urls`
 - `status`
 - `provider_status`
 - `preview_text`
@@ -773,10 +813,11 @@
 
 - `/login`
   - `authClient` -> `/api/auth/*`
-  - `GET /api/auth/email-otp-status`
   - `getCurrentUser()` -> `better-auth` session
 - `/setup`
-  - `POST /v1/upload`
+  - `POST /v1/uploads/presign`
+  - `PUT` R2 presigned `upload_url`
+  - `POST /v1/uploads/complete`
   - `PUT /v1/users/me`
 
 ### 8.2 Discover
@@ -799,6 +840,7 @@
   - `PATCH /v1/chats/{chat_id}`
   - `DELETE /v1/chats/{chat_id}`
   - `POST /v1/learning/reply-card/candidates/{candidate_id}`
+  - `POST /v1/learning/assistant/stream`
   - `POST /v1/learning/word-card`
   - `POST /v1/turns/{turn_id}/feedback-card`
   - `POST /v1/saved-items`
@@ -816,6 +858,8 @@
 ### 8.5 个人中心
 
 - `/profile`
+  - `POST /v1/uploads/presign`
+  - `POST /v1/uploads/complete`
   - `GET /v1/characters`
   - `POST /v1/characters`
   - `PUT /v1/characters/{character_id}`
@@ -875,3 +919,5 @@
 - `CreateVoiceCloneModal` 当前只发送克隆主流程必需字段；后端仍保留 `provider / language_hint / idempotency_key` 扩展位。
 - `GET /v1/chats/{chat_id}/turns` 后端默认 `limit=20`，但聊天页当前主链路固定请求 `limit=50`。
 - 当前前端通过 `/api/share-card-image` 做远程图片代理和 Redis 缓存；分享卡页面不直接跨域取远程图片。
+- 当前头像与音色头像上传走 `/v1/uploads/presign -> R2 PUT -> /v1/uploads/complete`；业务接口保存 `avatar_image_key`，不再保存旧的 `/uploads/*` 文件路径。
+- `/media/*` 由 Next.js rewrite 转发到后端，后端从 Redis 热点缓存或 R2 返回 AVIF 对象。

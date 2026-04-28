@@ -1,6 +1,6 @@
 # ParlaSoul 前端架构说明
 
-更新时间：2026-04-14
+更新时间：2026-04-29
 
 ## 1. 仓库定位
 
@@ -14,14 +14,13 @@
 当前前端直接拥有的 HTTP 面：
 
 - `/api/auth/*`
-- `/api/auth/email-otp-status`
 - `/api/share-card-image`
 - `/api/logs`
 
 当前前端不直接拥有：
 
 - `/v1/*` 业务接口
-- `/uploads/*` 静态文件目录
+- `/media/*` 媒体读取接口
 - 数据库 schema / Alembic / FastAPI 服务
 
 ## 2. 技术栈
@@ -34,6 +33,7 @@
 - better-auth
 - Dodo Payments SDK
 - Redis
+- TanStack Query
 - Recharts
 - Embla Carousel
 - `react-markdown` / `remark-gfm` / `remark-breaks`
@@ -43,7 +43,7 @@
 ```mermaid
 flowchart TD
     Browser[浏览器 / 用户] --> Middleware[src/middleware.ts<br/>受保护路由跳转]
-    Middleware --> Root[RootLayout<br/>fonts + AuthProvider]
+    Middleware --> Root[RootLayout<br/>fonts + QueryProvider + AuthProvider]
 
     subgraph NextApp[Next.js App Router]
         Root --> PublicPages[公开页面<br/>/login /setup /pricing]
@@ -74,7 +74,9 @@ flowchart TD
         SidebarHook[useSidebarShell]
         GrowthState[growth-context.tsx]
         SettingsState[user-settings-context.tsx]
+        QueryLayer[src/lib/query<br/>QueryClient + query keys + hooks]
         Root --> AuthCtx
+        Root --> QueryLayer
         AppLayout --> SidebarHook
         AppLayout --> GrowthState
         AppLayout --> SettingsState
@@ -110,36 +112,33 @@ flowchart TD
 
     subgraph RouteHandlers[前端内部 Route Handlers]
         AuthRoute["/api/auth/*"<br/>better-auth handler]
-        OTPRoute["/api/auth/email-otp-status"]
         ShareRoute["/api/share-card-image"]
         LogRoute["/api/logs"]
         BetterAuthClient --> AuthRoute
-        PublicPages --> OTPRoute
         ProtectedPages --> ShareRoute
         ProtectedPages --> LogRoute
     end
 
     subgraph Rewrites[Next.js Rewrite / 同源代理]
         V1Rewrite["/v1/* -> backend"]
-        UploadRewrite["/uploads/* -> backend"]
+        MediaRewrite["/media/* -> backend"]
     end
     HttpClient --> V1Rewrite
     APIService --> V1Rewrite
-    UI --> UploadRewrite
+    UI --> MediaRewrite
 
     subgraph External[外部系统]
-        Backend[ParlaSoul Backend<br/>/v1 + /uploads]
+        Backend[ParlaSoul Backend<br/>/v1 + /media]
         BetterAuthInfra[better-auth<br/>Cookie / JWT / JWKS]
         Dodo[Dodo Payments]
-        Redis[(Redis<br/>OTP 状态 + 分享卡图片缓存)]
+        Redis[(Redis<br/>分享卡图片缓存)]
         LogFiles[(logs/*.log)]
         ShareRemote[远程分享图片源]
         V1Rewrite --> Backend
-        UploadRewrite --> Backend
+        MediaRewrite --> Backend
         AuthRoute --> BetterAuthInfra
         BetterAuthClient --> Dodo
         BillingAPI --> Dodo
-        OTPRoute --> Redis
         ShareRoute --> Redis
         ShareRoute --> ShareRemote
         LogRoute --> LogFiles
@@ -159,6 +158,7 @@ flowchart TD
 
 - `src/app/layout.tsx`
   - 注册本地字体
+  - 全局挂载 `QueryProvider`
   - 全局挂载 `AuthProvider`
 
 ### 3.2 受保护应用壳
@@ -187,7 +187,7 @@ flowchart TD
 
 - `next.config.ts`
   - rewrite `/v1/* -> backend`
-  - rewrite `/uploads/* -> backend`
+  - rewrite `/media/* -> backend`
   - 对 `/v1/*` 注入 `Cache-Control: no-cache, no-transform`
   - `compress=false`，避免 SSE 被代理缓冲
 
@@ -206,17 +206,19 @@ flowchart TD
 - `src/app/login/page.tsx`
 - `src/app/setup/page.tsx`
 - `src/app/pricing/page.tsx`
+- `src/app/privacy/page.tsx`
+- `src/app/terms/page.tsx`
 - `src/app/(app)/page.tsx`
 - `src/app/(app)/chat/[id]/page.tsx`
 - `src/app/(app)/favorites/page.tsx`
 - `src/app/(app)/profile/page.tsx`
 - `src/app/(app)/billing/page.tsx`
 - `src/app/(app)/stats/page.tsx`
+- `src/app/prototype/*/page.tsx`（原型入口，不属于正式主链路）
 
 当前 route handlers：
 
 - `src/app/api/auth/[...all]/route.ts`
-- `src/app/api/auth/email-otp-status/route.ts`
 - `src/app/api/share-card-image/route.ts`
 - `src/app/api/logs/route.ts`
 
@@ -262,6 +264,7 @@ flowchart TD
 - 适配器与纯函数工具
 - 音频控制器
 - Growth/Billing 辅助
+- TanStack Query 查询封装
 
 当前关键模块：
 
@@ -273,6 +276,11 @@ flowchart TD
   - `auth-client.ts`
   - `auth-context.tsx`
   - `better-auth-token.ts`
+- 查询缓存
+  - `query/query-client.ts`
+  - `query/query-provider.tsx`
+  - `query/query-keys.ts`
+  - `query/*-queries.ts`
 - 共享状态
   - `user-settings-context.tsx`
   - `growth-context.tsx`
@@ -308,14 +316,13 @@ flowchart TD
 - 邮箱 OTP 登录
 - 邮箱密码注册/登录
 - Google 登录
-- OTP 投递状态轮询
+- OTP 投递日志落盘（服务端发送钩子写 `logs/auth.email-otp.log`）
 
 相关模块：
 
 - `authClient`
 - `AuthProvider`
 - `src/app/api/auth/[...all]/route.ts`
-- `src/app/api/auth/email-otp-status/route.ts`
 
 ### 5.2 Setup
 
@@ -327,7 +334,7 @@ flowchart TD
 
 - 用户名填写
 - 头像裁剪
-- 通用文件上传
+- R2 presigned 媒体上传
 - 保存用户资料
 
 相关模块：
@@ -390,6 +397,7 @@ flowchart TD
 - 管理候选切换
 - 管理向上分页
 - 处理 reply suggestions / reply card / TTS / growth SSE
+- 调用 learning assistant stream，为学习助手弹窗提供上下文回答
 
 新增的 realtime 通话能力：
 
@@ -530,6 +538,30 @@ flowchart TD
 
 ## 7. API 与数据流
 
+### 7.0 `src/lib/query`
+
+职责：
+
+- 统一维护 TanStack Query 的 `QueryClient`
+- 定义稳定 query key
+- 将常用读取和 mutation 封装成 hooks
+- 统一处理 401 / 4xx 不重试、服务端错误最多重试 2 次的策略
+
+当前关键模块：
+
+- `query-client.ts`
+- `query-provider.tsx`
+- `query-keys.ts`
+- `auth-queries.ts`
+- `billing-queries.ts`
+- `catalog-queries.ts`
+- `character-queries.ts`
+- `chat-queries.ts`
+- `growth-queries.ts`
+- `saved-item-queries.ts`
+- `sidebar-queries.ts`
+- `user-settings-queries.ts`
+
 ### 7.1 `api-service.ts`
 
 这是前端对后端 `/v1/*` 的主客户端封装层。
@@ -550,6 +582,7 @@ flowchart TD
 
 因此现在的前端 API 层实际上分为两块：
 
+- TanStack Query hook 层
 - `better-auth` / Dodo 客户端面
 - 后端 `/v1/*` HTTP 客户端面
 
@@ -603,21 +636,22 @@ flowchart TD
 - `src/app/api/auth/[...all]/route.ts`
 - 统一把 `better-auth` handler 暴露为 Next.js Route Handler
 
-### 9.2 OTP 状态查询
-
-- `src/app/api/auth/email-otp-status/route.ts`
-- 登录页轮询邮件发送状态
-
-### 9.3 分享卡图片代理
+### 9.2 分享卡图片代理
 
 - `src/app/api/share-card-image/route.ts`
 - 用 Redis 缓存远程图片
 - 解决分享卡图片拉取与跨域/缓存问题
 
-### 9.4 前端日志落盘
+### 9.3 前端日志落盘
 
 - `src/app/api/logs/route.ts`
 - 把结构化日志写到 `logs/{module}.log`
+
+### 9.4 邮箱 OTP 投递日志
+
+- `src/lib/auth-email-otp-log.ts`
+- `better-auth` 发送 OTP 时直接写 `logs/auth.email-otp.log`
+- 当前不是 HTTP route handler，也不是登录页轮询接口
 
 ## 10. 当前前端架构边界
 
@@ -625,6 +659,7 @@ flowchart TD
 - 前端没有自己的 `/v1/*` mock 层。
 - 正式业务数据都来自后端 `/v1/*` 或 better-auth/Dodo 托管能力。
 - 当前 Next.js route handlers 只用于认证、日志、分享卡图片代理，不承载业务 CRUD。
+- 当前 `/media/*` 由 Next.js rewrite 转发到后端 R2 媒体读取链路，不是前端本地静态目录。
 - `/pricing` 是公开页面，`/billing` 是受保护页面；两者都不在后端仓库。
 - 聊天主链路已经是“流式 + 聊天树 + 学习卡 + TTS + Growth 事件”的复合页面，不应再按简单消息列表理解。
 - realtime 通话当前依附 `/chat/[id]` 页面，不新增前端 route handler，也不引入独立通话页面模板。

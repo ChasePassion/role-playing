@@ -1,5 +1,7 @@
 # 前端日志系统
 
+更新时间：2026-04-29
+
 ## 架构
 
 ```
@@ -24,10 +26,16 @@
 │         src/app/api/logs/route.ts       │
 │  POST /api/logs → logs/{module}.log     │
 └─────────────────────────────────────────┘
+
+better-auth 邮箱 OTP 发送钩子
+        │
+        ▼
+src/lib/auth-email-otp-log.ts → logs/auth.email-otp.log
 ```
 
 * **控制台输出**：始终输出（所有级别），由 `consoleTransport` 处理
 * **文件持久化**：`ERROR` 始终写入；开发模式下所有级别都写入，由 `fetchTransport` 处理
+* **认证投递日志**：邮箱 OTP 发送链路在服务端直接写 `logs/auth.email-otp.log`，不经过 `/api/logs`
 * **传输层可扩展**：新增 transport 只需在 `transports[]` 数组中注册，无需改动 `emit`
 
 ---
@@ -38,13 +46,18 @@
 src/lib/logger/
 ├── index.ts      # 门面层：emit(), transports[], logger.info/warn/error/fromError()
 ├── format.ts     # LogEntry, SUMMARY_FIELDS, formatEntry(), formatHumanReadable()
-└── events.ts     # Module / CharacterEvent 常量
+└── events.ts     # Module / CharacterEvent / RealtimeEvent 常量
+
+src/lib/auth-email-otp-log.ts
+└── better-auth 邮箱 OTP 投递事件专用落盘 helper
 
 src/app/api/logs/
 └── route.ts      # POST 处理器：写入 logs/{module}.log
 
 logs/             # 被 Git 忽略，首次写入时创建
 ├── character.log # 前端 character 模块日志
+├── realtime.log  # realtime WebRTC 客户端日志
+├── auth.email-otp.log # better-auth OTP 投递日志
 └── ...
 ```
 
@@ -81,13 +94,13 @@ interface LogEntry {
 
 ## 文件输出格式（结构化）
 
-文件输出包含两部分：
+`POST /api/logs` 文件输出包含两部分：
 
 1. **必填字段**（始终存在）：`ts`、`level`、`module`、`event`、`message`
 2. **摘要字段**（仅在存在时写入）：如下所列
 
 ```
-ts=<ts> level=<level> module=<module> event=<event> message="<message>" [<summary_field>=<value>...] [extra_field=value...]
+ts=<ts> level=<level> module=<module> event=<event> message="<message>" [<summary_field>=<value>...]
 ```
 
 示例：
@@ -96,14 +109,12 @@ ts=<ts> level=<level> module=<module> event=<event> message="<message>" [<summar
 ts=2026-04-11 14:30:00 level=INFO module=character event=character.started message="Character create started" mode=create name=Alice
 ```
 
-### 摘要字段（只要在 entry 中存在就一定写入）
+### 摘要字段
 
 `event`, `character_id`, `error_status`, `error_code`, `elapsed_ms`, `user_id`, `mode`
 
-> 注意：`error_detail` 会由 `fromError` 在 API 错误场景下输出，但它**不在** `SUMMARY_FIELDS` 中。
-> `error_type` 会用于原生 JS 错误，也**不在** `SUMMARY_FIELDS` 中。
-> 这些额外字段不放进 `SUMMARY_FIELDS`，是因为它们只适用于特定错误类型，
-> 并不属于共享的结构化字段契约的一部分。
+> 注意：控制台输出会把完整 `entry` 对象作为第二个参数传给 `console.log/warn/error`，因此可以在浏览器控制台看到 `error_detail`、`error_type` 等额外字段。
+> `/api/logs` route 当前只持久化必填字段和 `SUMMARY_FIELDS`，不会把所有 extra 字段无条件写入文件。
 
 ---
 
@@ -165,8 +176,7 @@ import { logger, Module, CharacterEvent } from "@/lib/logger";
 ```typescript
 export const Module = {
   CHARACTER: "character",
-  // CHAT: "chat",
-  // AUTH: "auth",
+  REALTIME: "realtime",
 } as const;
 
 export const CharacterEvent = {
@@ -175,6 +185,18 @@ export const CharacterEvent = {
   API_CALLED: "character.api_called",
   COMPLETED: "character.completed",
   FAILED: "character.failed",
+} as const;
+
+export const RealtimeEvent = {
+  START_REQUESTED: "realtime.start_requested",
+  CONNECT_STARTED: "realtime.connect_started",
+  CONNECT_SIGNALLED: "realtime.connect_signalled",
+  DISCONNECTED: "realtime.disconnected",
+  START_ABORTED: "realtime.start_aborted",
+  START_FAILED: "realtime.start_failed",
+  MIC_CAPTURE_REQUESTED: "realtime.mic_capture_requested",
+  MIC_CAPTURE_APPLIED: "realtime.mic_capture_applied",
+  MIC_CAPTURE_FAILED: "realtime.mic_capture_failed",
 } as const;
 ```
 
@@ -217,6 +239,52 @@ logger.fromError(Module.CHARACTER, err, CharacterEvent.FAILED, {
 * `ApiError` → 提取 `status`、`code`、`detail`，输出 `error_status`/`error_code`/`error_detail`
 * `Error`（原生）→ 提取 `name`，输出 `error_type`
 * 其他值 → 转为字符串
+
+### 4. Realtime 客户端日志
+
+当前 realtime 通话链路在两个入口打前端日志：
+
+- `src/hooks/useRealtimeVoiceSession.ts`
+- `src/lib/realtime/realtime-voice-session-client.ts`
+
+典型事件：
+
+- `realtime.start_requested`
+- `realtime.connect_started`
+- `realtime.connect_signalled`
+- `realtime.disconnected`
+- `realtime.start_aborted`
+- `realtime.start_failed`
+- `realtime.mic_capture_requested`
+- `realtime.mic_capture_applied`
+- `realtime.mic_capture_failed`
+
+这些日志用于定位浏览器 WebRTC 建连、麦克风采集、DataChannel 信令与主动挂断问题。它们和后端 `src/realtime/*` 日志通过时间、用户操作、`session_id` 等字段人工关联；当前前端日志系统尚未自动注入全局 request_id。
+
+### 5. 邮箱 OTP 投递日志
+
+`src/lib/auth.ts` 的 `sendVerificationOTP` 钩子会调用 `src/lib/auth-email-otp-log.ts`，直接写入：
+
+```text
+logs/auth.email-otp.log
+```
+
+当前事件：
+
+- `email_otp.delivery_queued`
+- `email_otp.delivery_sent`
+- `email_otp.delivery_failed`
+
+字段：
+
+- `ts`
+- `module=auth.email-otp`
+- `event`
+- `message`
+- `email_hint`
+- `otp_type`
+- `duration_ms`
+- `error_message`
 
 ---
 
