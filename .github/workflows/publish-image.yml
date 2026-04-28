@@ -18,8 +18,6 @@ concurrency:
 permissions:
   contents: read
   packages: write
-  attestations: write
-  id-token: write
 
 jobs:
   publish:
@@ -66,7 +64,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push frontend image
-        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -80,10 +77,3 @@ jobs:
             org.opencontainers.image.revision=${{ env.IMAGE_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Generate artifact attestation
-        uses: actions/attest@v4
-        with:
-          subject-name: ghcr.io/chasepassion/parlasoul-frontend
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
