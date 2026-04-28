@@ -14,8 +14,8 @@ const devConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/uploads/:path*",
-        destination: `${devBackendBaseUrl}/uploads/:path*`,
+        source: "/media/:path*",
+        destination: `${devBackendBaseUrl}/media/:path*`,
       },
       {
         source: "/v1/:path*",
@@ -29,8 +29,8 @@ const prodConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/uploads/:path*",
-        destination: `${prodBackendBaseUrl}/uploads/:path*`,
+        source: "/media/:path*",
+        destination: `${prodBackendBaseUrl}/media/:path*`,
       },
       {
         source: "/v1/:path*",

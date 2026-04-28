@@ -144,5 +144,5 @@ export function useAuth() {
 }
 
 export function isProfileComplete(user: User | null): boolean {
-    return !!(user?.username && user?.avatar_url);
+    return !!(user?.username && user?.avatar_image_key);
 }

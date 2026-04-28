@@ -270,6 +270,8 @@ export type {
   MemoryManageRequest,
   MemorySearchRequest,
   UpdateProfileRequest,
+  AvatarUrls,
+  UploadImageResult,
   UserSettingsResponse,
   UpdateUserSettingsRequest,
   UserEntitlementTier,

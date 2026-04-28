@@ -38,8 +38,8 @@ export default function SetupPage() {
         if (user?.username) {
             setUsername(user.username);
         }
-        if (user?.avatar_url) {
-            setAvatarPreview(user.avatar_url);
+        if (user?.avatar_urls?.md) {
+            setAvatarPreview(user.avatar_urls.md);
         }
     }, [user]);
 
@@ -48,9 +48,9 @@ export default function SetupPage() {
         if (!file) return;
 
         // Validate file type
-        const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+        const validTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
         if (!validTypes.includes(file.type)) {
-            setError("请选择 JPEG, PNG, GIF 或 WEBP 格式的图片！");
+            setError("请选择 JPEG、PNG、WEBP 或 AVIF 格式的图片！");
             return;
         }
 
@@ -88,9 +88,9 @@ export default function SetupPage() {
         if (file) {
             if (fileInputRef.current) {
                 // Manually trigger check logic instead of modifying input directly
-                const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+                const validTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
                 if (!validTypes.includes(file.type)) {
-                    setError("请选择 JPEG, PNG, GIF 或 WEBP 格式的图片");
+                    setError("请选择 JPEG、PNG、WEBP 或 AVIF 格式的图片");
                     return;
                 }
                 if (file.size > 5 * 1024 * 1024) {
@@ -117,7 +117,7 @@ export default function SetupPage() {
         }
 
         // Validate avatar
-        if (!avatarFile && !user?.avatar_url) {
+        if (!avatarFile && !user?.avatar_image_key) {
             setError("请上传头像");
             return;
         }
@@ -130,18 +130,18 @@ export default function SetupPage() {
                 return;
             }
 
-            let avatarUrl = user?.avatar_url;
+            let avatarImageKey = user?.avatar_image_key ?? null;
 
             // Upload avatar if new file selected
             if (avatarFile) {
-                const uploadResult = await uploadFile(avatarFile);
-                avatarUrl = uploadResult.url;
+                const uploadResult = await uploadFile(avatarFile, { kind: "user_avatar" });
+                avatarImageKey = uploadResult.image_key;
             }
 
             // Update profile
             await updateUserProfile({
                 username,
-                avatar_url: avatarUrl,
+                avatar_image_key: avatarImageKey,
             });
 
             try {

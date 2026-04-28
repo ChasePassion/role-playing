@@ -33,7 +33,10 @@ export default function VoiceCard({ voice, onDelete, onEdit }: VoiceCardProps) {
       <div className="flex items-start justify-between">
         <Avatar className="h-12 w-12 rounded-xl border border-gray-200">
           <AvatarImage
-            src={resolveVoiceAvatarSrc(voice.avatarFileName)}
+            src={resolveVoiceAvatarSrc({
+              avatar_image_key: voice.avatarImageKey,
+              avatar_urls: voice.avatarUrls,
+            })}
             alt={voice.displayName}
             className="object-cover"
           />

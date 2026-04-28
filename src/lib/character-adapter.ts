@@ -2,6 +2,7 @@ import type { Character } from "@/components/Sidebar";
 import type {
     CharacterStatus,
     CharacterVisibility,
+    AvatarUrls,
     LLMProvider,
     VoiceSelectableItem,
 } from "./api-service";
@@ -13,7 +14,8 @@ interface CharacterLike {
     description: string;
     system_prompt?: string;
     greeting_message?: string;
-    avatar_file_name?: string;
+    avatar_image_key?: string | null;
+    avatar_urls?: AvatarUrls | null;
     tags?: string[];
     status?: CharacterStatus;
     unpublished_at?: string | null;
@@ -44,7 +46,9 @@ export function mapCharacterToSidebar(
         id: source.id,
         name: source.name,
         description: source.description,
-        avatar: resolveCharacterAvatarSrc(source.avatar_file_name),
+        avatar: resolveCharacterAvatarSrc(source, "md"),
+        avatar_image_key: source.avatar_image_key ?? null,
+        avatar_urls: source.avatar_urls ?? null,
         system_prompt: source.system_prompt,
         greeting_message: source.greeting_message,
         tags: source.tags,

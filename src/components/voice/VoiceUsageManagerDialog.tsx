@@ -104,7 +104,7 @@ export default function VoiceUsageManagerDialog({
                       />
                       <Avatar className="size-11 rounded-xl">
                         <AvatarImage
-                          src={resolveCharacterAvatarSrc(character.avatar_file_name)}
+                          src={resolveCharacterAvatarSrc(character, "sm")}
                           alt={character.name}
                           className="object-cover"
                         />

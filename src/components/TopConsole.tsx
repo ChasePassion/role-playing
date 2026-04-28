@@ -144,7 +144,7 @@ export default function TopConsole({
                   >
                     <Avatar className="w-8 h-8 rounded-lg shrink-0">
                       <AvatarImage
-                        src={resolveCharacterAvatarSrc(character.avatar_file_name)}
+                        src={resolveCharacterAvatarSrc(character, "sm")}
                         alt={character.name}
                         className="object-cover"
                       />

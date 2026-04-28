@@ -38,7 +38,10 @@ export default function VoiceAvatarField({
   const charactersQuery = useMyCharactersQuery(user?.id, {
     enabled: isCharacterDialogOpen,
   });
-  const characterOptions = charactersQuery.data ?? [];
+  const characterOptions = useMemo(
+    () => (charactersQuery.data ?? []).filter((character) => character.avatar_image_key),
+    [charactersQuery.data],
+  );
   const isCharacterLoading = charactersQuery.isLoading;
 
   const avatarSrc = useMemo(() => resolveVoiceAvatarSrc(value), [value]);
@@ -64,8 +67,8 @@ export default function VoiceAvatarField({
 
     try {
       const file = new File([croppedBlob], "voice-avatar.jpg", { type: "image/jpeg" });
-      const result = await uploadFile(file);
-      onChange(result.url);
+      const result = await uploadFile(file, { kind: "voice_avatar" });
+      onChange(result.image_key);
     } catch (error) {
       setAvatarError(getErrorMessage(error));
     } finally {
@@ -145,7 +148,7 @@ export default function VoiceAvatarField({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp"
+        accept="image/jpeg,image/png,image/webp,image/avif"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -182,14 +185,14 @@ export default function VoiceAvatarField({
                     key={character.id}
                     type="button"
                     onClick={() => {
-                      onChange(character.avatar_file_name ?? null);
+                      onChange(character.avatar_image_key ?? null);
                       setIsCharacterDialogOpen(false);
                     }}
                     className="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/70"
                   >
                     <Avatar className="h-11 w-11 rounded-xl">
                       <AvatarImage
-                        src={resolveCharacterAvatarSrc(character.avatar_file_name)}
+                        src={resolveCharacterAvatarSrc(character, "sm")}
                         alt={character.name}
                         className="object-cover"
                       />

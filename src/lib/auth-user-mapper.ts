@@ -51,7 +51,6 @@ export function mapBetterAuthUserToUser(
     email: user.email,
     username: toOptionalString(user.username),
     email_verified: Boolean(user.emailVerified),
-    avatar_url: toOptionalString(user.image),
     created_at: toIsoString(user.createdAt),
     last_login_at: user.lastLoginAt ? toIsoString(user.lastLoginAt) : undefined,
   };

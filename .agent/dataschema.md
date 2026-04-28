@@ -2,7 +2,7 @@
 
 本文档由脚本直接连接 PostgreSQL 实例并基于实时元数据生成。
 
-- 生成时间: `2026-04-15 09:13:34 北京时间`
+- 生成时间: `2026-04-28 17:47:55 北京时间`
 - 目标数据库: `localhost:5432/role_play_mem`
 - Schema: `public`
 - 表数量: `22`
@@ -23,13 +23,17 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
     - `better-auth` 维护的认证表
     - FastAPI 维护的业务表
 - Redis
-  - 只保存前端邮箱 OTP 的短期投递状态，不保存业务主数据。
+  - 保存前端邮箱 OTP 的短期投递状态。
+  - 保存后端媒体上传会话、上传互斥锁、AVIF 热点对象缓存和短期 404 缓存，不保存业务主数据。
+- Cloudflare R2
+  - 保存用户头像、角色头像、音色头像等需要持久化的媒体对象。
+  - PostgreSQL 只记录可推导公开 URL 的 `avatar_image_key`，不单独引入媒体资产表。
 - Milvus / Zilliz
   - 保存 memory system 的向量与记忆正文，不在 PostgreSQL 里落“记忆业务表”。
 - Dodo Payments
   - 保存完整订阅与支付流水；本地库只保存用户订阅摘要和 webhook 审计记录。
-- 本地文件系统 / `/uploads`
-  - 保存头像等静态上传文件，数据库只记录文件名或 URL。
+- 本地文件系统
+  - 不再作为头像等持久化媒体资源的运行时存储。
 
 ### 2. 当前主链路与兼容 / 遗留链路
 
@@ -43,6 +47,7 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
   - 音色：[`voice_profiles`](#table-voice_profiles)
   - 成长系统：[`growth_user_stats`](#table-growth_user_stats) 等 5 张统计表
   - 订阅审计：[`subscription_webhook_events`](#table-subscription_webhook_events)
+  - 媒体资源：Cloudflare R2 存对象，Redis 做短期会话和热点缓存，业务表记录 `avatar_image_key`
 - 当前非前端主链路 / 兼容遗留
   - 当前旧验证码登录链路已经从代码库与数据库 schema 中移除，认证统一收敛到 `better-auth`。
 
@@ -60,6 +65,8 @@ flowchart TD
     D --> I[Milvus / Memory System]
     D --> J[LLM / TTS / STT 上游]
     D --> K[Dodo Webhook]
+    D --> L[(Redis 媒体缓存)]
+    D --> M[(Cloudflare R2)]
     K --> D
 ```
 
@@ -94,9 +101,40 @@ sequenceDiagram
 
 - `better-auth` 负责“会话建立”和“认证凭据落库”。
 - FastAPI 负责“资料补全”和“偏好设置”。
-- 前端是否允许进入主应用，最终取决于 `username + avatar_url` 是否完整。
+- 前端是否允许进入主应用，最终取决于 `username` 以及 `avatar_image_key` 是否完整。
 
-#### 4.2 角色发现、聊天树与流式生成
+#### 4.2 媒体上传、压缩与读取
+
+```mermaid
+sequenceDiagram
+    participant U as 用户 / 浏览器
+    participant FE as Next.js 前端
+    participant BE as FastAPI Upload API
+    participant Redis as Redis
+    participant R2 as Cloudflare R2
+    participant DB as PostgreSQL
+
+    U->>FE: 选择并裁剪头像
+    FE->>BE: POST /v1/uploads/presign
+    BE->>Redis: 写入 upload session
+    BE-->>FE: 返回 R2 presigned PUT URL
+    FE->>R2: PUT 原图对象
+    FE->>BE: POST /v1/uploads/complete
+    BE->>R2: 读取原图
+    BE->>R2: 写入 96/192/512 AVIF 变体
+    BE->>Redis: 写入热点对象缓存
+    BE-->>FE: 返回 image_key + avatar_urls
+    FE->>DB: 保存业务表 avatar_image_key
+```
+
+媒体链路的核心约束：
+
+- 浏览器只拿到短期 R2 presigned PUT URL，不持有 R2 Secret。
+- 图片格式统一产出 AVIF，当前标准变体为 `96/192/512`。
+- 前端展示优先使用后端返回的 `avatar_urls`，否则通过 `avatar_image_key` 推导 `/media/{key}/{size}.avif`。
+- `/media/*` 由后端读取 Redis 热点缓存，未命中时回源 R2，并设置长缓存响应头。
+
+#### 4.3 角色发现、聊天树与流式生成
 
 ```mermaid
 sequenceDiagram
@@ -122,7 +160,7 @@ sequenceDiagram
 - [`turns`](#table-turns) 是树节点。
 - [`candidates`](#table-candidates) 是同一节点的多个文本版本。
 
-#### 4.3 学习辅助、收藏与成长系统
+#### 4.4 学习辅助、收藏与成长系统
 
 - 回复卡、输入改写、错误信息主要落在 [`candidates.extra`](#table-candidates)。
 - 收藏不是把候选或卡片直接外键化，而是把卡片快照写入 [`saved_items`](#table-saved_items)。
@@ -133,7 +171,7 @@ sequenceDiagram
   - [`growth_user_stats`](#table-growth_user_stats)
   - [`growth_share_triggers`](#table-growth_share_triggers)
 
-#### 4.4 订阅与权益
+#### 4.5 订阅与权益
 
 - 定价页与账单页主要通过前端 `better-auth + Dodo` 直接拿远端数据。
 - 本地库只保留两层状态：
@@ -181,7 +219,7 @@ sequenceDiagram
   - FastAPI 用它承载业务资料和订阅摘要。
 - 表协作
   - 被认证表、聊天表、角色表、音色表、收藏表、成长表广泛引用。
-  - `/setup` 主要补全 `username` 和 `avatar_url`。
+  - `/setup` 主要补全 `username` 和 `avatar_image_key`。
   - `/billing`、`/v1/users/me/entitlements` 读取订阅摘要字段。
 - 当前地位
   - 主链路核心表。
@@ -192,7 +230,8 @@ sequenceDiagram
 | `email` | 用户登录主标识。 | `better-auth` 登录、Dodo customer 反查、用户展示。 |
 | `username` | 面向产品内展示的用户名，也是“资料是否完善”的判定字段之一。 | setup 页写入，前端侧边栏 / 个人主页读取。 |
 | `display_name` | `better-auth` 的 name 映射字段，当前产品主展示仍以 `username` 为主。 | `better-auth` 用户创建钩子会填充；业务页很少直接消费。 |
-| `avatar_url` | 用户头像 URL，是资料补全判定字段之一。 | setup 页上传后写入，聊天页与个人中心读取。 |
+| `avatar_url` | `better-auth` 的用户 `image` 内部映射字段；不作为 ParlaSoul 业务头像来源，也不参与资料补全判定。 | Google/OAuth 用户建号时由认证层维护；业务 API 不暴露该字段。 |
+| `avatar_image_key` | R2 中用户头像对象 key 前缀，可推导 `/media/*/*.avif` 变体 URL。 | setup 页新上传后写入，聊天页、分享卡和个人中心读取。 |
 | `email_verified` | 邮箱是否已验证。 | 账单页决定是否允许进入 Dodo 订阅管理。 |
 | `dodoCustomerId` | Dodo Payments 侧客户 ID 的本地镜像。 | webhook 对账、订阅 reconciliation、账单相关能力。 |
 | `subscription_tier` | 本地记住的套餐档位原始值，不等于最终生效权益。 | webhook / reconcile 更新；后端计算 effective tier。 |
@@ -331,7 +370,7 @@ sequenceDiagram
 | `description` | 角色简介。 | 市场卡片与资料页展示。 |
 | `system_prompt` | 驱动角色行为的核心 system prompt。 | 聊天生成时构造 LLM system prompt。 |
 | `greeting_message` | 首次建 chat 时自动插入的开场白。 | `create_chat` 时创建第一条主动消息。 |
-| `avatar_file_name` | 角色头像文件名。 | 前端拼接 `/uploads/*` 展示。 |
+| `avatar_image_key` | R2 中角色头像对象 key 前缀，可推导 `/media/*/*.avif` 变体 URL。 | 角色创建 / 编辑新上传后写入，市场、聊天、成长统计和分享卡读取。 |
 | `visibility` | 角色可见性，决定市场是否可见。 | 市场查询、详情页权限。 |
 | `tags` | 角色标签。 | 市场卡片和搜索辅助展示。 |
 | `interaction_count` | 角色互动计数，近似反映聊天生成完成次数。 | 聊天成功 finalize 后递增，用于市场热度。 |
@@ -370,7 +409,7 @@ sequenceDiagram
 | `provider_status` | 上游返回的原始状态。 | 调试和细粒度状态判断。 |
 | `display_name` | 音色展示名。 | 选择器和音色卡片。 |
 | `description` | 音色描述。 | 个人中心与编辑页。 |
-| `avatar_file_name` | 音色头像文件名。 | 音色卡片展示。 |
+| `avatar_image_key` | R2 中音色头像对象 key 前缀，可推导 `/media/*/*.avif` 变体 URL。 | 音色创建 / 编辑新上传后写入，音色卡片和选择器读取。 |
 | `preview_text` | 用于试听的文本。 | 预览音频生成。 |
 | `preview_audio_url` | 上游直接提供的试听 URL。 | 可直接播放的 preview。 |
 | `language_tags` | 音色语言标签。 | 选择器信息展示。 |
@@ -818,19 +857,19 @@ sequenceDiagram
 ### 索引
 
 - `candidates_pkey` [PRIMARY / UNIQUE]
-  大小: `40 kB`
+  大小: `56 kB`
   定义: `CREATE UNIQUE INDEX candidates_pkey ON public.candidates USING btree (id)`
 - `candidates_turn_candidate_no_uniq` [UNIQUE]
-  大小: `48 kB`
+  大小: `80 kB`
   定义: `CREATE UNIQUE INDEX candidates_turn_candidate_no_uniq ON public.candidates USING btree (turn_id, candidate_no)`
 - `candidates_turn_id_idx`
-  大小: `40 kB`
+  大小: `56 kB`
   定义: `CREATE INDEX candidates_turn_id_idx ON public.candidates USING btree (turn_id)`
 - `idx_candidates_turn_created`
-  大小: `48 kB`
+  大小: `80 kB`
   定义: `CREATE INDEX idx_candidates_turn_created ON public.candidates USING btree (turn_id, created_at DESC)`
 - `uq_candidates_turn_id_id` [UNIQUE]
-  大小: `56 kB`
+  大小: `88 kB`
   定义: `CREATE UNIQUE INDEX uq_candidates_turn_id_id ON public.candidates USING btree (turn_id, id)`
 
 ## Table `characters`
@@ -849,7 +888,6 @@ sequenceDiagram
 | `name` | `character varying(100)` | NOT NULL | - | - | - |
 | `description` | `text` | NOT NULL | - | - | - |
 | `greeting_message` | `text` | NULL | - | - | - |
-| `avatar_file_name` | `character varying(255)` | NULL | - | - | - |
 | `visibility` | `visibility_t` | NOT NULL | 'PUBLIC'::visibility_t | - | - |
 | `tags` | `text[]` | NOT NULL | ARRAY[]::text[] | - | - |
 | `interaction_count` | `bigint` | NOT NULL | 0 | - | - |
@@ -865,6 +903,7 @@ sequenceDiagram
 | `llm_model` | `character varying(120)` | NULL | - | - | - |
 | `status` | `character varying(20)` | NOT NULL | 'ACTIVE'::character varying | - | - |
 | `unpublished_at` | `timestamp with time zone` | NULL | - | - | - |
+| `avatar_image_key` | `text` | NULL | - | - | - |
 
 ### 约束
 
@@ -899,6 +938,9 @@ sequenceDiagram
 
 ### 索引
 
+- `characters_avatar_image_key_idx`
+  大小: `16 kB`
+  定义: `CREATE INDEX characters_avatar_image_key_idx ON public.characters USING btree (avatar_image_key)`
 - `characters_creator_visibility_idx`
   大小: `16 kB`
   定义: `CREATE INDEX characters_creator_visibility_idx ON public.characters USING btree (creator_id, visibility)`
@@ -1659,23 +1701,23 @@ sequenceDiagram
 ### 索引
 
 - `idx_turns_chat_turnno_desc`
-  大小: `48 kB`
+  大小: `88 kB`
   定义: `CREATE INDEX idx_turns_chat_turnno_desc ON public.turns USING btree (chat_id, turn_no DESC)`
 - `turns_chat_id_idx`
   大小: `16 kB`
   定义: `CREATE INDEX turns_chat_id_idx ON public.turns USING btree (chat_id)`
 - `turns_chat_parent_turn_idx`
-  大小: `48 kB`
+  大小: `80 kB`
   定义: `CREATE INDEX turns_chat_parent_turn_idx ON public.turns USING btree (chat_id, parent_turn_id)`
 - `turns_chat_turn_no_uniq` [UNIQUE]
-  大小: `48 kB`
+  大小: `88 kB`
   定义: `CREATE UNIQUE INDEX turns_chat_turn_no_uniq ON public.turns USING btree (chat_id, turn_no)`
 - `turns_parent_candidate_uniq` [UNIQUE]
-  大小: `40 kB`
+  大小: `56 kB`
   定义: `CREATE UNIQUE INDEX turns_parent_candidate_uniq ON public.turns USING btree (parent_candidate_id) WHERE (parent_candidate_id IS NOT NULL)`
   谓词: `parent_candidate_id IS NOT NULL`
 - `turns_pkey` [PRIMARY / UNIQUE]
-  大小: `40 kB`
+  大小: `56 kB`
   定义: `CREATE UNIQUE INDEX turns_pkey ON public.turns USING btree (id)`
 
 ## Table `user_access_passes`
@@ -1823,6 +1865,7 @@ sequenceDiagram
 | `subscription_status` | `character varying(40)` | NULL | - | - | - |
 | `subscription_product_id` | `text` | NULL | - | - | - |
 | `subscription_current_period_end` | `timestamp with time zone` | NULL | - | - | - |
+| `avatar_image_key` | `text` | NULL | - | - | - |
 
 ### 约束
 
@@ -1872,6 +1915,9 @@ sequenceDiagram
 
 ### 索引
 
+- `users_avatar_image_key_idx`
+  大小: `16 kB`
+  定义: `CREATE INDEX users_avatar_image_key_idx ON public.users USING btree (avatar_image_key)`
 - `users_dodo_customer_id_uniq` [UNIQUE]
   大小: `16 kB`
   定义: `CREATE UNIQUE INDEX users_dodo_customer_id_uniq ON public.users USING btree ("dodoCustomerId") WHERE ("dodoCustomerId" IS NOT NULL)`
@@ -1953,7 +1999,7 @@ sequenceDiagram
 | `created_at` | `timestamp with time zone` | NOT NULL | now() | - | - |
 | `updated_at` | `timestamp with time zone` | NOT NULL | now() | - | - |
 | `preview_text` | `text` | NULL | - | - | - |
-| `avatar_file_name` | `character varying(255)` | NULL | - | - | - |
+| `avatar_image_key` | `text` | NULL | - | - | - |
 
 ### 约束
 
@@ -1979,6 +2025,9 @@ sequenceDiagram
 
 ### 索引
 
+- `voice_profiles_avatar_image_key_idx`
+  大小: `16 kB`
+  定义: `CREATE INDEX voice_profiles_avatar_image_key_idx ON public.voice_profiles USING btree (avatar_image_key)`
 - `voice_profiles_owner_user_created_at_idx`
   大小: `16 kB`
   定义: `CREATE INDEX voice_profiles_owner_user_created_at_idx ON public.voice_profiles USING btree (owner_user_id, created_at DESC)`

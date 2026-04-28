@@ -42,7 +42,7 @@ export default function EditVoiceModal({
   });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
+  const [avatarImageKey, setAvatarImageKey] = useState<string | null>(null);
   const [previewText, setPreviewText] = useState("");
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -63,7 +63,7 @@ export default function EditVoiceModal({
 
     setName(voiceDetail.display_name);
     setDescription(voiceDetail.description || "");
-    setAvatarFileName(voiceDetail.avatar_file_name ?? null);
+    setAvatarImageKey(voiceDetail.avatar_image_key ?? null);
     setPreviewText(voiceDetail.preview_text || "");
     setSelectedCharacterIds(voiceDetail.bound_character_ids ?? []);
     setError(null);
@@ -118,7 +118,7 @@ export default function EditVoiceModal({
       const updatedVoice = await patchVoiceById(voice.id, {
         display_name: name.trim(),
         description: description.trim() || null,
-        avatar_file_name: avatarFileName,
+        avatar_image_key: avatarImageKey,
         preview_text: previewText.trim(),
         character_ids: selectedCharacterIds,
       });
@@ -182,8 +182,8 @@ export default function EditVoiceModal({
               <>
                 <div className="space-y-5">
                 <VoiceAvatarField
-                  value={avatarFileName}
-                  onChange={setAvatarFileName}
+                  value={avatarImageKey}
+                  onChange={setAvatarImageKey}
                   disabled={isSaving}
                 />
 

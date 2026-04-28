@@ -200,7 +200,7 @@ export default function ProfilePage() {
                     <div className="mb-6 ml-2 mt-4 flex items-center gap-6">
                         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl">
                             <Image
-                                src={user?.avatar_url || "/default-avatar.svg"}
+                                src={user?.avatar_urls?.md || "/default-avatar.svg"}
                                 alt={user?.username || "User"}
                                 fill
                                 className="object-cover"

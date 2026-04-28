@@ -2,6 +2,8 @@
 // Phase 5: Growth System Types
 // =============================================================================
 
+import type { AvatarUrls } from "@/lib/api-service";
+
 // ── Calendar ──
 
 export type GrowthCalendarVisualStatus =
@@ -95,7 +97,8 @@ export interface GrowthMakeUpResponse {
 export interface GrowthCharacterSummary {
   character_id: string;
   character_name: string;
-  avatar_file_name: string | null;
+  avatar_image_key: string | null;
+  avatar_urls: AvatarUrls | null;
   total_message_count: number;
   total_word_count: number;
   total_reading_equivalent: GrowthReadingEquivalent;
@@ -121,7 +124,8 @@ export interface GrowthChatHeaderResponse {
 export interface GrowthCharacterHeadline {
   character_id: string;
   character_name: string;
-  avatar_file_name: string | null;
+  avatar_image_key: string | null;
+  avatar_urls: AvatarUrls | null;
   total_message_count: number;
   chatted_days_count: number;
   total_exchange_count: number;
@@ -159,7 +163,8 @@ export interface GrowthTrendPoint {
 export interface GrowthRankingItem {
   character_id: string;
   character_name: string;
-  avatar_file_name: string | null;
+  avatar_image_key: string | null;
+  avatar_urls: AvatarUrls | null;
   total_message_count: number;
   total_word_count: number;
   chatted_days_count: number;
@@ -200,7 +205,8 @@ export type GrowthCharacterSortBy =
 export interface GrowthCharacterRow {
   character_id: string;
   character_name: string;
-  avatar_file_name: string | null;
+  avatar_image_key: string | null;
+  avatar_urls: AvatarUrls | null;
   total_message_count: number;
   total_word_count: number;
   chatted_days_count: number;
@@ -231,7 +237,8 @@ export interface DailySigninShareCardPayload {
 export interface CharacterMilestoneShareCardPayload {
   character_id: string;
   character_name: string;
-  avatar_file_name: string | null;
+  avatar_image_key: string | null;
+  avatar_urls: AvatarUrls | null;
   milestone_message_count: number;
   total_word_count: number;
   chatted_days_count: number;

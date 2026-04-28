@@ -34,7 +34,7 @@ function getHeroImage(character: CharacterResponse): string {
   ) {
     return "/Bai-21-9.jpg";
   }
-  return resolveCharacterAvatarSrc(character.avatar_file_name);
+  return resolveCharacterAvatarSrc(character, "xl");
 }
 
 interface HeroCarouselProps {

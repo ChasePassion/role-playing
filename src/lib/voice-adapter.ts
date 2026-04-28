@@ -1,4 +1,5 @@
 import type {
+  AvatarUrls,
   VoiceProfile,
   VoiceSelectableItem,
   VoiceStatus,
@@ -13,7 +14,8 @@ export interface VoiceDisplayInfo {
   providerModel: string | null;
   providerVoiceId: string;
   sourceType: VoiceSourceType;
-  avatarFileName: string | null;
+  avatarImageKey: string | null;
+  avatarUrls: AvatarUrls | null;
   previewText: string | null;
   previewAudioUrl: string | null;
   isSystem: boolean;
@@ -64,7 +66,8 @@ export function mapVoiceSelectableToDisplay(
     provider: item.provider,
     providerModel: item.provider_model,
     providerVoiceId: item.provider_voice_id,
-    avatarFileName: item.avatar_file_name ?? null,
+    avatarImageKey: item.avatar_image_key ?? null,
+    avatarUrls: item.avatar_urls ?? null,
     previewText: item.preview_text ?? null,
     sourceType: item.source_type,
     previewAudioUrl: item.preview_audio_url,
@@ -84,7 +87,8 @@ export function mapVoiceProfileToDisplay(
     provider: profile.provider,
     providerModel: profile.provider_model,
     providerVoiceId: profile.provider_voice_id,
-    avatarFileName: profile.avatar_file_name ?? null,
+    avatarImageKey: profile.avatar_image_key ?? null,
+    avatarUrls: profile.avatar_urls ?? null,
     previewText: profile.preview_text ?? null,
     sourceType: profile.source_type,
     previewAudioUrl: profile.preview_audio_url,
@@ -127,7 +131,8 @@ export interface VoiceCardDisplay {
   id: string;
   displayName: string;
   description: string;
-  avatarFileName: string | null;
+  avatarImageKey: string | null;
+  avatarUrls: AvatarUrls | null;
   status: VoiceStatus;
   statusText: string;
   previewText: string | null;
@@ -145,7 +150,8 @@ export function mapVoiceProfileToCardDisplay(
     id: profile.id,
     displayName: profile.display_name,
     description: profile.description || "",
-    avatarFileName: profile.avatar_file_name ?? null,
+    avatarImageKey: profile.avatar_image_key ?? null,
+    avatarUrls: profile.avatar_urls ?? null,
     status: profile.status,
     statusText: getStatusText(profile.status),
     previewText: profile.preview_text ?? null,

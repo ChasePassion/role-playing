@@ -42,10 +42,10 @@ export default function StatsOverviewRankings({
                   <td className="py-2.5 pl-1">
                     <div className="flex items-center gap-2.5">
                       <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-muted text-[10px] font-bold text-muted-foreground flex items-center justify-center">
-                        {item.avatar_file_name ? (
+                        {item.avatar_image_key ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={resolveCharacterAvatarSrc(item.avatar_file_name)}
+                            src={resolveCharacterAvatarSrc(item, "sm")}
                             alt={item.character_name}
                             className="h-full w-full object-cover"
                           />

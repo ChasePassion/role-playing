@@ -63,7 +63,7 @@ export default function CharacterCard({
 
       <CardContent className="px-0 relative z-30 flex h-full p-3 gap-3 box-border">
         <div className="w-[84px] h-[106px] rounded-[14px] overflow-hidden shadow-(--cc-avatar-shadow) border border-white/10 relative shrink-0">
-          <Image src={character.avatar} alt={character.name} fill className="object-cover" />
+          <Image src={character.avatar} alt={character.name} fill className="object-cover" unoptimized />
         </div>
 
         <div className="flex-1 flex flex-col justify-center min-w-0">

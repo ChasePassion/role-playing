@@ -100,7 +100,7 @@ export default function CreateCharacterModal({
     const [tagInput, setTagInput] = useState("");
     const [selectedTags, setSelectedTags] = useState<{ label: string; color: typeof TAG_COLORS[0] }[]>([]);
     const [visibility, setVisibility] = useState<CharacterVisibility>("PUBLIC");
-    const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
+    const [avatarImageKey, setAvatarImageKey] = useState<string | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -143,7 +143,8 @@ export default function CreateCharacterModal({
                     provider: character.voice_provider,
                     provider_model: character.voice_model,
                     provider_voice_id: character.voice_provider_voice_id,
-                    avatar_file_name: null,
+                    avatar_image_key: null,
+                    avatar_urls: null,
                     preview_audio_url: null,
                     usage_hint: null,
                 };
@@ -158,7 +159,7 @@ export default function CreateCharacterModal({
             } else {
                 setVisibility("PUBLIC");
             }
-            setAvatarFileName(character.avatar);
+            setAvatarImageKey(character.avatar_image_key ?? null);
             setAvatarPreview(character.avatar);
             setSelectedVoice(fallbackVoice);
             setSelectedLLMProvider(character.llm_provider ?? null);
@@ -187,7 +188,7 @@ export default function CreateCharacterModal({
             setTagInput("");
             setSelectedTags([]);
             setVisibility("PUBLIC");
-            setAvatarFileName(null);
+            setAvatarImageKey(null);
             setAvatarPreview(null);
             setSelectedVoice(null);
             setSelectedLLMProvider(undefined);
@@ -241,8 +242,9 @@ export default function CreateCharacterModal({
             const previewUrl = URL.createObjectURL(croppedBlob);
             setAvatarPreview(previewUrl);
 
-            const result = await uploadFile(file);
-            setAvatarFileName(result.url);
+            const result = await uploadFile(file, { kind: "character_avatar" });
+            setAvatarImageKey(result.image_key);
+            setAvatarPreview(result.avatar_urls.md);
         } catch (err) {
             setError(getErrorMessage(err));
             setAvatarPreview(null);
@@ -396,7 +398,7 @@ export default function CreateCharacterModal({
                 description: description.trim(),
                 system_prompt: systemPrompt.trim(),
                 greeting_message: greetingMessage.trim() || undefined,
-                avatar_file_name: avatarFileName || undefined,
+                avatar_image_key: avatarImageKey || undefined,
                 tags: selectedTags.length > 0 ? selectedTags.map(tag => tag.label) : undefined,
                 visibility: visibility,
                 voice_provider: voiceProvider,
@@ -440,7 +442,7 @@ export default function CreateCharacterModal({
                 setSystemPrompt("");
                 setSelectedTags([]);
                 setVisibility("PUBLIC");
-                setAvatarFileName(null);
+                setAvatarImageKey(null);
                 setAvatarPreview(null);
                 setSelectedVoice(null);
                 setSelectedLLMProvider(undefined);
@@ -519,7 +521,7 @@ export default function CreateCharacterModal({
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            accept="image/jpeg,image/png,image/webp,image/avif"
                             onChange={handleFileChange}
                             className="hidden"
                         />

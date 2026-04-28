@@ -43,14 +43,22 @@ export interface User {
   email: string;
   username?: string;
   email_verified?: boolean;
-  avatar_url?: string;
+  avatar_image_key?: string | null;
+  avatar_urls?: AvatarUrls | null;
   created_at: string;
   last_login_at?: string;
 }
 
 export interface UpdateProfileRequest {
   username?: string;
-  avatar_url?: string;
+  avatar_image_key?: string | null;
+}
+
+export interface AvatarUrls {
+  sm: string;
+  md: string;
+  lg: string;
+  xl: string;
 }
 
 export type DisplayMode = "concise" | "detailed";
@@ -212,7 +220,8 @@ export interface VoiceSelectableItem {
   provider: string;
   provider_model: string | null;
   provider_voice_id: string;
-  avatar_file_name?: string | null;
+  avatar_image_key?: string | null;
+  avatar_urls?: AvatarUrls | null;
   preview_text?: string | null;
   preview_audio_url: string | null;
   usage_hint: string | null;
@@ -227,7 +236,8 @@ export interface VoiceProfile {
   source_type: VoiceSourceType;
   display_name: string;
   description: string | null;
-  avatar_file_name?: string | null;
+  avatar_image_key?: string | null;
+  avatar_urls?: AvatarUrls | null;
   status: VoiceStatus;
   provider_status: string | null;
   preview_text?: string | null;
@@ -254,7 +264,7 @@ export interface VoiceProfileUpdate {
   display_name?: string;
   description?: string | null;
   preview_text?: string | null;
-  avatar_file_name?: string | null;
+  avatar_image_key?: string | null;
   character_ids?: string[];
 }
 
@@ -263,7 +273,7 @@ export interface CreateCharacterRequest {
   description: string;
   system_prompt: string;
   greeting_message?: string;
-  avatar_file_name?: string;
+  avatar_image_key?: string | null;
   tags?: string[];
   visibility?: CharacterVisibility;
   voice_provider: string;
@@ -280,7 +290,8 @@ export interface CharacterResponse {
   description: string;
   system_prompt: string;
   greeting_message?: string;
-  avatar_file_name?: string;
+  avatar_image_key?: string | null;
+  avatar_urls?: AvatarUrls | null;
   voice_provider: string;
   voice_model: string;
   voice_provider_voice_id: string;
@@ -306,7 +317,8 @@ export interface CharacterBrief {
   name: string;
   description: string;
   greeting_message?: string;
-  avatar_file_name?: string;
+  avatar_image_key?: string | null;
+  avatar_urls?: AvatarUrls | null;
   voice_provider?: string;
   voice_model?: string;
   voice_provider_voice_id?: string;
@@ -502,7 +514,7 @@ export interface UpdateCharacterRequest {
   description?: string;
   system_prompt?: string;
   greeting_message?: string;
-  avatar_file_name?: string;
+  avatar_image_key?: string | null;
   voice_provider?: string;
   voice_model?: string;
   voice_provider_voice_id?: string;
@@ -869,12 +881,77 @@ type ApiRequestOptions = {
   signal?: AbortSignal;
 };
 
+type MediaUploadKind = "user_avatar" | "character_avatar" | "voice_avatar";
+
+interface UploadFileOptions extends ApiRequestOptions {
+  kind?: MediaUploadKind;
+}
+
+interface PresignedUploadResponse {
+  upload_id: string;
+  image_key: string;
+  original_object_key: string;
+  upload_url: string;
+  expires_in_seconds: number;
+  required_headers: Record<string, string>;
+}
+
+interface CompleteUploadResponse {
+  upload_id: string;
+  image_key: string;
+  avatar_urls: AvatarUrls;
+  content_type: "image/avif";
+}
+
+export interface UploadImageResult extends CompleteUploadResponse {
+  url: string;
+}
+
 export class ApiService {
   async uploadFile(
     file: File,
-    options: ApiRequestOptions = {},
-  ): Promise<{ url: string }> {
-    return httpClient.upload<{ url: string }>("/v1/upload", file, options);
+    options: UploadFileOptions = {},
+  ): Promise<UploadImageResult> {
+    const presigned = await httpClient.post<
+      PresignedUploadResponse,
+      { kind: MediaUploadKind; mime_type: string; size_bytes: number }
+    >(
+      "/v1/uploads/presign",
+      {
+        kind: options.kind ?? "character_avatar",
+        mime_type: file.type,
+        size_bytes: file.size,
+      },
+      { signal: options.signal },
+    );
+
+    const putResponse = await fetch(presigned.upload_url, {
+      method: "PUT",
+      headers: presigned.required_headers,
+      body: file,
+      signal: options.signal,
+    });
+
+    if (!putResponse.ok) {
+      throw new ApiError(putResponse.status, "external_error", "图片上传到对象存储失败");
+    }
+
+    const completed = await httpClient.post<
+      CompleteUploadResponse,
+      { upload_id: string; etag: string | null }
+    >(
+      "/v1/uploads/complete",
+      {
+        upload_id: presigned.upload_id,
+        etag: putResponse.headers.get("ETag"),
+      },
+      { signal: options.signal },
+    );
+
+    return {
+      ...completed,
+      url: completed.avatar_urls.md,
+    };
   }
 
   async updateUserProfile(

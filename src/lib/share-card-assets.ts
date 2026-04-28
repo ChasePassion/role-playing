@@ -59,7 +59,7 @@ export function getShareCardAssetUrls(
 
     urls.push(
       resolveShareCardImageSrc(
-        resolveCharacterAvatarSrc(card.character_milestone_payload.avatar_file_name),
+        resolveCharacterAvatarSrc(card.character_milestone_payload),
       ),
     );
   }

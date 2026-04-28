@@ -349,7 +349,7 @@ function MilestoneShareCard({
 }) {
   const dateSeed = getShareCardDateSeed(card);
   const characterAvatar = resolveShareCardImageSrc(
-    resolveCharacterAvatarSrc(payload.avatar_file_name),
+    resolveCharacterAvatarSrc(payload),
   );
   const proxiedUserAvatar = resolveShareCardImageSrc(userAvatar);
   const firstLineDate =
@@ -441,7 +441,7 @@ export default function ShareCardRenderer({
   milestoneFirstChatDate,
 }: ShareCardRendererProps) {
   const { user } = useAuth();
-  const userAvatar = user?.avatar_url || "/default-avatar.svg";
+  const userAvatar = user?.avatar_urls?.md || "/default-avatar.svg";
   const userName = user?.username || user?.email || null;
 
   if (card.kind === "daily_signin_completed" && card.daily_signin_payload) {

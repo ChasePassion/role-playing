@@ -33,7 +33,7 @@ export default function CreateVoiceCloneModal({
   const canUseVoiceClone = entitlements?.features.voice_clone ?? null;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
+  const [avatarImageKey, setAvatarImageKey] = useState<string | null>(null);
   const [previewText, setPreviewText] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
@@ -134,8 +134,8 @@ export default function CreateVoiceCloneModal({
       if (description.trim()) {
         formData.append("description", description.trim());
       }
-      if (avatarFileName) {
-        formData.append("avatar_file_name", avatarFileName);
+      if (avatarImageKey) {
+        formData.append("avatar_image_key", avatarImageKey);
       }
 
       await createVoiceClone(formData);
@@ -156,7 +156,7 @@ export default function CreateVoiceCloneModal({
       }
       setName("");
       setDescription("");
-      setAvatarFileName(null);
+      setAvatarImageKey(null);
       setPreviewText("");
       setAudioFile(null);
       setAudioPreview(null);
@@ -219,8 +219,8 @@ export default function CreateVoiceCloneModal({
           ) : null}
 
           <VoiceAvatarField
-            value={avatarFileName}
-            onChange={setAvatarFileName}
+            value={avatarImageKey}
+            onChange={setAvatarImageKey}
             disabled={fetchState === "loading" || isVoiceClonePending}
           />
 

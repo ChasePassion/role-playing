@@ -101,7 +101,8 @@ export default function VoiceSelector({
                       provider: voice.provider,
                       provider_model: voice.providerModel,
                       provider_voice_id: voice.providerVoiceId,
-                      avatar_file_name: voice.avatarFileName,
+                      avatar_image_key: voice.avatarImageKey,
+                      avatar_urls: voice.avatarUrls,
                       preview_text: voice.previewText,
                       preview_audio_url: voice.previewAudioUrl,
                       usage_hint: voice.description || null,
@@ -117,7 +118,8 @@ export default function VoiceSelector({
                         provider: voice.provider,
                         provider_model: voice.providerModel,
                         provider_voice_id: voice.providerVoiceId,
-                        avatar_file_name: voice.avatarFileName,
+                        avatar_image_key: voice.avatarImageKey,
+                        avatar_urls: voice.avatarUrls,
                         preview_text: voice.previewText,
                         preview_audio_url: voice.previewAudioUrl,
                         usage_hint: voice.description || null,
@@ -133,7 +135,10 @@ export default function VoiceSelector({
                   <div className="relative shrink-0">
                     <Avatar className="h-10 w-10 rounded-lg border border-gray-200">
                       <AvatarImage
-                        src={resolveVoiceAvatarSrc(voice.avatarFileName)}
+                        src={resolveVoiceAvatarSrc({
+                          avatar_image_key: voice.avatarImageKey,
+                          avatar_urls: voice.avatarUrls,
+                        })}
                         alt={voice.displayName}
                         className="object-cover"
                       />

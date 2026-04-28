@@ -171,7 +171,7 @@ export default function ShareCardDialog() {
     staleTime: 5 * 60 * 1000,
   });
   const milestoneFirstChatDate = firstChatDateQuery.data ?? null;
-  const userAvatar = user?.avatar_url || "/default-avatar.svg";
+  const userAvatar = user?.avatar_urls?.md || "/default-avatar.svg";
   const assetKey = useMemo(
     () => (currentCard ? `${currentCard.id}:${currentCard.kind}` : null),
     [currentCard],

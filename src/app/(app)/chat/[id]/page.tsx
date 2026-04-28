@@ -754,7 +754,7 @@ export default function ChatPage() {
                 isLoading={isLoading}
                 error={error}
                 isStreaming={isStreaming}
-                userAvatar={user?.avatar_url || "/default-avatar.svg"}
+                userAvatar={user?.avatar_urls?.md || "/default-avatar.svg"}
                 messagesEndRef={messagesEndRef}
                 messagesStartRef={messagesStartRef}
                 chatId={chatId}
