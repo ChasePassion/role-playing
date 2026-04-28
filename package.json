@@ -4,7 +4,10 @@
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "scripts": {
+    "build:sprite": "node scripts/build-sprite.mjs",
     "dev": "next dev --turbopack -p 3001",
+    "prebuild": "node scripts/build-sprite.mjs",
+    "predev": "node scripts/build-sprite.mjs",
     "dev:redis": "pwsh -NoProfile -File .\\scripts\\dev-redis.ps1 start",
     "dev:redis:stop": "pwsh -NoProfile -File .\\scripts\\dev-redis.ps1 stop",
     "dev:redis:status": "pwsh -NoProfile -File .\\scripts\\dev-redis.ps1 status",
