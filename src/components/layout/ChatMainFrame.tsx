@@ -6,7 +6,6 @@ interface ChatMainFrameProps {
     header: ReactNode;
     thread: ReactNode;
     composer: ReactNode;
-    disclaimer?: ReactNode;
     scrollRootRef?: RefObject<HTMLDivElement | null>;
 }
 
@@ -16,7 +15,6 @@ export default function ChatMainFrame({
     header,
     thread,
     composer,
-    disclaimer = null,
     scrollRootRef,
 }: ChatMainFrameProps) {
     const headerRef = useRef<HTMLElement | null>(null);
@@ -147,17 +145,7 @@ export default function ChatMainFrame({
                     <div id="thread-bottom" style={{ backgroundColor: "var(--workspace-bg)" }}>
                         {composer}
                     </div>
-                    <div
-                        className="-mt-4 text-token-text-secondary relative w-full overflow-hidden text-center text-xs [view-transition-name:var(--vt-disclaimer)] md:px-[60px]"
-                        style={{ height: "auto", opacity: 1, transform: "none", backgroundColor: "var(--workspace-bg)" }}
-                    >
-                        <div
-                            className="select-none active:select-auto data-has-range-start:select-auto flex min-h-8 w-full items-center justify-center p-2"
-                            data-has-range-start=""
-                        >
-                            <div className="pointer-events-auto">{disclaimer}</div>
-                        </div>
-                    </div>
+                    <div aria-hidden="true" className="-mt-4 h-6 w-full bg-workspace-bg" />
                 </div>
             </div>
         </div>
