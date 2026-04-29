@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "Terms of Use – ParlaSoul",
@@ -12,7 +13,7 @@ export default function TermsPage() {
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-100 px-6 py-7 max-sm:py-5">
         <div className="mx-auto flex max-w-3xl items-center gap-2.5">
-          <img src="/icon.svg" alt="ParlaSoul" width={24} height={24} className="rounded-md" />
+          <Image src="/icon.svg" alt="ParlaSoul" width={24} height={24} className="rounded-md" />
           <span className="text-base font-semibold tracking-tight">ParlaSoul</span>
         </div>
       </header>
