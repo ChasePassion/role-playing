@@ -143,7 +143,10 @@ export default function ChatMessage({
     const [isCopySuccess, setIsCopySuccess] = useState(false);
     const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const messageTextStyle: CSSProperties = { fontSize: `${messageFontSize}px` };
+    const messageTextStyle: CSSProperties = {
+        fontSize: `${messageFontSize}px`,
+        fontWeight: 350,
+    };
 
     const copyTextToClipboard = async (text: string): Promise<boolean> => {
         if (!text) return false;

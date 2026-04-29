@@ -104,7 +104,7 @@ export default function Sidebar({
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <SpriteIcon name="me" size={20} />
-                <span className="text-sm font-medium text-gray-700">个人资料</span>
+                <span className="text-sm font-medium text-black">个人资料</span>
             </DropdownMenuItem>
 
             <DropdownMenuItem
@@ -112,7 +112,7 @@ export default function Sidebar({
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <SpriteIcon name="setting" size={20} />
-                <span className="text-sm font-medium text-gray-700">设置</span>
+                <span className="text-sm font-medium text-black">设置</span>
             </DropdownMenuItem>
 
             <DropdownMenuItem
@@ -120,7 +120,7 @@ export default function Sidebar({
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <SpriteIcon name="mark" size={20} />
-                <span className="text-sm font-medium text-gray-700">收藏夹</span>
+                <span className="text-sm font-medium text-black">收藏夹</span>
             </DropdownMenuItem>
 
             <DropdownMenuItem
@@ -130,7 +130,7 @@ export default function Sidebar({
                 <div className="flex h-[20px] w-[20px] items-center justify-center">
                     <CreditCard className="h-[18px] w-[18px] text-gray-700" />
                 </div>
-                <span className="text-sm font-medium text-gray-700">订阅管理</span>
+                <span className="text-sm font-medium text-black">订阅管理</span>
             </DropdownMenuItem>
 
             <DropdownMenuItem
@@ -140,7 +140,7 @@ export default function Sidebar({
                 <div className="flex h-[20px] w-[20px] items-center justify-center">
                     <SpriteIcon name="bar-chart" size={18} className="text-gray-700" />
                 </div>
-                <span className="text-sm font-medium text-gray-700">数据总览</span>
+                <span className="text-sm font-medium text-black">数据总览</span>
             </DropdownMenuItem>
 
 
@@ -158,7 +158,7 @@ export default function Sidebar({
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <SpriteIcon name="out" size={20} />
-                <span className="text-sm font-medium text-gray-700">退出登录</span>
+                <span className="text-sm font-medium text-black">退出登录</span>
             </DropdownMenuItem>
         </>
     );
@@ -170,7 +170,7 @@ export default function Sidebar({
                 <div className="px-2">
                     <button
                         onClick={onToggle}
-                        className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-sidebar-hover text-gray-500 shrink-0 outline-none"
+                        className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-sidebar-hover text-black shrink-0 outline-none"
                         aria-label="Toggle Sidebar"
                     >
                         <SpriteIcon name="sidebar" size={16} />
@@ -237,7 +237,7 @@ export default function Sidebar({
                                 </Avatar>
                             </div>
                             <div className={`flex flex-col items-start justify-center min-w-[150px] transition-all duration-300 ease-in-out ${isCollapsed ? "opacity-0 ml-2" : "opacity-100 ml-3"}`}>
-                                <span className={`font-medium text-text-primary truncate w-full text-left transition-all duration-300 ease-in-out ${isCollapsed ? 'text-[13.5px]' : 'text-sm'}`}>
+                                <span className={`font-[450] text-text-primary truncate w-full text-left transition-all duration-300 ease-in-out ${isCollapsed ? 'text-[13.5px]' : 'text-sm'}`}>
                                     {character.name}
                                 </span>
                                 <span className={`text-gray-400 truncate w-full text-left transition-all duration-300 ease-in-out ${isCollapsed ? 'text-[11.5px] mt-0.5' : 'text-xs mt-1'}`}>

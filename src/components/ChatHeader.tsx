@@ -51,9 +51,9 @@ export default function ChatHeader({
                     </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex items-center gap-2">
-                    <h2 className="text-base font-semibold text-text-primary truncate">
+                    <span className="text-base font-[500] text-text-primary truncate">
                         {character.name}
-                    </h2>
+                    </span>
                     {isReadOnly ? (
                         <span className="shrink-0 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                             已下架
