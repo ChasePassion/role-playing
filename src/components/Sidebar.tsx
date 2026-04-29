@@ -237,7 +237,7 @@ export default function Sidebar({
                                 </Avatar>
                             </div>
                             <div className={`flex flex-col items-start justify-center min-w-[150px] transition-all duration-300 ease-in-out ${isCollapsed ? "opacity-0 ml-2" : "opacity-100 ml-3"}`}>
-                                <span className={`font-[450] text-text-primary truncate w-full text-left transition-all duration-300 ease-in-out ${isCollapsed ? 'text-[13.5px]' : 'text-sm'}`}>
+                                <span className={`text-text-primary truncate w-full text-left transition-all duration-300 ease-in-out ${isCollapsed ? 'text-[13.5px]' : 'text-sm'}`}>
                                     {character.name}
                                 </span>
                                 <span className={`text-gray-400 truncate w-full text-left transition-all duration-300 ease-in-out ${isCollapsed ? 'text-[11.5px] mt-0.5' : 'text-xs mt-1'}`}>

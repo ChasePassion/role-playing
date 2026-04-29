@@ -1723,3 +1723,109 @@ className={cn(
 - On `backdrop-filter` glass/frosted surfaces, use `border` for thin separators, not `background-color`
 - The global `@layer base { * { @apply border-border } }` means `border-l` without explicit color uses near-white — always specify border color explicitly
 - shadcn Separator component's internal styles override both height and color; prefer a plain `<span>` with `border-l` for custom separators
+
+---
+
+### Tailwind v4 `@theme inline` `var()` Reference Breaks with Next.js Variable Fonts
+
+#### Problem
+
+After switching the project font from Inter to Outfit (variable font), all methods of setting intermediate font weights (450/500/545/550) had no effect:
+- `font-[450]`, `font-[500]`, `font-medium` showed no visual difference
+- `font-[550]` suddenly jumped to very bold
+- `style={{ fontWeight: 545 }}` inline style had no visual change
+
+#### Diagnosis
+
+**Step 1: Verify CSS is applied**
+
+In DevTools Console, select the target `<span>` and run:
+
+```js
+console.log("style attr:", $0.getAttribute("style"));
+// → font-weight: 545;  ✅ inline style present
+console.log("computed:", getComputedStyle($0).fontWeight);
+// → 545  ✅ computed value is correct
+```
+
+CSS-level font-weight was actually working — the problem was elsewhere.
+
+**Step 2: Check which font is actually being used**
+
+```js
+console.log("fontFamily:", getComputedStyle($0).fontFamily);
+// → ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", ...
+```
+
+**Key finding: "outfit" was completely absent from fontFamily!** The browser was using system-ui, which does not support continuous variable font weight interpolation.
+
+**Step 3: Trace the CSS variable chain**
+
+```js
+console.log("--font-outfit:", getComputedStyle($0).getPropertyValue("--font-outfit"));
+// → "outfit", "outfit Fallback"  ✅ Next.js set this correctly
+console.log("--font-sans:", getComputedStyle($0).getPropertyValue("--font-sans"));
+// → (empty string)  ❌ Breakpoint!
+console.log("body classes:", document.body.className);
+// → outfit_79d36341-module__1WaVSG__variable antialiased  ✅ class mounted
+```
+
+#### Root Cause
+
+**In Tailwind CSS v4's `@theme inline` block, `var()` references cannot resolve CSS variables injected at runtime by Next.js `next/font/local`.**
+
+```css
+/* globals.css — @theme inline definition */
+@theme inline {
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, ...;
+  /* ❌ var(--font-outfit) cannot resolve in @theme inline context */
+}
+
+/* body uses --font-sans */
+body {
+  font-family: var(--font-sans), "Apple Color Emoji", ...;
+  /* --font-sans is empty → falls back to Tailwind default ui-sans-serif */
+}
+```
+
+`@theme inline` is a Tailwind v4 design token declaration, not a regular `:root` CSS custom property. Using `var()` inside it to reference runtime CSS variables (like `--font-outfit` injected by Next.js via a dynamic class) fails because the reference cannot be resolved at build/compile time. The result: `--font-sans` becomes empty, and the body falls back to Tailwind's default `ui-sans-serif, system-ui, sans-serif`.
+
+#### Fix
+
+Use `var(--font-outfit)` directly in the body's `font-family`, bypassing the `@theme inline` `--font-sans` intermediary:
+
+```css
+body {
+  font-family: var(--font-outfit), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC",
+    "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol";
+}
+```
+
+Keep the `@theme inline` `--font-sans` definition for Tailwind's `font-sans` utility class, but the body no longer depends on it.
+
+#### Diagnostic Commands
+
+When fonts look wrong but CSS appears correct, check in this order:
+
+```js
+// 1. Which font is actually rendering (most critical)
+getComputedStyle($0).fontFamily
+// If your custom font name is missing → the font chain is broken
+
+// 2. Are CSS variables actually populated?
+getComputedStyle($0).getPropertyValue("--font-outfit")
+getComputedStyle($0).getPropertyValue("--font-sans")
+
+// 3. Is the font class mounted on body?
+document.body.className
+```
+
+#### Rules
+
+- **Tailwind v4 `@theme inline` is not `:root`**: do not use `var()` inside it to reference runtime-injected CSS variables (e.g., `next/font`'s `--font-*`)
+- **`@theme inline` is for static values**: design tokens should be concrete values (e.g., `"Inter", sans-serif`), not references to other CSS variables
+- **Apply fonts on `body` using `var(--font-outfit)` directly**: bypass `@theme inline` variable resolution entirely
+- **When debugging font issues, check `computed fontFamily` first**: if the actual font in use is not what you expect, no amount of font-weight adjustment will help
