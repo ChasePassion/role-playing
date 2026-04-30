@@ -10,12 +10,17 @@ import {
 } from "react";
 import { Loader2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth, isProfileComplete } from "@/lib/auth-context";
+import {
+    useAuth,
+    isProfileStatusComplete,
+    isProfileStatusIncomplete,
+} from "@/lib/auth-context";
 import Sidebar, { Character } from "@/components/Sidebar";
 import AppFrame from "@/components/layout/AppFrame";
 import { useSidebarShell } from "@/hooks/useSidebarShell";
 import { mapCharacterToSidebar } from "@/lib/character-adapter";
 import { isSetupBypassPath } from "@/lib/billing-plans";
+import { UnauthorizedError } from "@/lib/token-store";
 import {
     canContinueProfileSetup,
     clearProfileSetupState,
@@ -56,14 +61,24 @@ export default function AppLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user, logout, isLoading: isAuthLoading } = useAuth();
+    const {
+        user,
+        logout,
+        refreshUser,
+        isLoading: isAuthLoading,
+        profileStatus,
+        profileError,
+    } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
-    const isProfileReady = isProfileComplete(user);
+    const isProfileReady = isProfileStatusComplete(profileStatus, user);
+    const isProfileIncomplete = isProfileStatusIncomplete(profileStatus, user);
     const appUserId = isProfileReady ? user?.id : undefined;
+    const shouldShowProfileError = Boolean(user && profileStatus === "error");
 
     const { isSidebarOpen, isOverlay, toggle: toggleSidebar, close: closeSidebar } = useSidebarShell();
     const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+    const [isProfileRetrying, setIsProfileRetrying] = useState(false);
     const {
         data: sidebarApiCharacters,
         refetch: refetchSidebarCharacters,
@@ -78,7 +93,7 @@ export default function AppLayout({
     );
 
     const shouldBlockForRedirect =
-        !user || (!isProfileReady && !isSetupBypassPath(pathname));
+        !user || (isProfileIncomplete && !isSetupBypassPath(pathname));
 
     // Redirect if not authenticated or profile incomplete
     useEffect(() => {
@@ -92,12 +107,26 @@ export default function AppLayout({
             return;
         }
 
-        if (isProfileComplete(user) || isSetupBypassPath(pathname)) {
+        if (profileStatus === "error") {
+            clearProfileSetupState();
+            if (profileError instanceof UnauthorizedError) {
+                void logout().finally(() => {
+                    router.replace("/login");
+                });
+            }
+            return;
+        }
+
+        if (profileStatus !== "loaded") {
+            return;
+        }
+
+        if (isProfileReady || isSetupBypassPath(pathname)) {
             clearProfileSetupState();
             return;
         }
 
-        if (canContinueProfileSetup(user.id)) {
+        if (isProfileIncomplete && canContinueProfileSetup(user.id)) {
             markProfileSetupPending(user.id);
             router.replace("/setup");
             return;
@@ -107,7 +136,17 @@ export default function AppLayout({
             clearProfileSetupState();
             router.replace("/login");
         });
-    }, [user, isAuthLoading, pathname, router, logout]);
+    }, [
+        user,
+        isAuthLoading,
+        profileStatus,
+        profileError,
+        isProfileReady,
+        isProfileIncomplete,
+        pathname,
+        router,
+        logout,
+    ]);
 
     const refreshSidebarCharacters = useCallback(async () => {
         if (!user) return;
@@ -122,6 +161,17 @@ export default function AppLayout({
             console.error("Failed to open chat:", err);
         }
     };
+
+    const handleRetryProfile = useCallback(async () => {
+        setIsProfileRetrying(true);
+        try {
+            await refreshUser();
+        } catch (err) {
+            console.error("Failed to refresh profile:", err);
+        } finally {
+            setIsProfileRetrying(false);
+        }
+    }, [refreshUser]);
 
     const sidebarContextValue = useMemo(
         () => ({
@@ -144,6 +194,36 @@ export default function AppLayout({
             refreshSidebarCharacters,
         ],
     );
+
+    if (shouldShowProfileError) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-white px-6">
+                <div className="w-full max-w-sm rounded-lg border border-red-100 bg-red-50 p-6 text-center">
+                    <h1 className="text-base font-semibold text-red-700">
+                        账号资料加载失败
+                    </h1>
+                    <p className="mt-2 text-sm leading-6 text-red-600">
+                        请重试加载资料。若问题持续，请重新登录。
+                    </p>
+                    <button
+                        type="button"
+                        onClick={handleRetryProfile}
+                        disabled={isProfileRetrying}
+                        className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isProfileRetrying ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                正在重试
+                            </>
+                        ) : (
+                            "重试"
+                        )}
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // Show loading state while checking auth
     if (isAuthLoading || shouldBlockForRedirect) {

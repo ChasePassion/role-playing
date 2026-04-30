@@ -3,7 +3,11 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { useAuth, isProfileComplete } from "@/lib/auth-context";
+import {
+  useAuth,
+  isProfileComplete,
+  isProfileStatusIncomplete,
+} from "@/lib/auth-context";
 import {
   getCurrentUser,
   sendVerificationCode,
@@ -141,16 +145,23 @@ function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
 
   const countdown = useCountdown(60);
-  const { login, logout, refreshUser, user, isLoading: isAuthLoading } = useAuth();
+  const {
+    login,
+    logout,
+    refreshUser,
+    user,
+    isLoading: isAuthLoading,
+    profileStatus,
+  } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = normalizeNextPath(searchParams.get("next"));
 
   /* redirect if already logged in */
   useEffect(() => {
-    if (isAuthLoading || !user) return;
+    if (isAuthLoading || !user || profileStatus !== "loaded") return;
 
-    if (!isProfileComplete(user)) {
+    if (isProfileStatusIncomplete(profileStatus, user)) {
       if (canContinueProfileSetup(user.id)) {
         markProfileSetupPending(user.id);
         router.replace("/setup");
@@ -166,15 +177,28 @@ function LoginPageContent() {
 
     clearProfileSetupState();
     router.replace(resolvePostAuthDestination(nextPath, user));
-  }, [user, isAuthLoading, nextPath, router, logout]);
+  }, [user, isAuthLoading, profileStatus, nextPath, router, logout]);
 
   /* post-login redirect */
   const handlePostLoginRedirect = async () => {
     let currentUser = user;
+    let didLoadBackendProfile = false;
     try { await refreshUser(); } catch (e) { console.error(e); }
-    try { currentUser = (await getCurrentUser()) || currentUser; } catch (e) { console.error(e); }
+    try {
+      const backendUser = await getCurrentUser();
+      if (backendUser) {
+        currentUser = backendUser;
+        didLoadBackendProfile = true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
     if (!currentUser) {
       beginProfileSetupLoginIntent();
+    } else if (!didLoadBackendProfile) {
+      clearProfileSetupState();
+      setError("账号资料加载失败，请重试");
+      return;
     } else if (!isProfileComplete(currentUser)) {
       markProfileSetupPending(currentUser.id);
     } else {

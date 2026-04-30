@@ -4,16 +4,29 @@ import { useState, useRef, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useAuth, isProfileComplete } from "@/lib/auth-context";
+import {
+    useAuth,
+    isProfileStatusComplete,
+    isProfileStatusIncomplete,
+} from "@/lib/auth-context";
 import { uploadFile, updateUserProfile } from "@/lib/api";
 import {
     canContinueProfileSetup,
     clearProfileSetupState,
 } from "@/lib/profile-setup-session";
+import { UnauthorizedError } from "@/lib/token-store";
 import AvatarCropper from "@/components/AvatarCropper";
 
 export default function SetupPage() {
-    const { user, isAuthed, isLoading: isAuthLoading, logout, refreshUser } = useAuth();
+    const {
+        user,
+        isAuthed,
+        isLoading: isAuthLoading,
+        logout,
+        refreshUser,
+        profileStatus,
+        profileError,
+    } = useAuth();
     const router = useRouter();
 
     const [username, setUsername] = useState("");
@@ -24,7 +37,10 @@ export default function SetupPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isSetupAllowed =
-        !!user && !isProfileComplete(user) && canContinueProfileSetup(user.id);
+        isProfileStatusIncomplete(profileStatus, user) &&
+        !!user &&
+        canContinueProfileSetup(user.id);
+    const isProfileReady = isProfileStatusComplete(profileStatus, user);
 
     // Redirect if not authenticated, or if an incomplete session is no longer
     // part of the active setup flow in this tab.
@@ -39,21 +55,45 @@ export default function SetupPage() {
             return;
         }
 
-        if (!isProfileComplete(user) && !canContinueProfileSetup(user.id)) {
+        if (profileStatus === "error") {
+            clearProfileSetupState();
+            if (profileError instanceof UnauthorizedError) {
+                void logout().finally(() => {
+                    router.replace("/login");
+                });
+                return;
+            }
+            router.replace("/");
+            return;
+        }
+
+        if (profileStatus !== "loaded") {
+            return;
+        }
+
+        if (isProfileStatusIncomplete(profileStatus, user) && !canContinueProfileSetup(user.id)) {
             void logout().finally(() => {
                 clearProfileSetupState();
                 router.replace("/login");
             });
         }
-    }, [isAuthed, isAuthLoading, user, logout, router]);
+    }, [
+        isAuthed,
+        isAuthLoading,
+        user,
+        profileStatus,
+        profileError,
+        logout,
+        router,
+    ]);
 
     // Redirect if profile already complete
     useEffect(() => {
-        if (!isAuthLoading && user && isProfileComplete(user)) {
+        if (!isAuthLoading && isProfileReady) {
             clearProfileSetupState();
             router.replace("/");
         }
-    }, [user, isAuthLoading, router]);
+    }, [isAuthLoading, isProfileReady, router]);
 
     // Pre-fill username if exists
     useEffect(() => {

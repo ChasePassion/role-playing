@@ -13,6 +13,7 @@ import {
     mapBetterAuthSessionToUser,
     mergeSessionUserWithProfile,
 } from "./auth-user-mapper";
+import type { BackendProfileStatus } from "./auth-profile-state";
 import { clearBetterAuthJwt } from "./better-auth-token";
 import { queryKeys, useUserEntitlementsQuery, useUserProfileQuery } from "./query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,6 +21,8 @@ import { useQueryClient } from "@tanstack/react-query";
 interface AuthContextType {
     user: User | null;
     entitlements: UserEntitlementsResponse | null;
+    profileStatus: BackendProfileStatus;
+    profileError: unknown | null;
     isAuthed: boolean;
     isLoading: boolean;
     isEntitlementsLoading: boolean;
@@ -44,7 +47,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
         data: profileUser,
         isLoading: isProfileLoading,
+        isFetching: isProfileFetching,
+        isError: isProfileError,
+        error: profileQueryError,
     } = useUserProfileQuery(sessionUserId);
+    const profileStatus = useMemo<BackendProfileStatus>(() => {
+        if (!sessionUserId) {
+            return "anonymous";
+        }
+
+        if (profileUser) {
+            return "loaded";
+        }
+
+        if (isProfileLoading || isProfileFetching) {
+            return "loading";
+        }
+
+        if (isProfileError) {
+            return "error";
+        }
+
+        return "loaded";
+    }, [
+        sessionUserId,
+        profileUser,
+        isProfileLoading,
+        isProfileFetching,
+        isProfileError,
+    ]);
+    const profileError = isProfileError ? profileQueryError : null;
     const user = useMemo(
         () => mergeSessionUserWithProfile(sessionUser, profileUser),
         [profileUser, sessionUser],
@@ -126,8 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         () => ({
             user,
             entitlements,
+            profileStatus,
+            profileError,
             isAuthed,
-            isLoading: isPending || Boolean(sessionUserId && isProfileLoading),
+            isLoading: isPending || profileStatus === "loading",
             isEntitlementsLoading,
             login,
             logout,
@@ -137,10 +171,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [
             user,
             entitlements,
+            profileStatus,
+            profileError,
             isAuthed,
             isPending,
-            sessionUserId,
-            isProfileLoading,
             isEntitlementsLoading,
             login,
             logout,
@@ -164,6 +198,9 @@ export function useAuth() {
     return context;
 }
 
-export function isProfileComplete(user: User | null): boolean {
-    return !!(user?.username && user?.avatar_image_key);
-}
+export {
+    isProfileComplete,
+    isProfileStatusComplete,
+    isProfileStatusIncomplete,
+    type BackendProfileStatus,
+} from "./auth-profile-state";
