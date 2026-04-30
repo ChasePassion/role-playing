@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Loader2,
   Settings,
+  X,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
@@ -38,6 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 interface PricingPageContentProps {
   catalog: PricingCatalogPlan[];
@@ -447,6 +449,17 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-20 text-gray-900">
+      <div className="fixed right-4 top-4 z-50">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          aria-label="返回"
+          className="rounded-lg"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
       <main className="mx-auto max-w-5xl px-6 pt-12">
         <section>
           {/* ── Header row ── */}
