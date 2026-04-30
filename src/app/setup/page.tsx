@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth, isProfileComplete } from "@/lib/auth-context";
@@ -162,7 +163,7 @@ export default function SetupPage() {
     if (isAuthLoading || !user) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         );
     }

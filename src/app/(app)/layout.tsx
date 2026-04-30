@@ -8,6 +8,7 @@ import {
     useMemo,
     useState,
 } from "react";
+import { Loader2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, isProfileComplete } from "@/lib/auth-context";
 import Sidebar, { Character } from "@/components/Sidebar";
@@ -120,7 +121,7 @@ export default function AppLayout({
     if (isAuthLoading || !user) {
         return (
             <div className="flex h-screen items-center justify-center bg-white">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         );
     }

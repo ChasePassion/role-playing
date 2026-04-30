@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
 
 import PricingPageContent from "@/components/billing/PricingPageContent";
 import { getPricingCatalog } from "@/lib/dodo-payments";
@@ -12,7 +13,7 @@ export default async function PricingPage() {
       <Suspense
         fallback={
           <div className="flex min-h-screen items-center justify-center bg-[var(--workspace-bg)]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
         }
       >

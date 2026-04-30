@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useGrowth } from "@/lib/growth-context";
@@ -113,7 +114,7 @@ export default function DiscoverPage() {
     return (
       <WorkspaceFrame>
         <div className="flex h-full items-center justify-center bg-white">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       </WorkspaceFrame>
     );

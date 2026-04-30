@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
 import { useSidebar } from "../layout";
 import type { SavedItemKindPhase3, SavedItemResponsePhase3 } from "@/lib/api";
@@ -86,7 +86,7 @@ export default function FavoritesPage() {
 
                     {favoritesLoading && savedItems.length === 0 ? (
                         <div className="flex justify-center py-20">
-                            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                         </div>
                     ) : savedItems.length === 0 ? (
                         <div className="py-20 text-center text-gray-400">暂无收藏内容</div>

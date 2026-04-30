@@ -963,15 +963,15 @@ export default function ChatThread({
 
     if (isLoading) {
         return (
-            <div className="flex min-h-[40vh] items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+            <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         );
     }
 
     if (error || !character) {
         return (
-            <div className="flex min-h-[40vh] items-center justify-center">
+            <div className="flex flex-1 items-center justify-center">
                 <div className="text-center">
                     <p className="text-red-500 mb-4">{error || "聊天未找到"}</p>
                     <button
@@ -994,7 +994,7 @@ export default function ChatThread({
             />
             {isLoadingOlder && (
                 <div className="flex justify-center py-4">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
                 </div>
             )}
             {visibleMessages.map((message, index) => {

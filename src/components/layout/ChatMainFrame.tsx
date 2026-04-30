@@ -112,7 +112,7 @@ export default function ChatMainFrame({
                                 className="pointer-events-none absolute top-0 h-px w-px"
                             />
 
-                            <div className="flex flex-col text-sm">
+                            <div className="flex flex-1 flex-col text-sm">
                                 {thread}
                             </div>
 
