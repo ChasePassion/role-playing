@@ -583,10 +583,9 @@ export default function CreateCharacterModal({
 
                     <div className="py-2 space-y-3">
                         <div className="flex items-center justify-between">
-                            <Label className="text-sm font-medium text-gray-700">音色选择</Label>
-                            {!selectedVoice && (
-                                <span className="text-xs text-red-500">必选</span>
-                            )}
+                            <Label className="text-sm font-medium text-gray-700">
+                                音色选择 <span className="text-red-500">*</span>
+                            </Label>
                         </div>
                         <VoiceSelector
                             selectedVoiceId={selectedVoice?.id || null}
