@@ -132,8 +132,12 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
       Boolean(checkoutOrderId),
   );
 
-  const selectedPeriod = getBillingPeriodFromValue(searchParams.get("period"));
-  const selectedMode = getPricingModeFromValue(searchParams.get("mode"));
+  const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod>(
+    getBillingPeriodFromValue(searchParams.get("period")),
+  );
+  const [selectedMode, setSelectedMode] = useState<ReturnType<typeof getPricingModeFromValue>>(
+    getPricingModeFromValue(searchParams.get("mode")),
+  );
   const checkoutSlug = searchParams.get("checkout");
   const pendingWechatProductId = searchParams.get("product_id");
   const visiblePlans = getPlansForDisplay(catalog, selectedPeriod);
@@ -274,11 +278,13 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   /* ── handlers ── */
 
   function handlePeriodChange(period: BillingPeriod) {
-    router.replace(buildPricingPath({ period, mode: selectedMode }));
+    setSelectedPeriod(period);
+    window.history.replaceState(null, "", buildPricingPath({ period, mode: selectedMode }));
   }
 
   function handleModeChange(mode: "subscription" | "wechat") {
-    router.replace(buildPricingPath({ period: selectedPeriod, mode }));
+    setSelectedMode(mode);
+    window.history.replaceState(null, "", buildPricingPath({ period: selectedPeriod, mode }));
   }
 
   function handleSubscriptionPurchase(slug: string) {
