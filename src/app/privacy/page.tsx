@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             <h2 className="text-base font-semibold text-gray-900">2. Information We Collect</h2>
             <p className="mt-2 font-medium text-gray-700">2.1 Information You Provide</p>
             <ul className="mt-1 list-disc space-y-1 pl-6">
-              <li><strong>Account information:</strong> Email address, display name, and password (hashed).</li>
+              <li><strong>Account information:</strong> Email address and display name.</li>
               <li><strong>Conversation data:</strong> Messages you send to AI characters and the responses you receive.</li>
               <li><strong>Profile information:</strong> Any optional profile details you choose to provide.</li>
               <li><strong>Payment information:</strong> Billing details processed securely through our third-party payment provider. We do not store full credit card numbers.</li>

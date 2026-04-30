@@ -16,9 +16,11 @@ import {
     UserRound,
 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+    const router = useRouter();
     const {
         messageFontSize,
         setMessageFontSize,
@@ -50,7 +52,7 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
     const displayedMemoryEnabled = canUseMemoryFeature === true ? memoryEnabled : false;
 
     const handleOpenBilling = () => {
-        window.location.assign("/pricing");
+        router.push("/pricing");
     };
 
     return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Upload, Loader2, X, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export default function CreateVoiceCloneModal({
   onSuccess,
 }: CreateVoiceCloneModalProps) {
   const { entitlements, isEntitlementsLoading } = useAuth();
+  const router = useRouter();
   const canUseVoiceClone = entitlements?.features.voice_clone ?? null;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -205,7 +207,7 @@ export default function CreateVoiceCloneModal({
                 type="button"
                 variant="outline"
                 className="mt-3"
-                onClick={() => window.location.assign("/pricing")}
+                onClick={() => router.push("/pricing")}
               >
                 订阅管理
               </Button>

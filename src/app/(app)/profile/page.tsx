@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import CharacterCard from "@/components/CharacterCard";
@@ -35,6 +36,7 @@ type TabType = 'works' | 'voices';
 
 export default function ProfilePage() {
     const { user, isAuthed, entitlements, isEntitlementsLoading } = useAuth();
+    const router = useRouter();
     const queryClient = useQueryClient();
     const canUseVoiceClone = entitlements?.features.voice_clone ?? null;
     const { setSelectedCharacterId } = useSidebar();
@@ -120,12 +122,12 @@ export default function ProfilePage() {
         }
 
         if (canUseVoiceClone === false) {
-            window.location.assign('/pricing');
+            router.push('/pricing');
             return;
         }
 
         setIsCreateVoiceModalOpen(true);
-    }, [canUseVoiceClone, isEntitlementsLoading]);
+    }, [canUseVoiceClone, isEntitlementsLoading, router]);
 
     // Clear selected character when on profile page
     useEffect(() => {

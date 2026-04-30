@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SpriteIcon } from "@/components/ui/sprite-icon";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CreditCard } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useGrowth } from "@/lib/growth-context";
@@ -92,6 +92,7 @@ export default function Sidebar({
     const { user, logout } = useAuth();
     const { openEntryPopup } = useGrowth();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const router = useRouter();
     const pathname = usePathname();
     const isDiscoverActive = pathname === "/";
 
@@ -99,7 +100,7 @@ export default function Sidebar({
     const userMenuItems = (
         <>
             <DropdownMenuItem
-                onClick={() => { window.location.href = "/profile"; }}
+                onClick={() => router.push("/profile")}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <SpriteIcon name="me" size={20} />
@@ -115,7 +116,7 @@ export default function Sidebar({
             </DropdownMenuItem>
 
             <DropdownMenuItem
-                onClick={() => { window.location.href = "/favorites"; }}
+                onClick={() => router.push("/favorites")}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <SpriteIcon name="mark" size={20} />
@@ -123,7 +124,7 @@ export default function Sidebar({
             </DropdownMenuItem>
 
             <DropdownMenuItem
-                onClick={() => { window.location.href = "/pricing"; }}
+                onClick={() => router.push("/pricing")}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <div className="flex h-[20px] w-[20px] items-center justify-center">
@@ -133,7 +134,7 @@ export default function Sidebar({
             </DropdownMenuItem>
 
             <DropdownMenuItem
-                onClick={() => { window.location.href = "/stats"; }}
+                onClick={() => router.push("/stats")}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
             >
                 <div className="flex h-[20px] w-[20px] items-center justify-center">
@@ -149,7 +150,7 @@ export default function Sidebar({
                 onClick={async () => {
                     try {
                         await logout();
-                        window.location.href = "/login";
+                        router.replace("/login");
                     } catch (error) {
                         console.error("Failed to logout:", error);
                     }
