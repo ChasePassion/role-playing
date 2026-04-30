@@ -71,8 +71,8 @@ export default function CharacterCard({
             ) : null}
           </div>
 
-          <p className="min-h-3.5 text-[11px] text-white/50 m-0 mb-1 whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-(--cc-text-shadow-light)">
-            {character.creator_username ? `作者：${character.creator_username}` : null}
+          <p className="min-h-3.5 text-[11px] text-white/60 m-0 mb-1 whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-(--cc-text-shadow-light)">
+            {character.creator_username ?? null}
           </p>
 
           <p className="text-xs text-(--cc-text-muted) leading-5 m-0 line-clamp-2 drop-shadow-(--cc-text-shadow-light)">
@@ -81,7 +81,7 @@ export default function CharacterCard({
 
           <div className="mt-auto flex items-center gap-1">
             <SpriteIcon name="chat-bubble" size={14} className="text-(--cc-text-secondary)" />
-            <span className="text-[13px] font-medium leading-none text-(--cc-text-secondary)">
+            <span className="text-[13px] font-medium leading-none text-white/60">
               {character.distinct_user_count != null
                 ? character.distinct_user_count >= 1000
                   ? `${(character.distinct_user_count / 1000).toFixed(1)}k`
