@@ -5,6 +5,7 @@ import {
     useContext,
     useCallback,
     useMemo,
+    useRef,
     type ReactNode,
 } from "react";
 import { apiService, type User, type UserEntitlementsResponse } from "./api-service";
@@ -25,6 +26,7 @@ interface AuthContextType {
     profileError: unknown | null;
     isAuthed: boolean;
     isLoading: boolean;
+    isInitialLoading: boolean;
     isEntitlementsLoading: boolean;
     login: (email: string, code: string) => Promise<void>;
     logout: () => Promise<void>;
@@ -81,6 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         () => mergeSessionUserWithProfile(sessionUser, profileUser),
         [profileUser, sessionUser],
     );
+
+    const hasAuthResolvedRef = useRef(false);
+    if (!isPending && profileUser) {
+        hasAuthResolvedRef.current = true;
+    }
+    const isInitialLoading =
+        (isPending || profileStatus === "loading") && !hasAuthResolvedRef.current;
+
     const userId = user?.id ?? sessionUserId;
     const isAuthed = !!user;
     const {
@@ -162,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             profileError,
             isAuthed,
             isLoading: isPending || profileStatus === "loading",
+            isInitialLoading,
             isEntitlementsLoading,
             login,
             logout,
@@ -175,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             profileError,
             isAuthed,
             isPending,
+            isInitialLoading,
             isEntitlementsLoading,
             login,
             logout,

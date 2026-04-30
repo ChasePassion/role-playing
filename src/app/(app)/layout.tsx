@@ -65,7 +65,7 @@ export default function AppLayout({
         user,
         logout,
         refreshUser,
-        isLoading: isAuthLoading,
+        isInitialLoading: isAuthLoading,
         profileStatus,
         profileError,
     } = useAuth();
