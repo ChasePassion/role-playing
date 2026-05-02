@@ -1,8 +1,15 @@
 "use client";
 
-import { createRealtimeSession, deleteRealtimeSession, getRealtimeIceConfig } from "@/lib/api";
+import {
+  createRealtimeSession,
+  deleteRealtimeSession,
+  getRealtimeIceConfig,
+  type RealtimeIceConfigResponse,
+} from "@/lib/api";
 import { logger, Module, RealtimeEvent } from "@/lib/logger";
 import { mapMicStartError } from "@/lib/voice/mic-errors";
+
+const ICE_GATHERING_TIMEOUT_MS = 2500;
 
 export interface RealtimeSubtitleState {
   userRaw: string;
@@ -91,8 +98,14 @@ export class RealtimeVoiceSessionClient {
     chatId: string;
     characterId: string;
     translationEnabled: boolean;
+    getIceConfig?: (signal?: AbortSignal) => Promise<RealtimeIceConfigResponse>;
     signal?: AbortSignal;
   }): Promise<void> {
+    const connectStartedAt = performance.now();
+    const timings: Record<string, number | boolean | string | null> = {};
+    const markDuration = (key: string, startedAt: number) => {
+      timings[key] = Math.round(performance.now() - startedAt);
+    };
     logger.info(
       Module.REALTIME,
       RealtimeEvent.CONNECT_STARTED,
@@ -112,25 +125,48 @@ export class RealtimeVoiceSessionClient {
       throwIfAborted(params.signal);
     };
     try {
-      const realtimeConfig = await getRealtimeIceConfig({
-        signal: params.signal,
+      const configStartedAt = performance.now();
+      const realtimeConfigPromise = (
+        params.getIceConfig
+          ? params.getIceConfig(params.signal)
+          : getRealtimeIceConfig({ signal: params.signal })
+      ).then((config) => {
+        markDuration("config_fetch_ms", configStartedAt);
+        timings.ice_server_count = config.ice_servers.length;
+        timings.credential_ttl_seconds = config.credential_ttl_seconds;
+        return config;
       });
-      bailIfStale();
 
-      try {
-        this.localStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            channelCount: 1,
-          },
-        });
-        this.localAudioTrack = this.localStream.getAudioTracks()[0] ?? null;
-        this.setupMicAnalyser(this.localStream);
-      } catch (micError) {
-        throw new Error(mapMicStartError(micError));
+      const mediaStartedAt = performance.now();
+      const localStreamPromise = this.acquireLocalStream().then((stream) => {
+        markDuration("media_acquire_ms", mediaStartedAt);
+        return stream;
+      });
+
+      const [configResult, mediaResult] = await Promise.allSettled([
+        realtimeConfigPromise,
+        localStreamPromise,
+      ]);
+      const stopResolvedLocalStream = () => {
+        if (mediaResult.status === "fulfilled") {
+          mediaResult.value.getTracks().forEach((track) => track.stop());
+        }
+      };
+      if (this.disconnectGeneration !== generation || params.signal?.aborted) {
+        stopResolvedLocalStream();
       }
+      bailIfStale();
+      if (configResult.status === "rejected") {
+        stopResolvedLocalStream();
+        throw configResult.reason;
+      }
+      if (mediaResult.status === "rejected") {
+        throw mediaResult.reason;
+      }
+      const realtimeConfig = configResult.value;
+      this.localStream = mediaResult.value;
+      this.localAudioTrack = this.localStream.getAudioTracks()[0] ?? null;
+      this.setupMicAnalyser(this.localStream);
       bailIfStale();
 
       this.remoteStream = new MediaStream();
@@ -193,20 +229,32 @@ export class RealtimeVoiceSessionClient {
         }
       };
 
-      this.localStream.getTracks().forEach((track) => {
-        const sender = this.pc?.addTrack(track, this.localStream as MediaStream) ?? null;
+      const localStream = this.localStream;
+      if (!localStream) {
+        throw new Error("实时通话麦克风不可用");
+      }
+      localStream.getTracks().forEach((track) => {
+        const sender = this.pc?.addTrack(track, localStream) ?? null;
         if (track.kind === "audio") {
           this.audioSender = sender;
         }
       });
 
+      const offerStartedAt = performance.now();
       const offer = await this.pc.createOffer();
+      markDuration("offer_create_ms", offerStartedAt);
       bailIfStale();
+      const localDescriptionStartedAt = performance.now();
       await this.pc.setLocalDescription(offer);
+      markDuration("local_description_ms", localDescriptionStartedAt);
       bailIfStale();
-      await this.waitForIceGatheringComplete(params.signal);
+      const iceGathering = await this.waitForIceGatheringComplete(params.signal);
+      timings.ice_wait_ms = iceGathering.elapsedMs;
+      timings.ice_gathering_timed_out = iceGathering.timedOut;
+      timings.ice_gathering_state = iceGathering.state;
       bailIfStale();
 
+      const sessionPostStartedAt = performance.now();
       const negotiated = await createRealtimeSession({
         chat_id: params.chatId,
         character_id: params.characterId,
@@ -217,15 +265,18 @@ export class RealtimeVoiceSessionClient {
       }, {
         signal: params.signal,
       });
+      markDuration("session_post_ms", sessionPostStartedAt);
       bailIfStale();
 
       this.sessionId = negotiated.session_id;
+      const remoteDescriptionStartedAt = performance.now();
       await this.pc.setRemoteDescription(
         new RTCSessionDescription({
           type: negotiated.sdp.type as RTCSdpType,
           sdp: negotiated.sdp.sdp,
         }),
       );
+      markDuration("remote_description_ms", remoteDescriptionStartedAt);
       bailIfStale();
 
       this.sendEvent({
@@ -240,6 +291,8 @@ export class RealtimeVoiceSessionClient {
         {
           session_id: negotiated.session_id,
           source: "sdp_answer_applied",
+          connect_total_ms: Math.round(performance.now() - connectStartedAt),
+          ...timings,
         },
       );
       this.handlers.onConnected?.(negotiated.session_id, "sdp_answer_applied");
@@ -248,11 +301,26 @@ export class RealtimeVoiceSessionClient {
         error instanceof Error &&
         error.message === "DISCONNECTED_DURING_CONNECT"
       ) {
-        // Already cleaned up by the external disconnect() — nothing to do.
+        await this.disconnect({ emitDisconnected: false });
         return;
       }
       await this.disconnect();
       throw error;
+    }
+  }
+
+  private async acquireLocalStream(): Promise<MediaStream> {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+    } catch (micError) {
+      throw new Error(mapMicStartError(micError));
     }
   }
 
@@ -517,28 +585,60 @@ export class RealtimeVoiceSessionClient {
     }
   }
 
-  private async waitForIceGatheringComplete(signal?: AbortSignal): Promise<void> {
+  private async waitForIceGatheringComplete(signal?: AbortSignal): Promise<{
+    elapsedMs: number;
+    timedOut: boolean;
+    state: RTCIceGatheringState | "unknown";
+  }> {
+    const startedAt = performance.now();
     if (!this.pc || this.pc.iceGatheringState === "complete") {
-      return;
+      return {
+        elapsedMs: 0,
+        timedOut: false,
+        state: this.pc?.iceGatheringState ?? "unknown",
+      };
     }
 
-    await new Promise<void>((resolve) => {
+    return new Promise((resolve) => {
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+      const finish = (timedOut: boolean) => {
+        cleanup();
+        resolve({
+          elapsedMs: Math.round(performance.now() - startedAt),
+          timedOut,
+          state: this.pc?.iceGatheringState ?? "unknown",
+        });
+      };
       const cleanup = () => {
         this.pc?.removeEventListener("icegatheringstatechange", handleStateChange);
         signal?.removeEventListener("abort", handleAbort);
+        if (timeout !== null) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
       };
       const handleStateChange = () => {
         if (this.pc?.iceGatheringState === "complete") {
-          cleanup();
-          resolve();
+          finish(false);
         }
       };
       const handleAbort = () => {
-        cleanup();
-        resolve();
+        finish(false);
       };
       this.pc?.addEventListener("icegatheringstatechange", handleStateChange);
       signal?.addEventListener("abort", handleAbort, { once: true });
+      timeout = setTimeout(() => {
+        logger.warn(
+          Module.REALTIME,
+          RealtimeEvent.CONNECT_TIMEOUT,
+          "ICE gathering timed out, proceeding with available candidates",
+          {
+            ice_gathering_state: this.pc?.iceGatheringState ?? "unknown",
+            timeout_ms: ICE_GATHERING_TIMEOUT_MS,
+          },
+        );
+        finish(true);
+      }, ICE_GATHERING_TIMEOUT_MS);
     });
   }
 }

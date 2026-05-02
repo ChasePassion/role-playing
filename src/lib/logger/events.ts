@@ -14,7 +14,9 @@ export const CharacterEvent = {
 export const RealtimeEvent = {
   START_REQUESTED: "realtime.start_requested",
   CONNECT_STARTED: "realtime.connect_started",
+  CONNECT_STAGE: "realtime.connect_stage",
   CONNECT_SIGNALLED: "realtime.connect_signalled",
+  CONNECT_TIMEOUT: "realtime.connect.timeout",
   DISCONNECTED: "realtime.disconnected",
   START_ABORTED: "realtime.start_aborted",
   START_FAILED: "realtime.start_failed",

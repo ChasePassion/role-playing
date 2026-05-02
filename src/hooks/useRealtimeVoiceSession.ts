@@ -6,6 +6,7 @@ import {
   type RealtimeConversationEvent,
   type RealtimeSubtitleState,
 } from "@/lib/realtime/realtime-voice-session-client";
+import type { RealtimeIceConfigResponse } from "@/lib/api";
 import { logger, Module, RealtimeEvent } from "@/lib/logger";
 import {
   getMicPermissionState,
@@ -24,6 +25,7 @@ export function useRealtimeVoiceSession(options: {
   chatId: string;
   characterId: string | null;
   translationEnabled: boolean;
+  getIceConfig?: (signal?: AbortSignal) => Promise<RealtimeIceConfigResponse>;
   onSessionEnded?: () => Promise<void> | void;
   onConversationEvent?: (event: RealtimeConversationEvent) => Promise<void> | void;
 }) {
@@ -160,6 +162,7 @@ export function useRealtimeVoiceSession(options: {
         chatId: options.chatId,
         characterId: options.characterId,
         translationEnabled: options.translationEnabled,
+        getIceConfig: options.getIceConfig,
         signal: startupController.signal,
       });
       if (startupAbortRef.current === startupController) {
@@ -218,6 +221,7 @@ export function useRealtimeVoiceSession(options: {
     isConnecting,
     options.characterId,
     options.chatId,
+    options.getIceConfig,
     options.translationEnabled,
   ]);
 

@@ -20,9 +20,11 @@ import {
     ApiError,
     createChatInstance,
     deleteChat,
+    getRealtimeIceConfig,
     updateChat,
     type ChatResponse,
     type LearningAssistantContextMessage,
+    type RealtimeIceConfigResponse,
 } from "@/lib/api";
 import { useGrowth } from "@/lib/growth-context";
 import ShareCardDialog from "@/components/growth/ShareCardDialog";
@@ -37,7 +39,12 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ERROR_MESSAGE_MAP } from "@/lib/error-map";
-import { queryKeys, recentChatQueryOptions } from "@/lib/query";
+import {
+    getRealtimeIceConfigCacheMs,
+    queryKeys,
+    realtimeIceConfigQueryOptions,
+    recentChatQueryOptions,
+} from "@/lib/query";
 
 const SETTLED_FRAME_TARGET = 2;
 const LEARNING_ASSISTANT_CONTEXT_LIMIT = 20;
@@ -163,6 +170,14 @@ export default function ChatPage() {
     const realtimeReloadInFlightRef = useRef<Promise<void> | null>(null);
     const pendingRealtimeTurnIdsRef = useRef<Set<string>>(new Set());
 
+    useEffect(() => {
+        if (!isAuthed || !user?.id) {
+            return;
+        }
+
+        void queryClient.prefetchQuery(realtimeIceConfigQueryOptions(user.id));
+    }, [isAuthed, queryClient, user?.id]);
+
     const flushRealtimeChatTurnsReload = useCallback(async (options?: { force?: boolean }) => {
         if (realtimeReloadTimerRef.current) {
             clearTimeout(realtimeReloadTimerRef.current);
@@ -233,10 +248,32 @@ export default function ChatPage() {
         };
     }, [chatId]);
 
+    const getIceConfigForRealtimeCall = useCallback(async (signal?: AbortSignal) => {
+        if (signal?.aborted) {
+            throw new DOMException("The operation was aborted.", "AbortError");
+        }
+
+        const queryKey = queryKeys.realtime.iceConfig(user?.id);
+        const cached = queryClient.getQueryData<RealtimeIceConfigResponse>(queryKey);
+        const state = queryClient.getQueryState(queryKey);
+
+        if (cached && state?.dataUpdatedAt) {
+            const maxAgeMs = getRealtimeIceConfigCacheMs(cached);
+            if (maxAgeMs > 0 && Date.now() - state.dataUpdatedAt < maxAgeMs) {
+                return cached;
+            }
+        }
+
+        const fetched = await getRealtimeIceConfig({ signal });
+        queryClient.setQueryData(queryKey, fetched);
+        return fetched;
+    }, [queryClient, user?.id]);
+
     const realtimeSession = useRealtimeVoiceSession({
         chatId,
         characterId: character?.id ?? null,
         translationEnabled: true,
+        getIceConfig: getIceConfigForRealtimeCall,
         onSessionEnded: async () => {
             await flushRealtimeChatTurnsReload({ force: true });
             void refreshSidebarCharacters().catch((err) => {

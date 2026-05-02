@@ -720,6 +720,7 @@ export interface RealtimeSessionCreateRequest {
 
 export interface RealtimeIceConfigResponse {
   ice_servers: RTCIceServer[];
+  credential_ttl_seconds: number;
 }
 
 export interface RealtimeSessionCreateResponse {
@@ -728,6 +729,7 @@ export interface RealtimeSessionCreateResponse {
   character_id: string;
   sdp: RealtimeSessionDescription;
   ice_servers: RTCIceServer[];
+  credential_ttl_seconds: number;
 }
 
 // =============================================================================

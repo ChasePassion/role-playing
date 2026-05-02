@@ -44,6 +44,13 @@ export const queryKeys = {
       [...queryKeys.auth.all(), "entitlements", scopedId(userId)] as const,
   },
 
+  realtime: {
+    all: (userId: NullableId) =>
+      [...queryKeys.all, "realtime", scopedId(userId)] as const,
+    iceConfig: (userId: NullableId) =>
+      [...queryKeys.realtime.all(userId), "ice-config"] as const,
+  },
+
   user: {
     all: (userId: NullableId) =>
       [...queryKeys.all, "user", scopedId(userId)] as const,
