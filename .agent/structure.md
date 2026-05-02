@@ -1,6 +1,6 @@
 # ParlaSoul 前端架构说明
 
-更新时间：2026-04-29
+更新时间：2026-05-02
 
 ## 1. 仓库定位
 
@@ -10,6 +10,7 @@
   - 浏览器 UI 与交互状态
   - `better-auth` 认证与 Dodo 托管计费入口
   - 少量 Next.js Server Route 能力
+  - 角色分享落地页 `/share/[slug]` 与分享卡图片生成/代理
 
 当前前端直接拥有的 HTTP 面：
 
@@ -37,6 +38,7 @@
 - Recharts
 - Embla Carousel
 - `react-markdown` / `remark-gfm` / `remark-breaks`
+- `html-to-image` / `html2canvas`
 
 ## 架构图
 
@@ -46,26 +48,28 @@ flowchart TD
     Middleware --> Root[RootLayout<br/>fonts + QueryProvider + AuthProvider]
 
     subgraph NextApp[Next.js App Router]
-        Root --> PublicPages[公开页面<br/>/login /setup /pricing]
+        Root --> PublicPages[独立页面<br/>/login /setup /pricing /share/[slug]]
         Root --> AppLayout["src/app/(app)/layout.tsx"]
         AppLayout --> AppFrame[AppFrame + Sidebar]
         AppLayout --> SidebarCtx[SidebarContext]
         AppLayout --> SettingsCtx[UserSettingsProvider]
         AppLayout --> GrowthCtx[GrowthProvider]
-        AppLayout --> ProtectedPages["受保护页面<br/>/ /chat/[id] /favorites /profile /billing /stats"]
+        AppLayout --> ProtectedPages["应用壳页面<br/>/ /chat/[id] /favorites /profile /stats"]
     end
 
     subgraph UI[页面与组件层]
         Discover[Discover Page<br/>TopConsole / HeroCarousel / HorizontalSection]
         ChatPage[Chat Page<br/>ChatHeader / ChatThread / ChatInput / ChatHistorySidebar / MessageNavigator]
         Profile[Profile Page<br/>Character / Voice 管理]
-        Billing[Pricing + Billing]
+        Billing[Pricing / Payment Entry]
         Stats[Stats Page]
+        SharePage[Share Page<br/>/share/[slug]]
         ProtectedPages --> Discover
         ProtectedPages --> ChatPage
         ProtectedPages --> Profile
-        ProtectedPages --> Billing
         ProtectedPages --> Stats
+        PublicPages --> Billing
+        PublicPages --> SharePage
     end
 
     subgraph State[共享状态与交互编排]
@@ -95,6 +99,7 @@ flowchart TD
         BetterAuthClient[auth-client.ts / auth.ts<br/>better-auth + Dodo]
         GrowthAPI[growth-api.ts]
         BillingAPI[dodo-payments.ts]
+        ShareLink[share-link.ts / share-card-assets.ts]
         Adapters[character-adapter / voice-adapter / llm-adapter / chat-helpers / discover-data]
         Audio[stt-recorder / tts-playback-manager / audio-preview-manager]
         ChatHook --> APIIndex
@@ -102,10 +107,12 @@ flowchart TD
         Profile --> APIIndex
         Billing --> APIIndex
         Stats --> GrowthAPI
+        SharePage --> ShareLink
         APIIndex --> APIService
         APIIndex --> BetterAuthClient
         APIIndex --> GrowthAPI
         Billing --> BillingAPI
+        ShareLink --> APIService
         ChatPage --> Audio
         Discover --> Adapters
     end
@@ -180,8 +187,9 @@ flowchart TD
     - `/favorites`
     - `/profile`
     - `/setup`
-    - `/billing`
   - 基于 better-auth session cookie 判断是否需要跳转 `/login`
+- `(app)` 布局本身还会基于 `AuthProvider` 与 profile 状态在客户端拦截其下页面；因此 `/stats` 这类未在 middleware matcher 内的页面仍会经过应用壳鉴权。
+- `src/app/(app)/billing/page.tsx` 当前只重定向到 `/pricing`，不再承载独立账单 UI。
 
 ### 3.4 后端代理
 
@@ -206,15 +214,15 @@ flowchart TD
 - `src/app/login/page.tsx`
 - `src/app/setup/page.tsx`
 - `src/app/pricing/page.tsx`
+- `src/app/share/[slug]/page.tsx`
 - `src/app/privacy/page.tsx`
 - `src/app/terms/page.tsx`
 - `src/app/(app)/page.tsx`
 - `src/app/(app)/chat/[id]/page.tsx`
 - `src/app/(app)/favorites/page.tsx`
 - `src/app/(app)/profile/page.tsx`
-- `src/app/(app)/billing/page.tsx`
+- `src/app/(app)/billing/page.tsx`（重定向到 `/pricing`）
 - `src/app/(app)/stats/page.tsx`
-- `src/app/prototype/*/page.tsx`（原型入口，不属于正式主链路）
 
 当前 route handlers：
 
@@ -290,6 +298,8 @@ flowchart TD
   - `growth-api.ts`
   - `dodo-payments.ts`
   - `billing-plans.ts`
+  - `share-link.ts`
+  - `share-card-assets.ts`
 - Realtime
   - `realtime/realtime-voice-session-client.ts`
 - 适配器
@@ -401,6 +411,7 @@ flowchart TD
 新增的 realtime 通话能力：
 
 - 通过 `RealtimeVoiceSessionClient` 发起 `/v1/realtime/session`
+- 通过 `realtime-queries.ts` 预取并缓存 `/v1/realtime/config` 的 ICE servers，缓存时长按 TURN credential TTL 扣除 60 秒安全边界计算，最长 5 分钟
 - 在聊天页输入区内建立 inline WebRTC 会话状态机
 - 展示用户与角色的双向字幕，并刷新聊天线程
 - 管理挂断按钮、收音开关和 speaking 态按钮视觉
@@ -450,7 +461,7 @@ flowchart TD
 页面：
 
 - `src/app/pricing/page.tsx`
-- `src/app/(app)/billing/page.tsx`
+- `src/app/(app)/billing/page.tsx`（重定向到 `/pricing`）
 
 当前架构是“双轨支付入口”：
 
@@ -458,6 +469,7 @@ flowchart TD
   - better-auth + Dodo 托管 checkout / portal / subscriptions / payments
 - 微信一次性权益
   - 走后端 `/v1/payments/*`
+- `/pricing` 负责公开定价展示与登录后的支付发起；旧 `/billing` 路由不再承载独立 UI。
 
 关键模块：
 
@@ -485,6 +497,34 @@ flowchart TD
 - 今日成长摘要
 - 分享卡队列
 - calendar month 状态
+
+### 5.9 角色分享与分享卡
+
+页面：
+
+- `src/app/share/[slug]/page.tsx`
+
+相关模块：
+
+- `src/lib/share-link.ts`
+- `src/components/growth/ShareCardDialog.tsx`
+- `src/components/growth/ShareCardRenderer.tsx`
+- `src/lib/share-card-assets.ts`
+- `src/app/api/share-card-image/route.ts`
+
+当前能力：
+
+- 角色卡片菜单生成 `/share/{name-slug}-{character_uuid}`。
+- 分享页从 slug 尾部解析 character UUID，调用 `getCharacterById` 读取角色详情。
+- 未登录用户会跳转 `/login?next=/share/{slug}`。
+- 登录用户会通过 `useGetOrCreateChatMutation` 创建或复用最近聊天，然后跳转 `/chat/{chatId}`。
+- Growth 分享卡弹窗用 `html-to-image` 生成 PNG 下载；远程图片通过 `/api/share-card-image` 代理并走 Redis 缓存。
+
+注意：
+
+- `/share/[slug]` 是前端页面，不是后端渲染页面。
+- 它不新增 Next.js route handler，也不在前端实现 `/v1/*` mock。
+- 角色可见性、角色详情与 chat 创建仍由后端 `/v1/*` 控制。
 
 ## 6. 共享状态与运行时协作
 
@@ -557,6 +597,7 @@ flowchart TD
 - `character-queries.ts`
 - `chat-queries.ts`
 - `growth-queries.ts`
+- `realtime-queries.ts`
 - `saved-item-queries.ts`
 - `sidebar-queries.ts`
 - `user-settings-queries.ts`
@@ -659,6 +700,7 @@ flowchart TD
 - 正式业务数据都来自后端 `/v1/*` 或 better-auth/Dodo 托管能力。
 - 当前 Next.js route handlers 只用于认证、日志、分享卡图片代理，不承载业务 CRUD。
 - 当前 `/media/*` 由 Next.js rewrite 转发到后端 R2 媒体读取链路，不是前端本地静态目录。
-- `/pricing` 是公开页面，`/billing` 是受保护页面；两者都不在后端仓库。
+- `/pricing` 是公开定价与支付入口页；`/billing` 当前重定向到 `/pricing`，不再是独立主页面。
+- `/share/[slug]` 是公开入口页，但进入聊天前会要求登录并保留 `next` 参数。
 - 聊天主链路已经是“流式 + 聊天树 + 学习卡 + TTS + Growth 事件”的复合页面，不应再按简单消息列表理解。
 - realtime 通话当前依附 `/chat/[id]` 页面，不新增前端 route handler，也不引入独立通话页面模板。

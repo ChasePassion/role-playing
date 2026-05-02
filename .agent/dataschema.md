@@ -2,7 +2,7 @@
 
 本文档由脚本直接连接 PostgreSQL 实例并基于实时元数据生成。
 
-- 生成时间: `2026-04-30 18:15:29 北京时间`
+- 生成时间: `2026-05-02 23:30:19 北京时间`
 - 目标数据库: `localhost:5432/role_play_mem`
 - Schema: `public`
 - 表数量: `22`
@@ -14,7 +14,7 @@
 ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQL”的系统：
 
 - 前端仓库 `E:\code\parlasoul-frontend`
-  - 负责 `better-auth` 登录、定价与账单页、角色发现页、聊天页、收藏页、个人中心、成长统计页。
+  - 负责 `better-auth` 登录、定价与账单页、角色发现页、角色分享页、聊天页、收藏页、个人中心、成长统计页。
   - 通过同源 `/api/auth/*` 处理认证，通过 `/v1/*` 调用后端业务 API。
 - 后端仓库 `E:\code\parlasoul-backend`
   - 负责角色、聊天树、学习卡、收藏、音色、成长系统、订阅 / 一次性权益同步、Webhook 处理、R2 媒体上传与读取。
@@ -41,7 +41,7 @@ ParlaSoul 当前是一个“前端认证层 + 后端业务层 + 共享 PostgreSQ
   - 前端登录页调用 `better-auth`
   - 主表是 [`users`](#table-users)、[`account`](#table-account)、[`session`](#table-session)、[`verification`](#table-verification)、[`jwks`](#table-jwks)
 - 当前业务主链路
-  - 角色与市场：[`characters`](#table-characters)
+  - 角色、市场与分享：[`characters`](#table-characters)
   - 聊天树：[`chats`](#table-chats)、[`turns`](#table-turns)、[`candidates`](#table-candidates)
   - 收藏：[`saved_items`](#table-saved_items)
   - 音色：[`voice_profiles`](#table-voice_profiles)
@@ -182,6 +182,13 @@ sequenceDiagram
   - [`payment_webhook_events`](#table-payment_webhook_events) 支付 / 退款 webhook 审计与幂等记录
   - [`user_access_passes`](#table-user_access_passes) 已生效的一次性权益通行证
 - 真正的“功能是否可用”由后端 `SubscriptionService` 同时计算 recurring subscription 与 active one-time pass，返回 `effective_source`。
+
+#### 4.6 角色分享与可见性兼容
+
+- 当前应用层只允许写入 `PUBLIC` 和 `PRIVATE` 两种角色 / 会话可见性。
+- 迁移 `20260501_0034` 已把历史 `UNLISTED` 行迁移为 `PRIVATE`，后续业务代码不会再创建新的 `UNLISTED` 数据。
+- PostgreSQL 的 `visibility_t` 和 `chat_visibility_t` 枚举类型仍保留 `UNLISTED`，这是为了避免直接重建 enum 类型带来的迁移风险；实时结构快照会如实显示该兼容值。
+- 前端 `/share/{slug}` 分享页通过 slug 末尾的 character UUID 读取角色详情。当前 active 的 `PUBLIC` 与 `PRIVATE` 角色都允许通过直链读取；`PRIVATE` 不进入市场列表但可被直链访问。进入 get-or-create chat 前，前端会要求登录并保留 `next` 参数。
 
 ### 5. 数据域分组
 
@@ -378,7 +385,7 @@ sequenceDiagram
 | `system_prompt` | 驱动角色行为的核心 system prompt。 | 聊天生成时构造 LLM system prompt。 |
 | `greeting_message` | 首次建 chat 时自动插入的开场白。 | `create_chat` 时创建第一条主动消息。 |
 | `avatar_image_key` | R2 中角色头像对象 key 前缀，可推导 `/media/*/*.avif` 变体 URL。 | 角色创建 / 编辑新上传后写入，市场、聊天、成长统计和分享卡读取。 |
-| `visibility` | 角色可见性，决定市场是否可见。 | 市场查询、详情页权限。 |
+| `visibility` | 角色可见性，应用层当前只写 `PUBLIC/PRIVATE`；数据库 enum 仍保留 `UNLISTED` 作为历史兼容值。 | 市场查询、详情页权限、分享页直链读取。 |
 | `interaction_count` | 角色互动计数，近似反映聊天生成完成次数。 | 聊天成功 finalize 后递增，用于市场热度。 |
 | `creator_id` | 角色创建者。 | 个人中心、权限控制、创作者主页。 |
 | `voice_provider` | 当前绑定音色的 provider。 | 聊天 TTS、角色详情展示。 |
@@ -440,7 +447,7 @@ sequenceDiagram
 | `character_id` | 会话对应角色。 | 角色切换和历史归档。 |
 | `type` | 会话类型，当前主链路是一对一聊天。 | 预留 ROOM 能力。 |
 | `state` | 会话状态，当前主要是 `ACTIVE`。 | 历史查询和后续归档扩展。 |
-| `visibility` | 会话可见性，当前默认 private。 | 为未来共享 / 可见性扩展留口。 |
+| `visibility` | 会话可见性，应用层当前只写 `PRIVATE`，数据库 enum 仍保留 `UNLISTED` 作为历史兼容值。 | 当前主链路只做本人聊天隔离，未来共享能力预留。 |
 | `title` | 会话标题。默认是占位标题，首条用户消息后可能被自动改写。 | 聊天历史列表与 header。 |
 | `last_turn_at` | 当前会话最新 turn 的时间。 | 最近会话排序。 |
 | `last_turn_id` | 当前记录的最新 turn。 | 历史列表和刷新定位。 |

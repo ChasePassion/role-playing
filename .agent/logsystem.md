@@ -1,6 +1,6 @@
 # 前端日志系统
 
-更新时间：2026-04-29
+更新时间：2026-05-02
 
 ## 架构
 
@@ -190,7 +190,9 @@ export const CharacterEvent = {
 export const RealtimeEvent = {
   START_REQUESTED: "realtime.start_requested",
   CONNECT_STARTED: "realtime.connect_started",
+  CONNECT_STAGE: "realtime.connect_stage",
   CONNECT_SIGNALLED: "realtime.connect_signalled",
+  CONNECT_TIMEOUT: "realtime.connect.timeout",
   DISCONNECTED: "realtime.disconnected",
   START_ABORTED: "realtime.start_aborted",
   START_FAILED: "realtime.start_failed",
@@ -251,7 +253,9 @@ logger.fromError(Module.CHARACTER, err, CharacterEvent.FAILED, {
 
 - `realtime.start_requested`
 - `realtime.connect_started`
+- `realtime.connect_stage`
 - `realtime.connect_signalled`
+- `realtime.connect.timeout`
 - `realtime.disconnected`
 - `realtime.start_aborted`
 - `realtime.start_failed`
@@ -259,7 +263,19 @@ logger.fromError(Module.CHARACTER, err, CharacterEvent.FAILED, {
 - `realtime.mic_capture_applied`
 - `realtime.mic_capture_failed`
 
-这些日志用于定位浏览器 WebRTC 建连、麦克风采集、DataChannel 信令与主动挂断问题。它们和后端 `src/realtime/*` 日志通过时间、用户操作、`session_id` 等字段人工关联；当前前端日志系统尚未自动注入全局 request_id。
+这些日志用于定位浏览器 WebRTC 建连、麦克风采集、DataChannel 信令与主动挂断问题。
+
+当前 realtime 建连日志的关键语义：
+
+- `realtime.connect_started`：客户端开始并行拉取 `/v1/realtime/config` 与麦克风。
+- `realtime.connect_stage`：记录局部阶段耗时，例如 ICE 配置拉取、麦克风获取、SDP offer 创建等。
+- `realtime.connect.timeout`：浏览器 ICE gathering 等待超时，客户端会继续用现有候选发起后端 negotiation。
+- `realtime.connect_signalled`：分两次记录，分别对应后端 SDP answer 已应用、服务端 `session.created` 事件已收到。
+- `realtime.disconnected`：主动或被动断开，携带本地会话状态。
+
+前端日志和后端 `src/realtime/*` 日志主要通过时间、用户操作、浏览器控制台完整 entry 和显式传入的 `session_id` 人工关联。当前前端日志系统尚未自动注入全局 `request_id`。
+
+注意：`/api/logs` 文件持久化只写入 `SUMMARY_FIELDS`，当前不包含 `session_id`。因此 `session_id` 会出现在浏览器控制台完整对象中，但默认不会进入 `logs/realtime.log`，除非后续把它加入 `SUMMARY_FIELDS`。
 
 ### 5. 邮箱 OTP 投递日志
 
