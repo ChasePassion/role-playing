@@ -27,6 +27,8 @@ export function realtimeIceConfigQueryOptions(
     queryKey: queryKeys.realtime.iceConfig(userId),
     queryFn: ({ signal }: { signal?: AbortSignal }) =>
       getRealtimeIceConfig({ signal }),
+    // staleTime intentionally uses the max cap; actual realtime calls
+    // use getRealtimeIceConfigCacheMs() for precise response-aware TTL.
     staleTime: ICE_CONFIG_MAX_STALE_MS,
   };
 }
