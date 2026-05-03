@@ -35,6 +35,7 @@ interface UseChatSessionArgs {
   ttsPlaybackManager?: TtsPlaybackManager | null;
   autoReadAloudEnabled?: boolean;
   onGrowthDailyUpdated?: (today: GrowthTodaySummary) => void;
+  onGrowthDailyRefresh?: () => void;
   onGrowthShareCardReady?: (card: GrowthShareCard) => void;
 }
 
@@ -131,6 +132,7 @@ export function useChatSession({
   ttsPlaybackManager,
   autoReadAloudEnabled = true,
   onGrowthDailyUpdated,
+  onGrowthDailyRefresh,
   onGrowthShareCardReady,
 }: UseChatSessionArgs): UseChatSessionResult {
   const { user } = useAuth();
@@ -1311,7 +1313,7 @@ export function useChatSession({
             onGrowthDailyUpdated: (data) => {
               if (controller.signal.aborted) return;
               onGrowthDailyUpdated?.(data.today);
-              window.dispatchEvent(new Event("growth:header:refresh"));
+              onGrowthDailyRefresh?.();
             },
             onGrowthShareCardReady: (data) => {
               if (controller.signal.aborted) return;
@@ -1372,6 +1374,7 @@ export function useChatSession({
       shouldReloadForRequest,
       ttsPlaybackManager,
       onGrowthDailyUpdated,
+      onGrowthDailyRefresh,
       onGrowthShareCardReady,
     ],
   );

@@ -132,8 +132,13 @@ export default function ChatPage() {
         };
     }, []);
 
-    const { updateTodaySummary, enqueueShareCard } = useGrowth();
+    const { updateTodaySummary, enqueueShareCard, invalidateGrowthChatHeader } = useGrowth();
     const shouldAutoScrollRef = useRef(true);
+
+    const handleGrowthDailyRefresh = useCallback(
+        () => invalidateGrowthChatHeader(user?.id ?? "", chatId),
+        [invalidateGrowthChatHeader, user?.id, chatId],
+    );
 
     const {
         chat,
@@ -163,6 +168,7 @@ export default function ChatPage() {
         ttsPlaybackManager: ttsManagerRef.current,
         autoReadAloudEnabled,
         onGrowthDailyUpdated: updateTodaySummary,
+        onGrowthDailyRefresh: handleGrowthDailyRefresh,
         onGrowthShareCardReady: enqueueShareCard,
     });
 

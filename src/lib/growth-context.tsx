@@ -43,6 +43,12 @@ interface GrowthContextType {
   refreshGrowthEntry: (options?: { autoOpenPopup?: boolean }) => Promise<void>;
 
   updateTodaySummary: (today: GrowthTodaySummary) => void;
+  invalidateGrowthChatHeader: (userId: string, chatId: string) => void;
+  registerGrowthChatHeaderInvalidator: (
+    userId: string,
+    chatId: string,
+    invalidate: () => void,
+  ) => () => void;
 
   pendingShareCards: GrowthShareCard[];
   enqueueShareCard: (card: GrowthShareCard) => void;
@@ -88,6 +94,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
   const [calendarMonth, setCalendarMonth] =
     useState<GrowthCalendarMonth | null>(null);
   const handledAutoOpenStatDateRef = useRef<string | null>(null);
+  const invalidateRegistryRef = useRef<Map<string, () => void>>(new Map());
 
   const readHandledAutoOpenStatDate = useCallback((userId?: string | null) => {
     if (!userId || typeof window === "undefined") {
@@ -133,6 +140,7 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
     setEntryPopupData(null);
     setCalendarMonth(null);
     setTodaySummary(null);
+    invalidateRegistryRef.current.clear();
     handledAutoOpenStatDateRef.current = null;
 
     if (!user?.id) {
@@ -220,6 +228,25 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
     setTodaySummary(today);
   }, []);
 
+  const registerGrowthChatHeaderInvalidator = useCallback(
+    (userId: string, chatId: string, invalidate: () => void) => {
+      const key = `${userId}:${chatId}`;
+      invalidateRegistryRef.current.set(key, invalidate);
+      return () => {
+        invalidateRegistryRef.current.delete(key);
+      };
+    },
+    [],
+  );
+
+  const invalidateGrowthChatHeader = useCallback(
+    (userId: string, chatId: string) => {
+      const key = `${userId}:${chatId}`;
+      invalidateRegistryRef.current.get(key)?.();
+    },
+    [],
+  );
+
   const enqueueShareCard = useCallback((card: GrowthShareCard) => {
     setPendingShareCards((prev) => {
       if (prev.some((c) => c.id === card.id)) return prev;
@@ -259,6 +286,8 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
       dismissEntryPopupForToday,
       refreshGrowthEntry,
       updateTodaySummary,
+      invalidateGrowthChatHeader,
+      registerGrowthChatHeaderInvalidator,
       pendingShareCards,
       enqueueShareCard,
       dismissShareCard,
@@ -276,6 +305,8 @@ export function GrowthProvider({ children }: { children: ReactNode }) {
       dismissEntryPopupForToday,
       refreshGrowthEntry,
       updateTodaySummary,
+      invalidateGrowthChatHeader,
+      registerGrowthChatHeaderInvalidator,
       pendingShareCards,
       enqueueShareCard,
       dismissShareCard,
