@@ -3,6 +3,8 @@ export const Module = {
   REALTIME: "realtime",
 } as const;
 
+export type ModuleType = (typeof Module)[keyof typeof Module];
+
 export const CharacterEvent = {
   STARTED: "character.started",
   VOICE_RESOLVED: "character.voice_resolved",

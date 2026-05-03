@@ -1,8 +1,10 @@
 import { formatEntry, formatHumanReadable } from "./format";
 import type { LogEntry } from "./format";
+import type { ModuleType } from "./events";
 import { ApiError } from "@/lib/token-store";
 
 export { CharacterEvent, Module, RealtimeEvent } from "./events";
+export type { ModuleType } from "./events";
 
 // ─── Transports ────────────────────────────────────────────────────────────────
 
@@ -40,7 +42,7 @@ type LogLevel = "INFO" | "WARN" | "ERROR";
 
 function emit(
   level: LogLevel,
-  module: string,
+  module: ModuleType,
   event: string,
   message: string,
   extra?: Record<string, unknown>
@@ -52,16 +54,16 @@ function emit(
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export const logger = {
-  info: (module: string, event: string, message: string, extra?: Record<string, unknown>) =>
+  info: (module: ModuleType, event: string, message: string, extra?: Record<string, unknown>) =>
     emit("INFO", module, event, message, extra),
 
-  warn: (module: string, event: string, message: string, extra?: Record<string, unknown>) =>
+  warn: (module: ModuleType, event: string, message: string, extra?: Record<string, unknown>) =>
     emit("WARN", module, event, message, extra),
 
-  error: (module: string, event: string, message: string, extra?: Record<string, unknown>) =>
+  error: (module: ModuleType, event: string, message: string, extra?: Record<string, unknown>) =>
     emit("ERROR", module, event, message, extra),
 
-  fromError: (module: string, err: unknown, event: string, extra?: Record<string, unknown>) => {
+  fromError: (module: ModuleType, err: unknown, event: string, extra?: Record<string, unknown>) => {
     if (err instanceof ApiError) {
       emit("ERROR", module, event, `API Error ${err.status}: ${err.detail || err.message}`, {
         error_status: err.status,
