@@ -90,12 +90,12 @@ export default function VoiceCard({ voice, onDelete, onEdit }: VoiceCardProps) {
         {voice.description && (
           <p className="mt-1 text-sm text-gray-500 line-clamp-2">{voice.description}</p>
         )}
-        <p className="mt-2 text-xs text-gray-400">
-          已用于 {voice.boundCharacterCount} 个角色
-        </p>
       </div>
 
-      <div className="mt-4 flex items-center justify-end">
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs text-gray-400">
+          已用于 {voice.boundCharacterCount} 个角色
+        </p>
         <AudioPreviewButton
           audioUrl={voice.previewAudioUrl}
           previewVoiceId={
