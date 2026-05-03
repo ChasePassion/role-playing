@@ -202,7 +202,7 @@ export default function ChatHistorySidebar({
       <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <SheetContent
           side="right"
-          className="w-full max-w-[360px] sm:w-[360px] p-0 flex flex-col border-l border-border bg-background shadow-[-10px_0_20px_-10px_rgba(0,0,0,0.05)]"
+          className="w-full max-w-[360px] sm:w-[360px] p-0 gap-0 flex flex-col border-l border-border bg-background shadow-[-10px_0_20px_-10px_rgba(0,0,0,0.05)]"
           showCloseButton={false}
         >
           <SheetHeader className="flex flex-row items-center justify-between border-b border-border/60 px-5 h-[64px] space-y-0 shrink-0 transition-opacity">
