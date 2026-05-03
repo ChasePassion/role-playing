@@ -2,29 +2,26 @@
 
 ---
 
-## 1. Product UI Positioning
-
-### 1.1 Product Definition
-
+## 1. 产品定位与视觉方向
+### 1.1 产品定义
 + 这个应用是什么：
     - 一个 AI 角色互动的沉浸式英语学习产品
-
 + 这个应用主要做什么：
     - 让用户创建 AI 角色，与角色进行对话学习英语，在互动中提升语言能力
-
 + 这个应用的目标用户是什么：
     - 喜欢角色扮演、AI 陪伴、剧情互动的用户，以及希望通过沉浸式对话学习英语的学习者
-
-### 1.2 Product Type
-
 + 这个产品在界面上首先应该像什么：
     - 沉浸式互动空间 / AI 角色舞台 / 智能陪伴界面
-
 + 这个产品不应该像什么：
     - 后台工具 / 通用聊天壳子 / 功能堆砌页 / 普通社区 feed
 
-### 1.3 Core UI Promise
+### 1.2 视觉方向
+这是一个面向消费者的 AI 英语学习产品，界面应传达沉浸式角色互动的温暖感。整体视觉语言融合现代极简主义与轻量玻璃拟态效果（CharacterCard 使用 glass-morphism，主界面使用实色表面层次），营造出智能而不冰冷、友好而不幼稚的氛围。界面空间感强调"呼吸感"——大量留白让角色成为视觉焦点，聊天区域成为用户自然停留的舞台。整体体验应让用户感到"在一个专属的 AI 角色空间里探索"而非"使用一个聊天工具"。
 
++ 视觉关键词：玻璃拟态（Glass Morphism） / 温暖渐变 / 沉浸空间感 / 角色聚焦 / 轻量柔和阴影
++ 禁用气质：高饱和度撞色 / 粗边框分割 / 密集信息流 / 企业级蓝白 / Skeuomorphism 拟物
+
+### 1.3 情绪与界面承诺
 界面必须首先传达：
 
 + 主任务是什么：与 AI 角色对话互动
@@ -32,74 +29,41 @@
 + 当前焦点是什么：对话内容与角色本身
 + 用户下一步最可能做什么：发送消息继续对话
 
-### 1.4 Emotional Direction
-
-界面最终应给人的感受：
-
-+ 沉浸 / 温暖 / 精致 / 智能 / 友好 / 轻快
-
-界面绝不能给人的感受：
-
-+ 廉价 / 杂乱 / 后台感 / 默认组件库感 / 炫技过度
+界面应给人的感受：沉浸 / 温暖 / 精致 / 智能 / 友好 / 轻快
+界面绝不能给人的感受：廉价 / 杂乱 / 后台感 / 默认组件库感 / 炫技过度
 
 ---
 
-## 2. Visual North Star
+## 2. 布局与间距
+### 2.1 布局原则
+整体布局气质：内容优先 / 中轴稳定 / 非对称但平衡 / 编辑感
+整体布局不应为：随意堆叠 / 每个元素等权重 / 无视觉动线 / 密集填充
 
-### 2.1 One-Paragraph Visual Thesis
+界面必须满足的纪律：
 
-这是一个面向消费者的 AI 英语学习产品，界面应传达沉浸式角色互动的温暖感。整体视觉语言融合现代极简主义与轻量玻璃拟态效果，营造出智能而不冰冷、友好而不幼稚的氛围。界面空间感强调"呼吸感"——大量留白让角色成为视觉焦点，聊天区域成为用户自然停留的舞台。整体体验应让用户感到"在一个专属的 AI 角色空间里探索"而非"使用一个聊天工具"。
-
-### 2.2 Visual Keywords
-
-+ 玻璃拟态（Glass Morphism）
-+ 温暖渐变
-+ 沉浸空间感
-+ 角色聚焦
-+ 轻量柔和阴影
-
-### 2.3 Anti-Keywords
-
-+ 高饱和度撞色
-+ 粗边框分割
-+ 密集信息流
-+ 企业级蓝白
-+ Skeuomorphism 拟物
-
----
-
-## 3. Layout & Composition
-
-### 3.1 Layout Character
-
-整体布局气质应为：
-
-+ 内容优先 / 中轴稳定 / 非对称但平衡 / 编辑感
-
-整体布局不应为：
-
-+ 随意堆叠 / 每个元素等权重 / 无视觉动线 / 密集填充
-
-### 3.2 Alignment Discipline
-
-界面必须给人以下感受：
-
-+ 对齐是有纪律的
-+ 分组是有逻辑的
-+ 留白是有意图的
++ 对齐是有纪律的，同一页面不存在多套对齐基准
++ 分组是有逻辑的，相关元素之间距离不远于无关元素
++ 留白是有意图的，不随机分布
 + 元素不是被随意堆上去的
 
-界面不得出现以下情况：
+### 2.2 密度与留白
+整体密度倾向：中等偏松
 
-+ 同一页面存在多套对齐基准
-+ 相关元素之间距离远于无关元素
-+ 留白分布随机，无法建立视觉节奏
+留白必须承担的职责：建立主次（次要信息周围留白更多）/ 切分区域（区块间留白传达分隔）/ 给内容呼吸（特别是头像、角色卡片）/ 强化焦点（焦点内容周围更疏）/ 提升品质感（克制但充足的留白）
+留白不得用于：掩盖结构混乱 / 填补内容缺失 / 随机分布而不承担视觉职责
 
-### 3.3 Density Strategy
+允许更密的区域：
 
-整体密度倾向：
++ 角色卡片网格（Discover 页面）
++ 标签列表
++ 聊天消息列表
++ 设置项列表
 
-+ 中等偏松
+必须更松的区域：
+
++ 角色卡片内部信息区（padding 16px）
++ 核心输入区（ChatInput）
++ 对话气泡与边缘的安全距离
 
 **实际代码密度观察：**
 
@@ -115,37 +79,49 @@
 | 对话气泡内边距 | `px-4 py-1.5` | 紧凑但可读 |
 | 消息间距 | `mt-1`（相邻消息） | 极小间距 |
 
-允许更密的区域：
+### 2.3 边界与呼吸感
+页面应给人：安全（边距是保护而非限制）/ 从容（元素有呼吸空间）/ 有边界感（内容有明确的"停靠点"）/ 有停顿感（区块间有节奏）
+页面不应给人：贴边（元素紧贴容器边缘）/ 顶满（内容占据所有可用空间）/ 塞满（每个区块都在抢空间）
 
-+ 角色卡片网格（Discover 页面）
-+ 标签列表
-+ 聊天消息列表
-+ 设置项列表
+### 2.4 间距系统
++ 基础单位：**4px**（`--spacing: 0.25rem`）
++ 所有间距值必须是基础单位的倍数
++ 不允许出现基础单位之外的随意数值
 
-必须更松的区域：
+**实际代码中的基础单位：**
+```css
+--spacing: 0.25rem;  /* 4px */
 
-+ 首屏 Hero 区域（当前无明确 Hero）
-+ 角色卡片内部信息区（padding 16px）
-+ 核心输入区（ChatInput）
-+ 对话气泡与边缘的安全距离
+/* 实际应用示例 */
+.composer-btn {
+  height: calc(var(--spacing) * 9);  /* 36px */
+  min-width: calc(var(--spacing) * 9);  /* 36px */
+}
+```
 
-### 3.4 White Space Strategy
+**允许使用的间距序列（单位：4px）：**
 
-留白必须承担以下职责：
+| Token | Value | Tailwind | 实际用途 |
+|-------|-------|----------|---------|
+| 1 | 4px | `1` | 图标与文字间距 |
+| 2 | 8px | `2` | 紧凑间距、元素内 gap |
+| 3 | 12px | `3` | 组件内部元素间距 |
+| 4 | 16px | `4` | 标准间距、输入框内边距 |
+| 6 | 24px | `6` | 区块内间距、CharacterCard 网格 |
+| 8 | 32px | `8` | 区块间分隔、页面 padding |
+| 12 | 48px | `12` | 页面级分隔 |
+| 16 | 64px | `16` | 大区块分隔 |
 
-+ 建立主次（次要信息周围留白更多）
-+ 切分区域（区块间留白传达分隔）
-+ 给内容呼吸（特别是头像、角色卡片）
-+ 强化焦点（焦点内容周围更疏）
-+ 提升品质感（克制但充足的留白）
+较小值用于：图标与文字间距（4-8px） / 标签内边距（8px） / 行内元素间隔（8-12px）
+较大值用于：区块间距（24-32px） / 页面级分隔（48-64px） / 首屏留白（32px p-8）
 
-留白不得用于：
+间距分配原则：
 
-+ 掩盖结构混乱
-+ 填补内容缺失
-+ 随机分布而不承担视觉职责
++ 相关元素之间间距小（4-8px）
++ 不相关区块之间间距大（24-48px）
++ 主要内容周围间距明显大于次要内容
 
-### 3.5 Edge Discipline
+### 2.5 页面边距
 
 **实际代码中的页面边距：**
 
@@ -171,24 +147,10 @@
 }
 ```
 
-**ChatInput Composer 的响应式边距：**
-- 使用 CSS 变量 `--thread-content-margin` 控制左右 padding
-- 最大宽度 `--thread-content-max-width: 48rem`（768px）
+ChatInput Composer 的响应式边距：使用 CSS 变量 `--thread-content-margin` 控制左右 padding，最大宽度 `--thread-content-max-width: 48rem`（768px）
 
-**页面不应给人：**
-+ 贴边（元素紧贴容器边缘）
-+ 顶满（内容占据所有可用空间）
-+ 塞满（每个区块都在抢空间）
-
-**页面应给人：**
-+ 安全（边距是保护而非限制）
-+ 从容（元素有呼吸空间）
-+ 有边界感（内容有明确的"停靠点"）
-+ 有停顿感（区块间有节奏）
-
-### 3.6 Responsive Continuity
-
-不同尺寸下必须保持不变的东西：
+### 2.6 响应式连续性
+不同尺寸下必须保持不变的：
 
 + 主任务的清晰度（对话是核心）
 + 主次关系（角色 > 工具栏）
@@ -198,28 +160,24 @@
 
 ---
 
-## 4. Color System
+## 3. 颜色系统
+### 3.1 关键颜色
 
-### 4.1 Color Philosophy
+**项目使用两套颜色系统：**
 
-整体配色应使用少量关键颜色，不追求颜色丰富，优先追求：
+1. **shadcn/ui 语义颜色**（通过 Tailwind 类名使用，如 `bg-primary`、`text-primary`）：OKLCH 色值，定义在 CSS 变量中
+2. **自定义应用颜色**（直接使用的语义化变量）：用于特定组件和场景
 
-+ 主次清楚（背景 → 表面 → 焦点）
-+ 长时间观看不累（低饱和度为主）
-+ 重点明确（Primary 稀缺且精准）
-+ 风格统一（所有颜色服务于同一气质）
+**核心颜色角色：**
 
-颜色应按"界面职责"定义，而不是按"能不能再多加一个色"定义。
++ **color-background**：`#FFFFFF`（`--bg-primary`）页面大背景，安静、耐看
++ **color-surface**：`#f2f2f2`（`--sidebar-bg`）侧边栏背景，`#ffffff`（`--workspace-bg`）工作区背景
++ **color-text**：`#0D0D0D`（`--text-primary`）主要文字，`#5D5D5D`（`--text-secondary`）次要文字，`#8F8F8F`（`--text-tertiary`）辅助文字
++ **color-primary**：`#0285FF`（`--theme-submit-btn-bg`）提交/发送按钮，稀缺使用
++ **color-accent**：`#3964FE` 品牌蓝，用于助手切换按钮激活态、创建角色按钮
++ **color-divider**：`#D5D5D5`（`--divider`）轻边界提示
 
-### 4.2 Key Colors
-
-**重要说明：项目使用两套颜色系统**
-
-1. **shadcn/ui 语义颜色**（通过 Tailwind 类名使用，如 `bg-primary`、`text-primary`）：
-   - 这些使用 OKLCH 色值，定义在 CSS 变量中
-
-2. **自定义应用颜色**（直接使用的语义化变量）：
-   - 这些用于特定组件和场景
+### 3.2 Token 映射
 
 **shadcn/ui 语义 Token（Light Mode）：**
 
@@ -227,7 +185,7 @@
 |-------|---------|------|
 | `--background` | oklch(1 0 0) | 页面背景 |
 | `--foreground` | oklch(0.141 0.005 285.823) | 主要文字 |
-| `--primary` | oklch(0.21 0.006 285.885) | shadcn Button 默认态，**不是紫色** |
+| `--primary` | oklch(0.21 0.006 285.885) | shadcn Button 默认态（深灰，不是紫色） |
 | `--primary-foreground` | oklch(0.985 0 0) | primary 上文字 |
 | `--secondary` | oklch(0.967 0.001 286.375) | 次要背景 |
 | `--muted` | oklch(0.967 0.001 286.375) | 静音背景 |
@@ -238,7 +196,7 @@
 | `--input` | oklch(0.92 0.004 286.32) | 输入框背景 |
 | `--ring` | oklch(0.705 0.015 286.067) | 焦点环 |
 
-**自定义应用颜色（实际使用的品牌色）：**
+**自定义应用颜色：**
 
 | CSS 变量 | Hex 值 | 实际用途 |
 |----------|--------|---------|
@@ -248,39 +206,32 @@
 | `--text-tertiary` | `#8F8F8F` | 辅助/占位符文字 |
 | `--theme-submit-btn-bg` | `#0285FF` | 提交按钮背景（ChatComposer） |
 | `--theme-submit-btn-text` | `#FFFFFF` | 提交按钮文字 |
-| `--send-button` | `#924FF7` | **发送按钮紫色**（ChatComposer） |
+| `--send-button` | `#924FF7` | 发送按钮紫色（ChatComposer，当前未使用） |
 | `--user-bubble` | `#E5F3FF` | 用户聊天气泡背景 |
-| `--sidebar-bg` | `#FAFAFA` | 侧边栏背景 |
-| `--workspace-bg` | `#F2F2F2` | 工作区背景 |
+| `--sidebar-bg` | `#f2f2f2` | 侧边栏背景 |
+| `--workspace-bg` | `#ffffff` | 工作区背景 |
 | `--divider` | `#D5D5D5` | 分割线 |
 | `--input-border` | `#DEDEDE` | 输入框边框 |
 
-### 4.3 Usage Rules
+**未以 CSS 变量定义但实际使用的颜色：**
 
-**shadcn 组件使用语义 Token：**
-- Button 默认态使用 `bg-primary`
-- 危险操作使用 `bg-destructive`
-- 表单输入使用 `border-input`
+| 色值 | 实际用途 |
+|------|---------|
+| `#f8f8f8` | AI 助手气泡背景（`.bubble-assistant`） |
+| `#3964FE` | 品牌蓝：ChatHeader 助手按钮激活态、CreateCharacterModal 创建按钮 |
 
-**Chat Composer 特定逻辑：**
-- 发送按钮（圆形）：使用 `--send-button`（紫色 `#924FF7`）
-- 暂停/中断按钮：使用 `--theme-submit-btn-bg`（蓝色 `#0285FF`）
-- 辅助按钮（如 plus、mic）：使用 `--interactive-bg-secondary-hover`
+### 3.3 使用规则
++ 页面首先依赖背景、表面、文字建立秩序，再使用 primary 和 accent 建立焦点
++ 语义 Token 用于 shadcn 组件（Button 默认态 `bg-primary`，危险操作 `bg-destructive`，表单输入 `border-input`）
++ 自定义变量用于特定功能组件（Composer 按钮、聊天气泡、侧边栏）
++ 直接 Hex 色值仅用于 brand 颜色或一次性场景
++ 如果一个页面同时有多个彩色焦点，说明颜色使用失败
 
-**CreateCharacterModal 特定逻辑：**
-- 创建按钮：直接使用 `#3964FE`（品牌蓝）
+**Chat Composer 按钮颜色逻辑：**
+- 发送/提交按钮（圆形）：`.composer-submit-button-color` → `--theme-submit-btn-bg`（蓝色 `#0285FF`）
+- 辅助按钮（plus、mic）：`.composer-btn` → `--interactive-bg-secondary-hover`
 
-**登录/注册页面：**
-- 使用原生 Tailwind 类（如 `bg-blue-600`），不经过设计系统
-
-**颜色优先级：**
-1. 如果一个页面同时有多个彩色焦点，说明颜色使用失败
-2. 语义 Token 用于 shadcn 组件
-3. 自定义变量用于特定功能组件
-4. 直接 Hex 色值仅用于 brand 颜色或一次性场景
-
-### 4.4 Dark Theme Note
-
+### 3.4 深色模式
 深色模式通过 `.dark` 类切换，覆盖 OKLCH 语义 Token：
 
 | Token | Light OKLCH | Dark OKLCH |
@@ -293,82 +244,52 @@
 | `--border` | oklch(0.92 0.004 286.32) | oklch(1 0 0 / 10%) |
 | `--input` | oklch(0.92 0.004 286.32) | oklch(1 0 0 / 15%) |
 
-**注意：** 自定义应用颜色变量（如 `--send-button`、`--user-bubble`）在深色模式下**未定义**，深色模式聊天气泡等使用默认值。
+**注意：** 自定义应用颜色变量（如 `--send-button`、`--user-bubble`、`--sidebar-bg`）在深色模式下**未定义**，深色模式聊天气泡等使用默认值。
 
 ---
 
-## 5. Type System
+## 4. 字体系统
+### 4.1 字体栈
++ **font-ui / font-body**：Roboto Variable（本地加载），weight 100-900，用于所有界面文字和正文
++ **CJK fallback**：PingFang SC / Hiragino Sans GB / Microsoft YaHei / Noto Sans CJK SC / Source Han Sans SC
++ **font-mono**：ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas（系统 monospace）
 
-### 5.1 Typography Philosophy
-
-排版应优先承担以下职责：
-
-+ 建立信息层级（标题 > 正文 > 辅助）
-+ 提升扫描效率（行高、字重对比）
-+ 保持阅读舒适度（行长度、间距）
-+ 形成统一气质（Inter 的现代中性）
-
-字体家族不超过 3 个：Inter（UI）、Noto Sans SC（中文正文）、JetBrains Mono（代码/数字）。
-
-### 5.2 Type Structure
-
-**实际代码中的字体变量：**
-
-| CSS 变量 | 字体栈 | 用途 |
-|----------|--------|------|
-| `--font-inter` | Inter Variable（本地加载） | 主字体，weight 100-900 |
-| `--font-noto-sans-sc` | Noto Sans SC Variable（本地加载） | 中文正文 |
-| `--font-mono` | JetBrains Mono, ui-monospace | 代码/数字串 |
-
-**Tailwind font-sans 映射：**
-```css
---font-sans: var(--font-inter);
-```
-
-**实际字体应用（body）：**
+### 4.2 字体加载
++ 加载方式：`next/font/local`
++ CSS 变量名：`--font-roboto`
++ Tailwind 映射：`@theme inline { --font-sans: var(--font-roboto), ui-sans-serif, system-ui, ... }`
++ body font-family 完整声明：
 ```css
 body {
-  font-family: var(--font-inter), var(--font-noto-sans-sc), -apple-system,
-               system-ui, "Segoe UI", Helvetica, Arial, sans-serif,
-               "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family: var(--font-roboto), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC",
+    "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol";
 }
 ```
 
-**字重规范（实际代码）：**
-```css
-h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-extrabold, .font-black {
-  font-weight: 600;  /* 最大只到 semibold，不使用 bold/extrabold/black */
-}
-```
-
-**文字角色定义（基于实际使用）：**
+### 4.3 文字角色
 
 | Role | 用途 | 视觉特征 |
 |------|------|---------|
-| **type-display** | 产品名称、品牌标题（如"NeuraChar"） | 字重 700（bold），字号 24-32px |
-| **type-title** | 页面标题、区块标题、卡片标题 | 字重 600（semibold），字号 16-20px |
-| **type-body** | 正文、描述、对话内容 | 字重 400，字号 14-16px，行高 1.5 |
+| **type-display** | 产品名称、品牌标题 | 字重 600，字号 24-32px |
+| **type-title** | 页面标题、区块标题、卡片标题 | 字重 500-600，字号 16-20px |
+| **type-body** | 正文、描述、对话内容 | 字重 350，字号 14-16px，行高 1.5 |
 | **type-label** | 按钮、输入标签、操作文案 | 字重 500-600，字号 13-15px |
 | **type-meta** | 时间、状态、辅助信息 | 字重 400，字号 11-13px，颜色 tertiary |
 
 **实际字号应用示例：**
-- ChatHeader: `text-base font-semibold`
+- ChatHeader character name: `text-base font-[500]`
 - Sidebar character name: `text-sm font-medium`
 - Sidebar character desc: `text-xs`（无额外字重）
-- Card name: `text-lg font-bold`
+- CharacterCard name: `text-base font-bold`（实际渲染为 600）
+- ChatMessage body: `fontWeight: 350`
 
-### 5.3 Typographic Tone
-
-整体文字气质应为：
-
-+ 清楚 / 现代 / 中性 / 克制 / 编辑感
-
-正文阅读体验应为：
-
-+ 易扫读（足够行高 1.5+）
-+ 不压迫（适当字重，全站最大字重 600-semibold）
-+ 不发飘（深色文字 #0D0D0D，不褪光）
-+ 可持续阅读（合理行长度，thread max-width: 44rem）
+### 4.4 字重与气质
++ 全站最大字重：600（semibold），globals.css 强制所有 bold/extra-bold/black 为 600
++ 整体文字气质：清楚 / 现代 / 中性 / 克制
++ 正文阅读体验：易扫读（足够行高 1.5+）/ 不压迫（适当字重）/ 不发飘（深色文字 #0D0D0D）/ 可持续阅读（合理行长度）
 
 **聊天区域最大宽度（实际代码）：**
 ```css
@@ -384,211 +305,64 @@ h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-extrabold, .font-black {
 
 ---
 
-## 6. Surface, Depth, and Shape
-
-### 6.1 Surface Model
-
+## 5. 表面、形状与动效
+### 5.1 表面层次
 界面需要明确的表面层次：
 
 + **基底层**（background）：承载整体空间，纯色 `#FFFFFF`
-+ **区块层**（surface）：区分页面区域，如 Sidebar `#FAFAFA`
++ **区块层**（surface）：区分页面区域，如 Sidebar `#f2f2f2`
 + **内容层**（card）：承载主要信息，白色卡片
 + **浮层**（elevated）：承载短时任务或强调信息，阴影更重
 
-表面层次不得出现以下情况：
+不得出现：多个层级使用相同视觉权重 / 浮层与内容层无法区分 / 用大量边框线代替层级关系
 
-+ 多个层级使用相同视觉权重，导致前后关系模糊
-+ 浮层与内容层无法区分
-+ 用大量边框线代替层级关系
+### 5.2 形状语言
+整体形状语言：柔和圆角，不同元素使用不同圆角策略
 
-### 6.2 Depth Perception
+**圆角值映射（实际代码）：**
 
-用户应自然感到：
-
-+ 有前后关系（通过阴影层次）
-+ 有主次关系（焦点内容更突出）
-+ 有轻重关系（背景退后，内容前进）
-+ 重要内容被托出来（更大的阴影、更亮的表面）
-+ 背景自然退后（饱和度更低）
-
-深度感不得依赖：
-
-+ 大量投影堆叠（最多 4 层，且从轻到重）
-+ 高对比度边框
-+ 颜色差异过大导致割裂感
-
-### 6.3 Boundary Style
-
-边界应给人的感觉：
-
-+ 清楚（边界存在但不死硬）
-+ 克制（只用 1px 或更轻）
-+ 不生硬（可用圆角柔化）
-+ 不依赖粗边框维持结构
-
-边界不得出现以下情况：
-
-+ 每个区块都有独立边框，页面变成格子
-+ 分割线颜色比内容本身更抢眼
-+ 用边框补偿布局结构的缺失
-
-### 6.4 Shape Language
-
-**实际代码中的 Border Radius：**
-
-| 元素 | 实际 Radius | 说明 |
-|------|------------|------|
-| Avatar | `rounded-full` | 全圆形，用于 Sidebar、ChatHeader |
-| Chat bubble | `10px` | 固定值，圆角矩形 |
-| Input container | `24px` | 大圆角胶囊形 |
-| Composer buttons | `340282000000000000000px`（接近无穷大 = 胶囊形） | composer-btn 专用 |
-| CharacterCard | `20px` | 玻璃拟态卡片 |
-| Send button | `50%`（圆形） | 36x36 圆形按钮 |
+| 元素 | 圆角值 | 形状描述 |
+|------|--------|---------|
+| Avatar（ChatMessage） | `rounded-lg`（10px），`h-9 w-9`（36px） | 方形圆角 |
+| Avatar（ChatHeader） | `rounded-lg`（10px），`h-10 w-10`（40px） | 方形圆角 |
+| Avatar（Sidebar 展开） | `rounded-lg`，`h-10 w-10`（40px） | 方形圆角 |
+| Avatar（Sidebar 收起） | `rounded-lg`，`h-8 w-8`（32px） | 方形圆角 |
+| CharacterCard | `rounded-[20px]`，`h-[130px]` | 大圆角卡片 |
+| CharacterCard avatar | `rounded-[14px]`，`w-[84px] h-[106px]` | 方形圆角 |
+| Chat bubble | `border-radius: 10px` | 圆角矩形 + 箭头伪元素 |
+| ChatInput Composer | `border-radius: 28px` | 大圆角胶囊形 |
+| Composer 辅助按钮 | `border-radius: 999px`（胶囊形） | `.composer-btn` |
+| 发送按钮 | `border-radius: 50%`，36x36px | 圆形 |
 | Suggestion card | 无额外 radius（使用 border 默认） | 3D 浮雕卡片 |
-| shadcn Card | `rounded-xl`（--radius-lg） | 默认 10px |
-
-**形状语言总结：**
-
-+ **Avatar**: `rounded-full` — 全圆形，传达用户身份
-+ **聊天输入区**: 大圆角 `24px` 胶囊形 — 友好、可点击
-+ **聊天气泡**: `10px` — 轻圆角，不过于刻板
-+ **发送按钮**: `50%` 圆形 — 明确的行动号召
-+ **CharacterCard**: `20px` — 卡片感、沉浸感
+| shadcn Card | `rounded-xl`（--radius-lg，10px） | 默认圆角 |
 
 **按钮形状规则（实际代码）：**
 ```css
-/* Composer 辅助按钮 - 胶囊形 */
 .composer-btn {
   border-radius: 340282000000000000000px;  /* 近似无穷大 = 全胶囊 */
 }
 
-/* 发送按钮 - 圆形 */
 .send-button {
   border-radius: 50%;
   width: 36px;
   height: 36px;
 }
 
-/* 输入框容器 */
 .input-container {
   border-radius: 24px;
 }
 ```
 
-**Hover/Active 动效（按钮）：**
-```css
-.send-button:hover {
-  transform: scale(1.05);  /* 放大 5% */
-}
-.send-button:active {
-  transform: scale(0.95);  /* 缩小 5% */
-}
-```
+### 5.3 边界风格
+边界应：清楚（边界存在但不死硬）/ 克制（只用 1px 或更轻）/ 不生硬（可用圆角柔化）/ 不依赖粗边框维持结构
+边界不得：每个区块都有独立边框 / 分割线比内容更抢眼 / 用边框补偿布局缺失
 
----
+### 5.4 动效
+动效气质：克制 / 功能性 / 自然 / 几乎无感知
+动效目的只有两个：帮助用户理解状态变化（hover、active、loading）/ 维持空间连续感（展开/收起、页面过渡）
+动效不得用于：装饰或炫技 / 吸引注意力到非核心区域 / 制造视觉噪音
 
-## 7. Spacing & Grid System
-
-### 7.1 Spacing Unit
-
-+ 基础单位：**4px**（`--spacing: 0.25rem`）
-+ 所有间距值必须是基础单位的倍数
-+ 不允许出现基础单位之外的随意数值
-
-**实际代码中的基础单位：**
-```css
---spacing: 0.25rem;  /* 4px */
-
-/* 实际应用示例 */
-.composer-btn {
-  height: calc(var(--spacing) * 9);  /* 36px */
-  min-width: calc(var(--spacing) * 9);  /* 36px */
-}
-```
-
-### 7.2 Spacing Scale
-
-允许使用的间距序列（单位：4px）：
-
-| Token | Value | Tailwind | 实际用途 |
-|-------|-------|----------|---------|
-| 1 | 4px | `1` | 图标与文字间距 |
-| 2 | 8px | `2` | 紧凑间距、元素内 gap |
-| 3 | 12px | `3` | 组件内部元素间距 |
-| 4 | 16px | `4` | 标准间距、输入框内边距 |
-| 6 | 24px | `6` | 区块内间距、CharacterCard 网格 |
-| 8 | 32px | `8` | 区块间分隔、页面 padding |
-| 12 | 48px | `12` | 页面级分隔 |
-| 16 | 64px | `16` | 大区块分隔 |
-
-**实际代码间距示例：**
-
-```css
-/* CharacterCard 网格 */
-.card-grid {
-  gap: 24px;  /* 6 单位 */
-}
-
-/* ChatInput Composer */
-.composer-btn {
-  height: calc(var(--spacing) * 9);  /* 36px = 9 单位 */
-}
-
-/* Sidebar 列表项 */
-h-[52px]  /* 52px = 13 单位（展开态）*/
-
-/* ChatHeader */
-h-[64px]  /* 64px = 16 单位 */
-```
-
-较小值用于：
-
-+ 图标与文字间距（4-8px）
-+ 标签内边距（8px）
-+ 行内元素间隔（8-12px）
-
-较大值用于：
-
-+ 区块间距（24-32px）
-+ 页面级分隔（48-64px）
-+ 首屏留白（32px p-8）
-
-### 7.3 Page Margins
-
-+ 移动端页面横向边距：**16-20px**
-+ 桌面端页面横向边距：**24-64px**
-+ 页面顶部与核心内容之间：**中等偏宽松，给产品气质留空间**
-
-### 7.4 Spacing Intention
-
-间距的分配必须服务于信息层级，而不是均匀填充：
-
-+ 相关的元素之间间距小（4-8px）
-+ 不相关的区块之间间距大（24-48px）
-+ 主要内容周围的间距应明显大于次要内容
-
----
-
-## 8. Motion & Animation
-
-### 8.1 Motion Philosophy
-
-整体动效气质应为：
-
-+ 克制 / 功能性 / 自然 / 几乎无感知
-
-动效的存在目的只有两个：
-
-+ 帮助用户理解状态变化（hover、active、loading）
-+ 维持空间连续感（展开/收起、页面过渡）
-
-动效不得用于：
-
-+ 装饰或炫技
-+ 吸引注意力到非核心区域
-+ 制造视觉噪音
-
-### 8.2 Duration Boundaries
+### 5.5 动效时长
 
 **实际代码中的动效时长：**
 
@@ -614,26 +388,16 @@ h-[64px]  /* 64px = 16 单位 */
 | 卡片 hover | 300-400ms |
 | 超过 **400ms** 的动画必须有充分理由 | 禁止 |
 
-### 8.3 Prohibited Motion
-
-以下动效类型在任何情况下都不允许使用：
-
+### 5.6 禁止的动效
 + bounce / spring 弹性动效
 + 过度 scale 放大（**超过 1.05**）— 实际代码最大 scale 为 1.05
 + 装饰性粒子
 + 循环播放的背景动画（loading spinner 除外）
 + 闪烁动画
 
-**实际代码中的 active scale：**
-```css
-.send-button:hover { transform: scale(1.05); }
-.send-button:active { transform: scale(0.95); }  /* 注意：最大放大是 1.05，不是 1.1 或更大 */
-```
-
 ---
 
-## 9. Conflict Resolution
-
+## 6. 冲突裁决
 当设计决策面临规则冲突时，按以下优先级裁决，序号越小越优先：
 
 1. **可读性** — 用户必须能看清、看懂
@@ -643,14 +407,14 @@ h-[64px]  /* 64px = 16 单位 */
 5. **视觉精致度** — 在前四条满足之后，再追求细节美感
 
 当某个决策同时违反多条规则时，优先修复序号最小的冲突。
-当规则本身无法覆盖某个情况时，回到 Section 2（Visual North Star）寻找答案。
+当规则本身无法覆盖某个情况时，回到 Section 1.2（视觉方向）寻找答案。
 
 ---
 
-## 10. Experience
+## 7. Experience
 ### Design Knowledge
 
-This is an AI role-playing English learning website aimed at consumers. Users can create characters on the platform and talk with them, learning music during the conversations.
+This is an AI role-playing English learning website aimed at consumers. Users can create characters on the platform and talk with them, learning English during the conversations.
 
 ### DropdownMenu (shadcn) sideOffset Behavior
 
@@ -1352,31 +1116,31 @@ Inline SVG exists directly in the page's DOM, so `currentColor` traverses up the
 
 #### Problem
 
-Sometimes the selected state in the chat history sidebar looks like “the light blue background just disappeared,” but the real problem is not necessarily the color style itself.
+Sometimes the selected state in the chat history sidebar looks like "the light blue background just disappeared," but the real problem is not necessarily the color style itself.
 
 A typical scenario looks like this:
 
 * Expected: the current chat item should have a light blue background, such as `bg-[#E5F3FF]`
 * Actual: the row the user is viewing only has hover-state classes, and its computed background color is also transparent
 * Symptom: it looks like the selected-state background is broken
-* Reality: the main content area and the sidebar do not agree on which chat is the “current chat”
+* Reality: the main content area and the sidebar do not agree on which chat is the "current chat"
 
 #### Root Cause
 
-After the route has already switched to a new `chatId`, a late response from the previous chat’s `getChatTurns` request may still overwrite the current page’s `chat/messages` state.
+After the route has already switched to a new `chatId`, a late response from the previous chat's `getChatTurns` request may still overwrite the current page's `chat/messages` state.
 
 This creates a very confusing mismatch:
 
-1. The history sidebar uses the current route’s `chatId` to determine the active item
-2. The main content area gets overwritten by the old chat’s response
+1. The history sidebar uses the current route's `chatId` to determine the active item
+2. The main content area gets overwritten by the old chat's response
 3. The user sees content from A, but the sidebar highlights B
-4. As a result, “the item I’m currently viewing” has no light blue background, making it look like the background is missing
+4. As a result, "the item I'm currently viewing" has no light blue background, making it look like the background is missing
 
 This kind of issue is not caused by a wrong color token, nor by Tailwind class names failing to apply. It is **a stale response overwriting current route state**.
 
 #### Diagnostic Signal
 
-If a “selected-state background is missing” issue shows the following symptoms at the same time, suspect a request race condition before changing CSS:
+If a "selected-state background is missing" issue shows the following symptoms at the same time, suspect a request race condition before changing CSS:
 
 * A row has no active class and only retains the hover class
 * Another record in the same list has the active structure
@@ -1385,7 +1149,7 @@ If a “selected-state background is missing” issue shows the following sympto
 
 #### Correct Pattern
 
-In any scenario where both the page content and the sidebar’s active highlight depend on the current route `chatId`, every async chat response must confirm that it still belongs to the current route before being applied.
+In any scenario where both the page content and the sidebar's active highlight depend on the current route `chatId`, every async chat response must confirm that it still belongs to the current route before being applied.
 
 ```tsx
 const activeChatIdRef = useRef(chatId);
@@ -1412,7 +1176,7 @@ The same protection should also cover:
 #### Rule of Thumb
 
 * If the selected state depends on `item.id === activeId`, then old requests must not be allowed to overwrite the page content state for the page associated with that `activeId`
-* For visual selected-state bugs, first verify whether the “current item resolution chain” is correct, then change colors and styles
+* For visual selected-state bugs, first verify whether the "current item resolution chain" is correct, then change colors and styles
 * For chat views, detail pages, and master-detail structures, **the route is the source of truth, and async responses must stay aligned with the current route**
 
 ---
@@ -1431,12 +1195,12 @@ Some visual jank is not caused by the animation itself, but by an element that o
 Typical symptoms include:
 
 * the x / y anchor point shifts slightly before and after hover
-* the motion looks like it “jumps” once and then continues
-* the component’s position is not coded incorrectly, but the available layout space is inconsistent before and after the state change
+* the motion looks like it "jumps" once and then continues
+* the component's position is not coded incorrectly, but the available layout space is inconsistent before and after the state change
 
 #### Root Cause
 
-As long as a state change modifies the container’s **available width / available height**, it will trigger reflow, causing visual anchor points that should have remained stable to shift.
+As long as a state change modifies the container's **available width / available height**, it will trigger reflow, causing visual anchor points that should have remained stable to shift.
 
 The root cause of this kind of problem is usually not:
 
@@ -1457,7 +1221,7 @@ Common approaches include:
 
 * Scrollbars: keep the gutter even when hidden, and make the scrollbar transparent instead of changing its width to `0`
 * Borders: preserve the same border width in the default state and only switch the border color
-* Panels or auxiliary columns: reserve a fixed gutter in the default state, and only reveal the content when expanded without changing the rail’s anchor point
+* Panels or auxiliary columns: reserve a fixed gutter in the default state, and only reveal the content when expanded without changing the rail's anchor point
 * Button or icon areas: preserve their size and layout slot in the default state, and hide them with `opacity` instead of `display: none`
 
 For example, in a scrollbar scenario:
@@ -1480,7 +1244,7 @@ For example, in a scrollbar scenario:
 }
 ```
 
-The key here is not “hide the scrollbar,” but “let the scrollbar continue occupying space while remaining visually invisible.”
+The key here is not "hide the scrollbar," but "let the scrollbar continue occupying space while remaining visually invisible."
 
 #### Diagnostic Signal
 
@@ -1498,7 +1262,7 @@ If a component visually jumps before and after `hover` / `focus` / `expanded` / 
 * **Stabilize geometric space first, then think about visual transitions**
 * If an element will occupy space after appearing, let it occupy that space before it appears
 * If you can switch states with `opacity` / `color` / `background`, avoid using `display` / `width: 0` / `border: 0`
-* When dealing with a “jumping” effect, check layout shift before tuning animation curves
+* When dealing with a "jumping" effect, check layout shift before tuning animation curves
 
 ---
 
@@ -1511,17 +1275,17 @@ If the highlight rail in a message navigator mixes several driving mechanisms at
 * discrete `activeIndex` switching
 * temporary locked state after clicking
 * fixed-duration CSS transitions
-* the browser’s own smooth scroll timing curve
+* the browser's own smooth scroll timing curve
 
 Typical symptoms include:
 
 * during fast scrolling, the first half of the highlight is barely visible
 * it only becomes obvious suddenly when approaching the target and the scrolling slows down
-* the rail looks like it is “chasing” the scroll instead of staying synchronized with the scroll position
+* the rail looks like it is "chasing" the scroll instead of staying synchronized with the scroll position
 
 #### Correct Pattern
 
-Completely separate “click-based positioning” from “highlight rendering”:
+Completely separate "click-based positioning" from "highlight rendering":
 
 * Click-based positioning should still calculate the target `scrollTop` using container geometry
 * The highlight rail should no longer rely on time-based animation, but instead be derived directly from the current scroll position on every frame
@@ -1531,7 +1295,7 @@ Completely separate “click-based positioning” from “highlight rendering”
   * `fromIndex`
   * `toIndex`
   * `progress`
-* The width, thickness, and color of each row’s rail should all be computed directly from that `progress`
+* The width, thickness, and color of each row's rail should all be computed directly from that `progress`
 
 ```tsx
 const targetTop =
