@@ -14,10 +14,11 @@ export interface DiscoverConfig {
 export async function fetchAllMarketCharacters(
   options: { signal?: AbortSignal } = {},
 ): Promise<CharacterResponse[]> {
+  const MAX_PAGES = 200;
   const all: CharacterResponse[] = [];
   let skip = 0;
 
-  while (true) {
+  for (let page = 0; page < MAX_PAGES; page++) {
     const batch = await getMarketCharacters(
       skip,
       DISCOVER_PAGE_SIZE,

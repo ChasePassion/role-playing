@@ -762,7 +762,7 @@ export function useChatSession({
       const idx = messages.findIndex((message) => message.id === turnId);
       if (idx < 0) return;
 
-      const tempAssistantId = `assistant-edit-${Date.now()}`;
+      const tempAssistantId = `assistant-edit-${crypto.randomUUID()}`;
       let resolvedAssistantMessageId = tempAssistantId;
       let resolvedAssistantCandidateId: string | undefined;
 
@@ -1039,8 +1039,8 @@ export function useChatSession({
       ttsPlaybackManager?.interruptAll();
       void ttsPlaybackManager?.ensureResumed().catch(() => {});
 
-      const tempUserId = `user-${Date.now()}`;
-      const tempAssistantId = `assistant-${Date.now()}`;
+      const tempUserId = `user-${crypto.randomUUID()}`;
+      const tempAssistantId = `assistant-${crypto.randomUUID()}`;
       let resolvedUserMessageId = tempUserId;
       let resolvedAssistantMessageId = tempAssistantId;
       let resolvedAssistantCandidateId: string | undefined;
