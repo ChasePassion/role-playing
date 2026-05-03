@@ -1672,58 +1672,30 @@ export class ApiService {
     request: RealtimeSessionCreateRequest,
     options?: { signal?: AbortSignal },
   ): Promise<RealtimeSessionCreateResponse> {
-    const response = await fetchWithBetterAuth("/v1/realtime/session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(request),
-      signal: options?.signal,
-    });
-
-    if (!response.ok) {
-      return throwApiErrorResponse(response);
-    }
-
-    const payload = await parseJsonResponse(response);
-    return unwrapEnvelopePayload<RealtimeSessionCreateResponse>(payload);
+    return httpClient.post<RealtimeSessionCreateResponse>(
+      "/v1/realtime/session",
+      request,
+      { signal: options?.signal },
+    );
   }
 
   async getRealtimeIceConfig(options?: {
     signal?: AbortSignal;
   }): Promise<RealtimeIceConfigResponse> {
-    const response = await fetchWithBetterAuth("/v1/realtime/config", {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      signal: options?.signal,
-    });
-
-    if (!response.ok) {
-      return throwApiErrorResponse(response);
-    }
-
-    const payload = await parseJsonResponse(response);
-    return unwrapEnvelopePayload<RealtimeIceConfigResponse>(payload);
+    return httpClient.get<RealtimeIceConfigResponse>(
+      "/v1/realtime/config",
+      { signal: options?.signal },
+    );
   }
 
   async deleteRealtimeSession(
     sessionId: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
-    const response = await fetchWithBetterAuth(`/v1/realtime/session/${sessionId}`, {
-      method: "DELETE",
-      headers: {
-        Accept: "application/json",
-      },
-      signal: options?.signal,
-    });
-
-    if (!response.ok) {
-      return throwApiErrorResponse(response);
-    }
+    await httpClient.delete(
+      `/v1/realtime/session/${sessionId}`,
+      { signal: options?.signal },
+    );
   }
 
   // Phase 2.1: Voice APIs
