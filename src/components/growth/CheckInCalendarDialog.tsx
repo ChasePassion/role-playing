@@ -322,12 +322,6 @@ export default function CheckInCalendarDialog() {
     dismissEntryPopupForToday();
   }, [dismissEntryPopupForToday]);
 
-  if (!entryPopupData || !calendar) return null;
-
-  const calendarAnimationClass = getCalendarAnimationClass(
-    calendarAnimationDirection,
-  );
-
   useEffect(() => {
     if (pickerYearInput === "" && currentMonth) {
       const { year, month } = parseMonthKey(currentMonth);
@@ -337,6 +331,12 @@ export default function CheckInCalendarDialog() {
       setPickerYearInput(String(year));
     }
   }, [currentMonth]);
+
+  if (!entryPopupData || !calendar) return null;
+
+  const calendarAnimationClass = getCalendarAnimationClass(
+    calendarAnimationDirection,
+  );
 
   return (
     <Dialog
