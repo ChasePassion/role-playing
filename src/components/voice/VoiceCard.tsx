@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { Mic, Trash2, MoreVertical, Pencil } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import AudioPreviewButton from "./AudioPreviewButton";
 import { resolveVoiceAvatarSrc } from "@/lib/character-avatar";
 import type { VoiceCardDisplay } from "@/lib/voice-adapter";
@@ -15,8 +20,6 @@ interface VoiceCardProps {
 }
 
 export default function VoiceCard({ voice, onDelete, onEdit }: VoiceCardProps) {
-  const [showMenu, setShowMenu] = useState(false);
-
   const canEdit = voice.canDelete; // Use same permission as delete for now
 
   return (
@@ -37,51 +40,31 @@ export default function VoiceCard({ voice, onDelete, onEdit }: VoiceCardProps) {
         </Avatar>
 
         {(onDelete || onEdit) && (voice.canDelete || canEdit) && (
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setShowMenu(!showMenu)}
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-
-            {showMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowMenu(false)}
-                />
-                <div className="absolute right-0 top-full z-20 mt-1 w-32 rounded-xl bg-white shadow-lg border border-gray-100 p-1">
-                  {onEdit && canEdit && (
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        onEdit(voice);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      编辑
-                    </button>
-                  )}
-                  {onDelete && voice.canDelete && (
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        onDelete(voice.id);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      删除
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={4} className="w-32">
+              {onEdit && canEdit && (
+                <DropdownMenuItem onClick={() => onEdit(voice)} className="cursor-pointer">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  编辑
+                </DropdownMenuItem>
+              )}
+              {onDelete && voice.canDelete && (
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => onDelete(voice.id)}
+                  className="cursor-pointer"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  删除
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
