@@ -116,6 +116,6 @@ export function resolveCharacterAvatarSrc(
 export function resolveVoiceAvatarSrc(
   source?: AvatarSource | string | null,
   size: AvatarSize = "md",
-): string | undefined {
-  return resolveAvatarSrc(source, size);
+): string {
+  return resolveAvatarSrc(source, size) ?? DEFAULT_CHARACTER_AVATAR;
 }
