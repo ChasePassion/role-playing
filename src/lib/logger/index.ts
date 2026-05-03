@@ -3,7 +3,7 @@ import type { LogEntry } from "./format";
 import type { ModuleType } from "./events";
 import { ApiError } from "@/lib/token-store";
 
-export { CharacterEvent, Module, RealtimeEvent } from "./events";
+export { CharacterEvent, Module, RealtimeEvent, AuthEvent } from "./events";
 export type { ModuleType } from "./events";
 
 // ─── Transports ────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 export const Module = {
   CHARACTER: "character",
   REALTIME: "realtime",
+  AUTH: "auth",
 } as const;
 
 export type ModuleType = (typeof Module)[keyof typeof Module];
@@ -11,6 +12,12 @@ export const CharacterEvent = {
   API_CALLED: "character.api_called",
   COMPLETED: "character.completed",
   FAILED: "character.failed",
+} as const;
+
+export const AuthEvent = {
+  EMAIL_OTP_DELIVERY_QUEUED: "email_otp.delivery_queued",
+  EMAIL_OTP_DELIVERY_SENT: "email_otp.delivery_sent",
+  EMAIL_OTP_DELIVERY_FAILED: "email_otp.delivery_failed",
 } as const;
 
 export const RealtimeEvent = {

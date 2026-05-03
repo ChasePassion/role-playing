@@ -1,8 +1,4 @@
-import { appendFile, mkdir } from "node:fs/promises";
-import path from "node:path";
-
-const LOG_DIR = path.join(process.cwd(), "logs");
-const LOG_PATH = path.join(LOG_DIR, "auth.email-otp.log");
+import { logger, Module, AuthEvent } from "@/lib/logger";
 
 function maskEmail(email: string): string {
   const [localPart = "", domain = "unknown"] = email.split("@");
@@ -19,24 +15,25 @@ export async function logEmailOtpEvent(params: {
   errorMessage?: string | null;
 }) {
   const { event, message, email, otpType, durationMs, errorMessage } = params;
-  await mkdir(LOG_DIR, { recursive: true });
+  const email_hint = maskEmail(email);
 
-  const fields = [
-    `ts=${new Date().toISOString()}`,
-    "module=auth.email-otp",
-    `event=${event}`,
-    `message="${message}"`,
-    `email_hint=${maskEmail(email)}`,
-    `otp_type=${otpType}`,
-  ];
-
-  if (typeof durationMs === "number") {
-    fields.push(`duration_ms=${durationMs}`);
+  if (event === "email_otp.delivery_queued") {
+    logger.info(Module.AUTH, AuthEvent.EMAIL_OTP_DELIVERY_QUEUED, message, {
+      email_hint,
+      otp_type: otpType,
+    });
+  } else if (event === "email_otp.delivery_sent") {
+    logger.info(Module.AUTH, AuthEvent.EMAIL_OTP_DELIVERY_SENT, message, {
+      email_hint,
+      otp_type: otpType,
+      duration_ms: durationMs,
+    });
+  } else {
+    logger.error(Module.AUTH, AuthEvent.EMAIL_OTP_DELIVERY_FAILED, message, {
+      email_hint,
+      otp_type: otpType,
+      duration_ms: durationMs,
+      error_message: errorMessage ?? undefined,
+    });
   }
-
-  if (errorMessage) {
-    fields.push(`error_message="${errorMessage.replaceAll('"', "'")}"`);
-  }
-
-  await appendFile(LOG_PATH, `${fields.join(" ")}\n`, "utf8");
 }
