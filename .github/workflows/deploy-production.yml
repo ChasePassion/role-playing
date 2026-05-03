@@ -115,17 +115,24 @@ jobs:
           docker pull "${FRONTEND_IMAGE}"
           FRONTEND_IMAGE="${FRONTEND_IMAGE}" docker compose -f compose.yaml -f compose.production.yaml up -d --no-deps --force-recreate frontend
           docker compose -f compose.yaml -f compose.production.yaml restart nginx
+          sleep 5
 
           deployed_revision="\$(docker inspect parlasoul-frontend-1 --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
           test "\${deployed_revision}" = "${IMAGE_SHA}"
 
-          for attempt in \$(seq 1 20); do
-            if curl -fsS https://parlasoul.com/login >/dev/null; then
+          for attempt in \$(seq 1 30); do
+            if curl -fsS https://parlasoul.com/login >/dev/null 2>&1; then
+              echo "Frontend health check passed on attempt \${attempt}"
               exit 0
             fi
+            echo "Health check attempt \${attempt}/30 failed, retrying..."
             sleep 3
           done
 
-          echo "Frontend health check did not pass in time" >&2
+          echo "Frontend health check did not pass in 90s" >&2
+          echo "--- nginx container status ---"
+          docker compose -f compose.yaml -f compose.production.yaml ps nginx
+          echo "--- nginx logs (last 30 lines) ---"
+          docker compose -f compose.yaml -f compose.production.yaml logs --tail 30 nginx
           exit 1
           EOF
