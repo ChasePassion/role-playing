@@ -17,15 +17,6 @@ interface VoiceCardProps {
 export default function VoiceCard({ voice, onDelete, onEdit }: VoiceCardProps) {
   const [showMenu, setShowMenu] = useState(false);
 
-  const statusColorMap: Record<string, string> = {
-    ready: "bg-green-100 text-green-700",
-    creating: "bg-yellow-100 text-yellow-700",
-    processing: "bg-yellow-100 text-yellow-700",
-    failed: "bg-red-100 text-red-700",
-    deleting: "bg-gray-100 text-gray-500",
-    deleted: "bg-gray-100 text-gray-400",
-  };
-
   const canEdit = voice.canDelete; // Use same permission as delete for now
 
   return (
@@ -104,15 +95,7 @@ export default function VoiceCard({ voice, onDelete, onEdit }: VoiceCardProps) {
         </p>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-            statusColorMap[voice.status] || "bg-gray-100 text-gray-600"
-          }`}
-        >
-          {voice.statusText}
-        </span>
-
+      <div className="mt-4 flex items-center justify-end">
         <AudioPreviewButton
           audioUrl={voice.previewAudioUrl}
           previewVoiceId={

@@ -19,7 +19,6 @@ export interface VoiceDisplayInfo {
   previewText: string | null;
   previewAudioUrl: string | null;
   isSystem: boolean;
-  status: VoiceStatus | null;
   boundCharacterCount: number;
 }
 
@@ -30,22 +29,6 @@ export function getVoiceDescription(item: VoiceSelectableItem | VoiceProfile): s
       : "";
   }
   return "description" in item ? item.description || "" : "";
-}
-
-export function getStatusText(status: VoiceStatus): string {
-  const statusMap: Record<VoiceStatus, string> = {
-    creating: "创建中",
-    processing: "处理中",
-    ready: "就绪",
-    failed: "失败",
-    deleting: "删除中",
-    deleted: "已删除",
-  };
-  return statusMap[status] || status;
-}
-
-export function isVoiceReady(status: VoiceStatus | undefined | null): boolean {
-  return status === "ready";
 }
 
 export function canUseVoice(status: VoiceStatus | undefined | null): boolean {
@@ -72,7 +55,6 @@ export function mapVoiceSelectableToDisplay(
     sourceType: item.source_type,
     previewAudioUrl: item.preview_audio_url,
     isSystem: item.source_type === "system",
-    status: null,
     boundCharacterCount: 0,
   };
 }
@@ -93,7 +75,6 @@ export function mapVoiceProfileToDisplay(
     sourceType: profile.source_type,
     previewAudioUrl: profile.preview_audio_url,
     isSystem: profile.source_type === "system",
-    status: profile.status,
     boundCharacterCount: profile.bound_character_count ?? 0,
   };
 }
@@ -133,8 +114,6 @@ export interface VoiceCardDisplay {
   description: string;
   avatarImageKey: string | null;
   avatarUrls: AvatarUrls | null;
-  status: VoiceStatus;
-  statusText: string;
   previewText: string | null;
   sourceType: VoiceSourceType;
   previewAudioUrl: string | null;
@@ -152,8 +131,6 @@ export function mapVoiceProfileToCardDisplay(
     description: profile.description || "",
     avatarImageKey: profile.avatar_image_key ?? null,
     avatarUrls: profile.avatar_urls ?? null,
-    status: profile.status,
-    statusText: getStatusText(profile.status),
     previewText: profile.preview_text ?? null,
     sourceType: profile.source_type,
     previewAudioUrl: profile.preview_audio_url,
