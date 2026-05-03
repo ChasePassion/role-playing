@@ -536,7 +536,6 @@ export function useChatSession({
   const handleRegenAssistant = useCallback(
     async (turnId: string) => {
       if (isStreaming || character?.status === "UNPUBLISHED") return;
-      let shouldReloadAfterStream = false;
       let hasStreamError = false;
       let resolvedAssistantCandidateId: string | undefined;
 
@@ -599,7 +598,6 @@ export function useChatSession({
           },
           onDone: async (fullContent, assistantTurnId, assistantCandidateId) => {
             if (controller.signal.aborted) return;
-            shouldReloadAfterStream = true;
             if (assistantCandidateId) {
               resolvedAssistantCandidateId = assistantCandidateId;
             }
@@ -725,7 +723,7 @@ export function useChatSession({
         });
         if (
           !controller.signal.aborted &&
-          (shouldReloadAfterStream || hasStreamError) &&
+          hasStreamError &&
           shouldReloadForRequest(requestRunId)
         ) {
           await reloadChatTurns({
@@ -753,7 +751,6 @@ export function useChatSession({
   const handleEditUser = useCallback(
     async (turnId: string, newContent: string) => {
       if (isStreaming || character?.status === "UNPUBLISHED") return;
-      let shouldReloadAfterStream = false;
       let hasStreamError = false;
 
       ttsPlaybackManager?.interruptAll();
@@ -859,7 +856,6 @@ export function useChatSession({
             },
             onDone: async (fullContent, assistantTurnId, assistantCandidateId) => {
               if (controller.signal.aborted) return;
-              shouldReloadAfterStream = true;
               if (assistantTurnId) {
                 resolvedAssistantMessageId = assistantTurnId;
               }
@@ -999,7 +995,7 @@ export function useChatSession({
         );
         if (
           !controller.signal.aborted &&
-          (shouldReloadAfterStream || hasStreamError) &&
+          hasStreamError &&
           shouldReloadForRequest(requestRunId)
         ) {
           await reloadChatTurns({
@@ -1045,7 +1041,6 @@ export function useChatSession({
       let resolvedUserMessageId = tempUserId;
       let resolvedAssistantMessageId = tempAssistantId;
       let resolvedAssistantCandidateId: string | undefined;
-      let shouldReloadAfterStream = false;
       let hasStreamError = false;
 
       const userMessage: Message = {
@@ -1186,7 +1181,6 @@ export function useChatSession({
               assistantCandidateId,
             ) => {
               if (controller.signal.aborted) return;
-              shouldReloadAfterStream = true;
               if (assistantTurnId) {
                 resolvedAssistantMessageId = assistantTurnId;
               }
@@ -1357,19 +1351,6 @@ export function useChatSession({
           },
         );
 
-        if (
-          !controller.signal.aborted &&
-          shouldReloadAfterStream &&
-          !hasStreamError &&
-          shouldReloadForRequest(requestRunId)
-        ) {
-          await reloadChatTurns({
-            requiredTurnIds: [
-              resolvedUserMessageId,
-              resolvedAssistantMessageId,
-            ],
-          });
-        }
       } finally {
         clearTrackedController(controller);
       }
