@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
+import { useGrowth } from "@/lib/growth-context";
 import { queryKeys, useGrowthChatHeaderQuery } from "@/lib/query";
 import ReadingRingPopover from "./ReadingRingPopover";
 
@@ -17,6 +18,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export default function ReadingRing({ chatId }: ReadingRingProps) {
   const { user } = useAuth();
+  const { registerGrowthChatHeaderInvalidator } = useGrowth();
   const queryClient = useQueryClient();
   const headerQuery = useGrowthChatHeaderQuery(user?.id, chatId);
   const data = headerQuery.data ?? null;
@@ -24,7 +26,6 @@ export default function ReadingRing({ chatId }: ReadingRingProps) {
   const [animateLoop, setAnimateLoop] = useState(false);
   const prevLoopsRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!data) {
@@ -51,16 +52,15 @@ export default function ReadingRing({ chatId }: ReadingRingProps) {
     };
   }, [data]);
 
-  // Provide a way for SSE updates to refresh ring data
+  // Register invalidator so GrowthContext can trigger refetch on SSE events
   useEffect(() => {
-    const handler = () => {
+    if (!user?.id) return;
+    return registerGrowthChatHeaderInvalidator(user.id, chatId, () => {
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.growth.chatHeader(user?.id, chatId),
+        queryKey: queryKeys.growth.chatHeader(user.id, chatId),
       });
-    };
-    window.addEventListener("growth:header:refresh", handler);
-    return () => window.removeEventListener("growth:header:refresh", handler);
-  }, [chatId, queryClient, user?.id]);
+    });
+  }, [chatId, queryClient, registerGrowthChatHeaderInvalidator, user?.id]);
 
   if (!data) return null;
 
@@ -72,10 +72,8 @@ export default function ReadingRing({ chatId }: ReadingRingProps) {
       data={data}
       open={isPopoverOpen}
       onOpenChange={setIsPopoverOpen}
-      triggerRef={triggerRef}
     >
       <button
-        ref={triggerRef}
         type="button"
         onClick={() => setIsPopoverOpen((p) => !p)}
         className="relative flex items-center justify-center transition-transform hover:scale-105 active:scale-95"

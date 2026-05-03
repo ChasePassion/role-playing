@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode } from "react";
 import {
   Popover,
   PopoverContent,
@@ -13,7 +13,6 @@ interface ReadingRingPopoverProps {
   data: GrowthChatHeaderResponse;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  triggerRef: RefObject<HTMLButtonElement | null>;
   children: ReactNode;
 }
 
