@@ -200,20 +200,6 @@ async function copyText(value: string): Promise<boolean> {
   }
 }
 
-function LoadingShimmerStyle() {
-  return (
-    <style jsx>{`
-      @keyframes assistant-shimmer {
-        0% {
-          transform: translateX(-130%);
-        }
-        100% {
-          transform: translateX(130%);
-        }
-      }
-    `}</style>
-  );
-}
 export default function LearningAssistantDialog({
   open,
   onOpenChange,
@@ -423,7 +409,6 @@ export default function LearningAssistantDialog({
   }
   return (
     <>
-      <LoadingShimmerStyle />
       <div
         ref={windowRef}
         role="dialog"
@@ -494,7 +479,7 @@ export default function LearningAssistantDialog({
                         <Sparkles className="h-4 w-4 shrink-0 text-[#3964FE]" />
                         <span className="relative inline-block overflow-hidden text-gray-500">
                           <span
-                            className="pointer-events-none absolute inset-0 -translate-x-[130%] bg-gradient-to-r from-transparent via-white/95 to-transparent animate-[assistant-shimmer_1.8s_ease-in-out_infinite]"
+                            className="pointer-events-none absolute inset-0 -translate-x-[130%] bg-gradient-to-r from-transparent via-white/95 to-transparent animate-assistant-shimmer"
                             aria-hidden="true"
                           />
                           <span className="relative">思考中...</span>
