@@ -328,13 +328,15 @@ export default function CheckInCalendarDialog() {
     calendarAnimationDirection,
   );
 
-  if (pickerYearInput === "" && currentMonth) {
-    const { year, month } = parseMonthKey(currentMonth);
-    if (pickerMonth !== month) {
-      setPickerMonth(month);
+  useEffect(() => {
+    if (pickerYearInput === "" && currentMonth) {
+      const { year, month } = parseMonthKey(currentMonth);
+      if (pickerMonth !== month) {
+        setPickerMonth(month);
+      }
+      setPickerYearInput(String(year));
     }
-    setPickerYearInput(String(year));
-  }
+  }, [currentMonth]);
 
   return (
     <Dialog
