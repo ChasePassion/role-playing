@@ -287,7 +287,6 @@ export interface CharacterResponse {
   unpublished_at?: string | null;
   visibility: CharacterVisibility;
   identifier?: string;
-  interaction_count: number;
   distinct_user_count: number;
 }
 
@@ -308,7 +307,6 @@ export interface CharacterBrief {
   visibility: CharacterVisibility;
   creator_id?: string | null;
   creator_username?: string | null;
-  interaction_count: number;
 }
 
 export interface ChatResponse {
