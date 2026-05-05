@@ -29,7 +29,6 @@ import {
 import { UserSettingsProvider } from "@/lib/user-settings-context";
 import { GrowthProvider } from "@/lib/growth-context";
 import CheckInCalendarDialog from "@/components/growth/CheckInCalendarDialog";
-import { Toaster } from "sonner";
 import {
     useGetOrCreateChatMutation,
     useSidebarCharactersQuery,
@@ -257,7 +256,6 @@ export default function AppLayout({
                     </AppFrame>
                 </SidebarContext.Provider>
                 <CheckInCalendarDialog />
-                <Toaster position="bottom-right" richColors closeButton duration={4000} />
             </GrowthProvider>
         </UserSettingsProvider>
     );
