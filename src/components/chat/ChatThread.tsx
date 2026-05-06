@@ -170,6 +170,7 @@ export default function ChatThread({
     const previousUserVersionsRef = useRef<Map<string, { key: string; candidateCount: number }>>(
         new Map()
     );
+    const feedbackAbortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         feedbackCardStatesRef.current = feedbackCardStates;
@@ -183,6 +184,8 @@ export default function ChatThread({
     }, [messageActionProfile]);
 
     useEffect(() => {
+        feedbackAbortControllerRef.current?.abort();
+        feedbackAbortControllerRef.current = new AbortController();
         setOpenReplyCardKey(null);
         setPendingReplyCardKey(null);
         setFavoriteOverrides({});
@@ -555,6 +558,8 @@ export default function ChatThread({
             }
 
             const requestId = ++feedbackRequestIdRef.current;
+            const liveChatId = chatId;
+
             setFeedbackCardStates((prev) => ({
                 ...prev,
                 [messageKey]: {
@@ -567,12 +572,13 @@ export default function ChatThread({
             }));
 
             try {
-                const response = await createFeedbackCard(message.id);
+                const response = await createFeedbackCard(message.id, {
+                    signal: feedbackAbortControllerRef.current?.signal,
+                });
                 setFeedbackCardStates((prev) => {
                     const existing = prev[messageKey];
-                    if (!existing || existing.requestId !== requestId) {
-                        return prev;
-                    }
+                    if (!existing || existing.requestId !== requestId) return prev;
+                    if (chatId !== liveChatId) return prev;
                     return {
                         ...prev,
                         [messageKey]: {
@@ -584,13 +590,15 @@ export default function ChatThread({
                     };
                 });
             } catch (err) {
+                if (err instanceof DOMException && err.name === "AbortError") {
+                    return;
+                }
                 console.error("Failed to create feedback card:", err);
                 const errorCode = deriveFeedbackErrorCode(err);
                 setFeedbackCardStates((prev) => {
                     const existing = prev[messageKey];
-                    if (!existing || existing.requestId !== requestId) {
-                        return prev;
-                    }
+                    if (!existing || existing.requestId !== requestId) return prev;
+                    if (chatId !== liveChatId) return prev;
                     return {
                         ...prev,
                         [messageKey]: {
@@ -603,7 +611,7 @@ export default function ChatThread({
                 });
             }
         },
-        []
+        [chatId]
     );
 
     useEffect(() => {
