@@ -48,3 +48,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tmp (except module-review final report)
+tmp/
+!tmp/module-review/
+!tmp/module-review/final-report.md
