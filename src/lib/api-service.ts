@@ -1865,10 +1865,12 @@ export class ApiService {
 
   async createFeedbackCard(
     turnId: string,
+    options?: { signal?: AbortSignal },
   ): Promise<{ feedback_card: FeedbackCard }> {
     return httpClient.post<{ feedback_card: FeedbackCard }>(
       `/v1/turns/${turnId}/feedback-card`,
       {},
+      options as RequestInit,
     );
   }
 
