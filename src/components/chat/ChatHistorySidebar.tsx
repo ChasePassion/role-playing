@@ -209,7 +209,7 @@ export default function ChatHistorySidebar({
             </button>
           </SheetHeader>
 
-          <ScrollArea className="flex-1 px-3 py-3">
+          <ScrollArea className="flex-1 h-full px-3 py-3 overflow-hidden">
             {isLoading ? (
               <ChatHistorySkeleton />
             ) : null}
