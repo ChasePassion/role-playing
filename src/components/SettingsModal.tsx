@@ -193,7 +193,7 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                                                 </p>
                                             </div>
                                             <Button type="button" variant="outline" size="sm" onClick={handleOpenBilling}>
-                                                订阅管理
+                                                前往订阅
                                             </Button>
                                         </div>
                                     ) : null}
