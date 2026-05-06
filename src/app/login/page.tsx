@@ -20,6 +20,8 @@ import {
   markProfileSetupPending,
 } from "@/lib/profile-setup-session";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -183,7 +185,12 @@ function LoginPageContent() {
   const handlePostLoginRedirect = async () => {
     let currentUser = user;
     let didLoadBackendProfile = false;
-    try { await refreshUser(); } catch (e) { console.error(e); }
+    try {
+      await refreshUser();
+    } catch (e) {
+      toast.error("用户信息同步失败，请稍后重试");
+      console.error(e);
+    }
     try {
       const backendUser = await getCurrentUser();
       if (backendUser) {
@@ -191,6 +198,7 @@ function LoginPageContent() {
         didLoadBackendProfile = true;
       }
     } catch (e) {
+      toast.error("账号资料加载失败，请检查网络后重试");
       console.error(e);
     }
     if (!currentUser) {
