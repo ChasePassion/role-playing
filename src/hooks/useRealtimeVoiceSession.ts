@@ -338,6 +338,10 @@ function resolveMicPermissionAction(
     return "request";
   }
 
+  if (after === "granted") {
+    return null;
+  }
+
   return "request";
 }
 
