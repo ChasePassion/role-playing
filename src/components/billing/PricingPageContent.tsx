@@ -296,6 +296,11 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
     void beginWechatCheckout(pendingWechatProductId);
   }, [beginWechatCheckout, pendingWechatProductId, selectedMode, user]);
 
+  /* ── clear ref on user change to prevent cross-user checkout skip ── */
+  useEffect(() => {
+    handledAutoCheckoutRef.current.clear();
+  }, [user?.id]);
+
   /* ── handlers ── */
 
   function handlePeriodChange(period: BillingPeriod) {
