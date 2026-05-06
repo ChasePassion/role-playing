@@ -219,7 +219,6 @@
 | `POST` | `/v1/growth/make-up` | 必需 | 补签 | 请求体需要 `target_date` |
 | `GET` | `/v1/growth/chats/{chat_id}/header` | 必需 | 聊天头部阅读环 | 当前 chat 的阅读等价 |
 | `GET` | `/v1/growth/overview?focus_character_id={id}` | 必需 | `/stats` | KPI、趋势、榜单 |
-| `GET` | `/v1/growth/characters?cursor={cursor}&limit={limit}&sort_by={sort}` | 必需 | `/stats` 角色台账 | 角色维度排行分页 |
 | `GET` | `/v1/growth/share-cards/pending?chat_id={id}&limit={limit}` | 必需 | `GrowthProvider` | 待消费分享卡 |
 | `POST` | `/v1/growth/share-cards/{trigger_id}/consume` | 必需 | 分享卡弹窗 | 消费分享卡，`204` |
 
@@ -881,7 +880,6 @@
 
 - `/stats`
   - `GET /v1/growth/overview`
-  - `GET /v1/growth/characters`
 - 全局成长上下文
   - `POST /v1/growth/entry`
   - `GET /v1/growth/share-cards/pending`

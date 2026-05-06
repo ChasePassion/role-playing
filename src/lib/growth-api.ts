@@ -5,8 +5,6 @@ import type {
   GrowthMakeUpResponse,
   GrowthChatHeaderResponse,
   GrowthOverviewResponse,
-  GrowthCharactersPageResponse,
-  GrowthCharacterSortBy,
   GrowthShareCardsPageResponse,
 } from "./growth-types";
 
@@ -74,25 +72,7 @@ export async function getGrowthOverview(
   );
 }
 
-// ── 6. Character Ledger ──
-
-export async function listGrowthCharacters(params: {
-  cursor?: string;
-  limit?: number;
-  sort_by?: GrowthCharacterSortBy;
-}, options: ApiRequestOptions = {}): Promise<GrowthCharactersPageResponse> {
-  const sp = new URLSearchParams();
-  if (params.cursor) sp.set("cursor", params.cursor);
-  if (params.limit !== undefined) sp.set("limit", String(params.limit));
-  if (params.sort_by) sp.set("sort_by", params.sort_by);
-  const qs = sp.toString();
-  return httpClient.get<GrowthCharactersPageResponse>(
-    `/v1/growth/characters${qs ? `?${qs}` : ""}`,
-    options,
-  );
-}
-
-// ── 7. Pending Share Cards ──
+// ── 6. Pending Share Cards ──
 
 export async function listPendingShareCards(params: {
   chat_id?: string;

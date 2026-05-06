@@ -203,32 +203,6 @@ export interface GrowthOverviewResponse {
   reading_equivalence: GrowthReadingEquivalenceBlock;
 }
 
-// ── Character Ledger ──
-
-export type GrowthCharacterSortBy =
-  | "total_message_count"
-  | "total_word_count"
-  | "chatted_days_count"
-  | "last_chat_at";
-
-export interface GrowthCharacterRow {
-  character_id: string;
-  character_name: string;
-  avatar_image_key: string | null;
-  avatar_urls: AvatarUrls | null;
-  total_message_count: number;
-  total_word_count: number;
-  chatted_days_count: number;
-  total_exchange_count: number;
-  last_chat_at: string | null;
-}
-
-export interface GrowthCharactersPageResponse {
-  items: GrowthCharacterRow[];
-  next_cursor: string | null;
-  has_more: boolean;
-}
-
 // ── Share Cards ──
 
 export type GrowthShareCardKind =
