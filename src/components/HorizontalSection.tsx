@@ -41,6 +41,49 @@ export default function HorizontalSection({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const maskImage = getScrollMaskImage(canScrollLeft, canScrollRight);
 
+  // ── 拖拽滚动 ──
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const scrollStartLeft = useRef(0);
+  const draggedBeyondThreshold = useRef(false);
+
+  // 拖拽滚动 - 鼠标事件处理
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return; // 只处理左键
+    setIsDragging(true);
+    dragStartX.current = e.clientX;
+    scrollStartLeft.current = scrollRef.current!.scrollLeft;
+    draggedBeyondThreshold.current = false;
+    e.preventDefault();
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    const delta = dragStartX.current - e.clientX;
+    if (!draggedBeyondThreshold.current && Math.abs(delta) > 5) {
+      draggedBeyondThreshold.current = true;
+    }
+    scrollRef.current!.scrollLeft = scrollStartLeft.current + delta;
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    setTimeout(() => { draggedBeyondThreshold.current = false; }, 50);
+  }, []);
+
+  // 全局 document 事件，防止鼠标拖出容器后丢失事件
+  useEffect(() => {
+    if (!isDragging) return;
+    const onDocMouseMove = (e: MouseEvent) => handleMouseMove(e);
+    const onDocMouseUp = () => handleMouseUp();
+    document.addEventListener("mousemove", onDocMouseMove);
+    document.addEventListener("mouseup", onDocMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onDocMouseMove);
+      document.removeEventListener("mouseup", onDocMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
   // 检测左右两侧是否还可以滚动
   const checkScrollBounds = useCallback(() => {
     const el = scrollRef.current;
@@ -117,12 +160,13 @@ export default function HorizontalSection({
           role="region"
           aria-label="全部角色列表"
           tabIndex={0}
-          className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide outline-none"
+          className={`flex gap-6 overflow-x-auto pb-4 scrollbar-hide outline-none ${isDragging ? "cursor-grabbing select-none" : "cursor-grab"}`}
           style={{
             scrollPaddingLeft: 0,
             scrollbarWidth: "none",
             msOverflowStyle: "none",
           }}
+          onMouseDown={handleMouseDown}
         >
           {characters.map((character) => (
             <div
