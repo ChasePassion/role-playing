@@ -74,7 +74,7 @@ export default function CharacterCard({
           </div>
 
           <p className="min-h-3.5 text-[11px] text-white/60 m-0 mb-1 whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-(--cc-text-shadow-light)">
-            {character.creator_username ?? null}
+            {character.creator_username}
           </p>
 
           <p className="text-xs text-(--cc-text-muted) leading-5 m-0 line-clamp-2 drop-shadow-(--cc-text-shadow-light)">
