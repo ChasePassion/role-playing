@@ -6,7 +6,7 @@ import type { EmblaCarouselType } from "embla-carousel";
 import Image from "next/image";
 
 import type { CharacterResponse } from "@/lib/api-service";
-import { resolveCharacterAvatarSrc } from "@/lib/character-avatar";
+import type { DiscoverHeroCharacter } from "@/lib/discover-data";
 import { computeHeroTweenStyles } from "@/lib/hero-carousel-tween";
 
 // ── 动画参数 ──
@@ -21,24 +21,8 @@ const WHEEL_RESET_MS = 180;
 const WHEEL_MIN_DELTA_X = 12;
 const WHEEL_AXIS_LOCK_RATIO = 1.25;
 
-// ── Hero 静态图片映射 ──
-// 通过角色名称匹配 public 目录下的图片，找不到时使用 avatar
-function getHeroImage(character: CharacterResponse): string {
-  const normalizedName = character.name.toLowerCase().replace(/\s+/g, " ").trim();
-  if (normalizedName.includes("elon")) return "/Elon-21-9.jpg";
-  if (normalizedName.includes("gork")) return "/Gork-21-9.jpg";
-  if (
-    normalizedName.includes("xiao bai") ||
-    normalizedName.includes("xiaobai") ||
-    normalizedName.includes("小白")
-  ) {
-    return "/Bai-21-9.jpg";
-  }
-  return resolveCharacterAvatarSrc(character, "xl");
-}
-
 interface HeroCarouselProps {
-  characters: CharacterResponse[];
+  characters: DiscoverHeroCharacter[];
   onSelectCharacter: (character: CharacterResponse) => void;
 }
 
@@ -241,9 +225,9 @@ export default function HeroCarousel({
         ref={emblaRef}
       >
         <div className="flex touch-pan-y">
-          {characters.map((character) => (
+          {characters.map((item) => (
             <div
-              key={character.id}
+              key={item.character.id}
               className="shrink-0 min-w-0 px-1"
               style={{ flex: `0 0 ${HERO_SLIDE_BASIS}` }}
             >
@@ -258,10 +242,11 @@ export default function HeroCarousel({
               >
                 {/* 背景图片 */}
                 <Image
-                  src={getHeroImage(character)}
-                  alt={character.name}
+                  src={item.imageUrl}
+                  alt={item.character.name}
                   fill
                   className="object-contain object-center"
+                  unoptimized
                   priority
                   sizes={`(max-width: 768px) 84vw, ${HERO_SLIDE_MAX_WIDTH}px`}
                 />
@@ -299,10 +284,10 @@ export default function HeroCarousel({
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelectCharacter(character);
+                      onSelectCharacter(item.character);
                     }}
                   >
-                    <span>开始对话</span>
+                    <span>{item.ctaText}</span>
                     <span
                       className="inline-block transition-transform duration-200 ease-out"
                     >

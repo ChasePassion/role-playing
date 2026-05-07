@@ -4,8 +4,22 @@ import { httpClient } from "./http-client";
 const DISCOVER_PAGE_SIZE = 100;
 
 // Discover 配置类型
+export interface DiscoverHeroItem {
+  character_id: string;
+  image_key: string;
+  image_url: string;
+  cta_text?: string | null;
+}
+
 export interface DiscoverConfig {
   hero_character_ids: string[];
+  hero_items: DiscoverHeroItem[];
+}
+
+export interface DiscoverHeroCharacter {
+  character: CharacterResponse;
+  imageUrl: string;
+  ctaText: string;
 }
 
 /**
@@ -37,7 +51,7 @@ export async function fetchAllMarketCharacters(
 }
 
 /**
- * 获取 Discover 页运行时配置（Hero 角色 ID 列表等）
+ * 获取 Discover 页运行时配置（Hero 角色和专用轮播图等）
  */
 export async function getDiscoverConfig(
   options: { signal?: AbortSignal } = {},
@@ -46,17 +60,29 @@ export async function getDiscoverConfig(
 }
 
 /**
- * 按 hero_character_ids 从全量角色中选取 Hero 角色
- * 保持 ids 定义的顺序
+ * 按 hero_items 从全量角色中选取 Hero 角色，并保留后端配置的图片。
+ * 保持 hero_items 定义的顺序。
  */
 export function selectHeroCharacters(
   characters: CharacterResponse[],
-  heroCharacterIds: string[]
-): CharacterResponse[] {
-  return heroCharacterIds
-    .map((id) => characters.find((character) => character.id === id))
+  heroItems: DiscoverHeroItem[]
+): DiscoverHeroCharacter[] {
+  return heroItems
+    .map((item) => {
+      const character = characters.find(
+        (current) => current.id === item.character_id
+      );
+      if (!character) {
+        return null;
+      }
+      return {
+        character,
+        imageUrl: item.image_url,
+        ctaText: item.cta_text?.trim() || "开始对话",
+      };
+    })
     .filter(
-      (character): character is CharacterResponse => Boolean(character)
+      (item): item is DiscoverHeroCharacter => Boolean(item)
     );
 }
 

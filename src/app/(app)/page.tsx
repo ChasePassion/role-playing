@@ -38,8 +38,8 @@ export default function DiscoverPage() {
     () => marketCharactersQuery.data ?? [],
     [marketCharactersQuery.data],
   );
-  const heroCharacterIds = useMemo(
-    () => discoverConfigQuery.data?.hero_character_ids ?? [],
+  const heroItems = useMemo(
+    () => discoverConfigQuery.data?.hero_items ?? [],
     [discoverConfigQuery.data],
   );
   const isLoading =
@@ -67,8 +67,8 @@ export default function DiscoverPage() {
 
   // 计算 Hero 角色
   const heroCharacters = useMemo(() => {
-    return selectHeroCharacters(discoverCharacters, heroCharacterIds);
-  }, [discoverCharacters, heroCharacterIds]);
+    return selectHeroCharacters(discoverCharacters, heroItems);
+  }, [discoverCharacters, heroItems]);
 
   // 处理角色选择
   const handleSelectCharacter = async (character: CharacterResponse | Character) => {
