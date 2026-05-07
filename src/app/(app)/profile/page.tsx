@@ -218,6 +218,8 @@ export default function ProfilePage() {
                                 src={user?.avatar_urls?.md || "/default-avatar.svg"}
                                 alt={user?.username || "User"}
                                 fill
+                                sizes="80px"
+                                unoptimized
                                 className="object-cover"
                             />
                         </div>
