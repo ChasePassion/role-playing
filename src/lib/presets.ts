@@ -1,4 +1,5 @@
 import type { UserEntitlementTier } from "./api-service";
+import { isBillingPaywallDisabled } from "./billing-flags";
 import { getBillingTierRank } from "./billing-plans";
 
 // ==================== 模型层级 ====================
@@ -101,6 +102,7 @@ export function canAccessPreset(
 ): boolean {
   const preset = getPresetById(presetId);
   if (!preset) return false;
+  if (isBillingPaywallDisabled()) return true;
   return (
     getBillingTierRank(userTier) >= getBillingTierRank(preset.requiredTier)
   );

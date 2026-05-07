@@ -6,12 +6,14 @@ import {
   listDodoSubscriptions,
   listWechatPaymentOrders,
 } from "@/lib/api";
+import { isBillingCheckoutEnabled } from "@/lib/billing-flags";
 import { queryKeys } from "./query-keys";
 
-export function useWechatPaymentProductsQuery() {
+export function useWechatPaymentProductsQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.billing.wechatProducts(),
     queryFn: ({ signal }) => getWechatPaymentProducts({ signal }),
+    enabled: enabled && isBillingCheckoutEnabled(),
     staleTime: 5 * 60 * 1000,
   });
 }

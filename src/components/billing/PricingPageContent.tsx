@@ -28,6 +28,10 @@ import {
   type BillingPeriod,
   type PricingCatalogPlan,
 } from "@/lib/billing-plans";
+import {
+  isBillingCheckoutEnabled,
+  isBillingPaywallEnabled,
+} from "@/lib/billing-flags";
 import { getErrorMessage } from "@/lib/error-map";
 import { cn } from "@/lib/utils";
 import {
@@ -51,6 +55,13 @@ const FREE_FEATURES = [
   "每日有限额度",
   "无音色克隆",
   "无记忆功能",
+];
+
+const FREE_TRIAL_FEATURES = [
+  "基础对话功能",
+  "旗舰模型试跑开放",
+  "音色克隆开放",
+  "记忆功能开放",
 ];
 
 const PLUS_FEATURES = {
@@ -117,15 +128,18 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const handledAutoCheckoutRef = useRef<Set<string>>(new Set());
+  const checkoutEnabled = isBillingCheckoutEnabled();
+  const paywallEnabled = isBillingPaywallEnabled();
 
   const checkoutStatus = searchParams.get("checkout");
   const checkoutChannel = searchParams.get("channel");
   const checkoutOrderId = searchParams.get("order_id");
-  const wechatProductsQuery = useWechatPaymentProductsQuery();
+  const wechatProductsQuery = useWechatPaymentProductsQuery(checkoutEnabled);
   const checkoutOrderQuery = useWechatPaymentOrderQuery(
     user?.id,
     checkoutOrderId,
-    checkoutStatus === "success" &&
+    checkoutEnabled &&
+      checkoutStatus === "success" &&
       checkoutChannel === "wechat" &&
       Boolean(checkoutOrderId),
   );
@@ -143,7 +157,8 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   const busyWithEntitlements = Boolean(user) && isEntitlementsLoading;
   const hasActiveSubscription = currentTier === "plus" || currentTier === "pro";
   const wechatProducts = wechatProductsQuery.data?.items ?? [];
-  const isWechatProductsLoading = wechatProductsQuery.isLoading;
+  const isWechatProductsLoading = checkoutEnabled && wechatProductsQuery.isLoading;
+  const freeFeatures = paywallEnabled ? FREE_FEATURES : FREE_TRIAL_FEATURES;
 
   const plusPlan = visiblePlans.find((p) => p.tier === "plus");
   const proPlan = visiblePlans.find((p) => p.tier === "pro");
@@ -154,6 +169,11 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   /* ── callbacks ── */
 
   const beginSubscriptionCheckout = useCallback(async (slug: string) => {
+    if (!checkoutEnabled) {
+      toast.info("试跑期暂未开放支付");
+      return;
+    }
+
     setPendingKey(`subscription:${slug}`);
     try {
       const session = await createDodoCheckoutSession({
@@ -166,9 +186,14 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
     } finally {
       setPendingKey(null);
     }
-  }, []);
+  }, [checkoutEnabled]);
 
   const beginWechatCheckout = useCallback(async (productId: string) => {
+    if (!checkoutEnabled) {
+      toast.info("试跑期暂未开放支付");
+      return;
+    }
+
     setPendingKey(`wechat:${productId}`);
     try {
       const session = await createWechatCheckoutSession({ product_id: productId });
@@ -178,9 +203,14 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
     } finally {
       setPendingKey(null);
     }
-  }, []);
+  }, [checkoutEnabled]);
 
   async function handleManageSubscription() {
+    if (!checkoutEnabled) {
+      toast.info("试跑期暂未开放订阅管理");
+      return;
+    }
+
     setIsPortalLoading(true);
     try {
       const portal = await createDodoCustomerPortal();
@@ -193,14 +223,19 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   }
 
   useEffect(() => {
+    if (!checkoutEnabled) {
+      return;
+    }
+
     if (wechatProductsQuery.isError) {
       toast.error(getErrorMessage(wechatProductsQuery.error));
     }
-  }, [wechatProductsQuery.error, wechatProductsQuery.isError]);
+  }, [checkoutEnabled, wechatProductsQuery.error, wechatProductsQuery.isError]);
 
   /* ── checkout callback: sync status + refresh entitlements ── */
 
   useEffect(() => {
+    if (!checkoutEnabled) return;
     if (checkoutStatus !== "success" || !user) return;
 
     let cancelled = false;
@@ -276,25 +311,28 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
     checkoutChannel,
     checkoutOrderId,
     checkoutOrderQuery.data,
+    checkoutEnabled,
     refreshEntitlements,
     user,
   ]);
 
   useEffect(() => {
+    if (!checkoutEnabled) return;
     if (!user || !checkoutSlug) return;
     const plan = getPricingPlanBySlug(checkoutSlug);
     if (!plan || handledAutoCheckoutRef.current.has(`subscription:${plan.slug}`)) return;
     handledAutoCheckoutRef.current.add(`subscription:${plan.slug}`);
     void beginSubscriptionCheckout(plan.slug);
-  }, [beginSubscriptionCheckout, checkoutSlug, user]);
+  }, [beginSubscriptionCheckout, checkoutEnabled, checkoutSlug, user]);
 
   useEffect(() => {
+    if (!checkoutEnabled) return;
     if (!user || selectedMode !== "wechat" || !pendingWechatProductId) return;
     const key = `wechat:${pendingWechatProductId}`;
     if (handledAutoCheckoutRef.current.has(key)) return;
     handledAutoCheckoutRef.current.add(key);
     void beginWechatCheckout(pendingWechatProductId);
-  }, [beginWechatCheckout, pendingWechatProductId, selectedMode, user]);
+  }, [beginWechatCheckout, checkoutEnabled, pendingWechatProductId, selectedMode, user]);
 
   /* ── clear ref on user change to prevent cross-user checkout skip ── */
   useEffect(() => {
@@ -314,6 +352,11 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   }
 
   function handleSubscriptionPurchase(slug: string) {
+    if (!checkoutEnabled) {
+      toast.info("试跑期暂未开放支付");
+      return;
+    }
+
     const plan = getPricingPlanBySlug(slug);
     if (!plan) {
       toast.error("当前套餐暂时不可购买，请稍后重试");
@@ -335,6 +378,11 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
   }
 
   function handleWechatPurchase(productId: string, tier: "plus" | "pro") {
+    if (!checkoutEnabled) {
+      toast.info("试跑期暂未开放支付");
+      return;
+    }
+
     if (isTierBlocked(currentTier, tier)) {
       const blockMessage = getTierBlockMessage(currentTier, tier);
       if (blockMessage) {
@@ -395,6 +443,17 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
     plan: PricingCatalogPlan | undefined,
     tier: "plus" | "pro",
   ) {
+    if (!checkoutEnabled) {
+      return (
+        <button
+          disabled
+          className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm font-medium text-gray-400"
+        >
+          试跑期暂未开放支付
+        </button>
+      );
+    }
+
     if (isTierBlocked(currentTier, tier)) {
       return (
         <button
@@ -427,6 +486,17 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
     products: WechatPaymentProduct[],
     tier: "plus" | "pro",
   ) {
+    if (!checkoutEnabled) {
+      return (
+        <button
+          disabled
+          className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm font-medium text-gray-400"
+        >
+          试跑期暂未开放支付
+        </button>
+      );
+    }
+
     if (isWechatProductsLoading) {
       return <div className="h-11 w-full animate-pulse rounded-lg bg-gray-200" />;
     }
@@ -498,7 +568,7 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
             <h1 className="text-4xl font-bold tracking-tight">升级套餐</h1>
             <div className="flex flex-1 items-center justify-end gap-3">
               {/* 管理订阅 */}
-              {hasActiveSubscription && (
+              {checkoutEnabled && hasActiveSubscription && (
                 <button
                   onClick={() => void handleManageSubscription()}
                   disabled={isPortalLoading}
@@ -514,30 +584,32 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
               )}
 
               {/* 支付方式下拉 */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50">
-                    <span>{selectedMode === "wechat" ? "微信支付" : "海外订阅"}</span>
-                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44 rounded-xl">
-                  <DropdownMenuItem
-                    onClick={() => handleModeChange("subscription")}
-                    className="flex items-center justify-between"
-                  >
-                    <span>海外订阅</span>
-                    {selectedMode !== "wechat" && <Check className="h-4 w-4" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleModeChange("wechat")}
-                    className="flex items-center justify-between"
-                  >
-                    <span>微信支付</span>
-                    {selectedMode === "wechat" && <Check className="h-4 w-4" />}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {checkoutEnabled ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50">
+                      <span>{selectedMode === "wechat" ? "微信支付" : "海外订阅"}</span>
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44 rounded-xl">
+                    <DropdownMenuItem
+                      onClick={() => handleModeChange("subscription")}
+                      className="flex items-center justify-between"
+                    >
+                      <span>海外订阅</span>
+                      {selectedMode !== "wechat" && <Check className="h-4 w-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleModeChange("wechat")}
+                      className="flex items-center justify-between"
+                    >
+                      <span>微信支付</span>
+                      {selectedMode === "wechat" && <Check className="h-4 w-4" />}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
             </div>
           </div>
 
@@ -575,7 +647,7 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
           )}
 
           {/* ── Email unverified warning ── */}
-          {user && !user.email_verified && (
+          {checkoutEnabled && user && !user.email_verified && (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-700">
               当前账号邮箱尚未验证。你仍可发起支付，但订阅管理入口仍要求邮箱已验证。
             </div>
@@ -594,7 +666,7 @@ export default function PricingPageContent({ catalog }: PricingPageContentProps)
               </div>
               <div className="flex-grow">
                 <ul className="space-y-4 text-sm text-gray-600">
-                  {FREE_FEATURES.map((f) => (
+                  {freeFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-3">
                       <Check className="h-5 w-5 shrink-0 text-gray-900" />
                       <span>{f}</span>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CreditCard } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { isBillingCheckoutEnabled } from "@/lib/billing-flags";
 import { useGrowth } from "@/lib/growth-context";
 import type { AvatarUrls, CharacterStatus, CharacterVisibility } from "@/lib/api";
 
@@ -92,6 +93,7 @@ export default function Sidebar({
     const router = useRouter();
     const pathname = usePathname();
     const isDiscoverActive = pathname === "/";
+    const billingCheckoutEnabled = isBillingCheckoutEnabled();
 
     // ── 共用的用户菜单项，避免重复 ──
     const userMenuItems = (
@@ -120,15 +122,17 @@ export default function Sidebar({
                 <span className="text-sm font-medium text-black">收藏夹</span>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-                onClick={() => router.push("/pricing")}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
-            >
-                <div className="flex h-[20px] w-[20px] items-center justify-center">
-                    <CreditCard className="h-[18px] w-[18px] text-gray-700" />
-                </div>
-                <span className="text-sm font-medium text-black">订阅管理</span>
-            </DropdownMenuItem>
+            {billingCheckoutEnabled ? (
+                <DropdownMenuItem
+                    onClick={() => router.push("/pricing")}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer focus:bg-accent"
+                >
+                    <div className="flex h-[20px] w-[20px] items-center justify-center">
+                        <CreditCard className="h-[18px] w-[18px] text-gray-700" />
+                    </div>
+                    <span className="text-sm font-medium text-black">订阅管理</span>
+                </DropdownMenuItem>
+            ) : null}
 
             <DropdownMenuItem
                 onClick={() => router.push("/stats")}

@@ -18,6 +18,7 @@ import {
     unpublishCharacter,
     deleteVoiceById,
 } from "@/lib/api";
+import { isBillingPaywallDisabled } from "@/lib/billing-flags";
 import { buildShareUrl } from "@/lib/share-link";
 import { useAuth } from "@/lib/auth-context";
 import WorkspaceFrame from "@/components/layout/WorkspaceFrame";
@@ -40,7 +41,8 @@ export default function ProfilePage() {
     const { user, isAuthed, entitlements, isEntitlementsLoading } = useAuth();
     const router = useRouter();
     const queryClient = useQueryClient();
-    const canUseVoiceClone = entitlements?.features.voice_clone ?? null;
+    const paywallDisabled = isBillingPaywallDisabled();
+    const canUseVoiceClone = paywallDisabled ? true : entitlements?.features.voice_clone ?? null;
     const { setSelectedCharacterId } = useSidebar();
 
     // Modal State
@@ -119,7 +121,7 @@ export default function ProfilePage() {
     });
 
     const handleCreateVoiceClick = useCallback(() => {
-        if (isEntitlementsLoading) {
+        if (!paywallDisabled && isEntitlementsLoading) {
             return;
         }
 
@@ -129,7 +131,7 @@ export default function ProfilePage() {
         }
 
         setIsCreateVoiceModalOpen(true);
-    }, [canUseVoiceClone, isEntitlementsLoading, router]);
+    }, [canUseVoiceClone, isEntitlementsLoading, paywallDisabled, router]);
 
     // Clear selected character when on profile page
     useEffect(() => {
@@ -283,7 +285,7 @@ export default function ProfilePage() {
                                             onClick={handleCreateVoiceClick}
                                             title={canUseVoiceClone === false ? "升级后创建音色" : "创建新音色"}
                                             description={
-                                                isEntitlementsLoading
+                                                !paywallDisabled && isEntitlementsLoading
                                                     ? "正在校验当前套餐权益"
                                                     : canUseVoiceClone === false
                                                         ? "升级到 Plus 或 Pro 后可解锁专属音色克隆"

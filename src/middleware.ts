@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { isBillingCheckoutDisabled } from "./lib/billing-flags";
 
-const protectedMatchers = ["/", "/chat", "/favorites", "/profile", "/setup", "/stats", "/billing"];
+const protectedMatchers = ["/", "/chat", "/favorites", "/profile", "/setup", "/stats"];
+const billingCheckoutMatchers = ["/pricing"];
 
 function isProtectedPath(pathname: string): boolean {
   return protectedMatchers.some((path) =>
@@ -9,7 +11,20 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
+function isBillingCheckoutPath(pathname: string): boolean {
+  return billingCheckoutMatchers.some((path) =>
+    pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
 export function middleware(request: NextRequest) {
+  if (
+    isBillingCheckoutDisabled() &&
+    isBillingCheckoutPath(request.nextUrl.pathname)
+  ) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   if (!isProtectedPath(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
@@ -26,5 +41,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/chat/:path*", "/favorites", "/profile", "/setup", "/stats", "/billing"],
+  matcher: ["/", "/chat/:path*", "/favorites", "/profile", "/setup", "/stats", "/pricing"],
 };

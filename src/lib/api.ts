@@ -8,8 +8,17 @@ import type {
 
 import { apiService } from "./api-service";
 import { authClient } from "./auth-client";
+import { isBillingCheckoutDisabled } from "./billing-flags";
 import { mapBetterAuthSessionToUser } from "./auth-user-mapper";
 import { clearBetterAuthJwt } from "./better-auth-token";
+
+const BILLING_CHECKOUT_DISABLED_MESSAGE = "试跑期暂未开放支付";
+
+function assertBillingCheckoutEnabled() {
+  if (isBillingCheckoutDisabled()) {
+    throw new Error(BILLING_CHECKOUT_DISABLED_MESSAGE);
+  }
+}
 
 function requireAuthClientData<T>(
   response: { data?: T | null; error?: { message?: string | null } | null },
@@ -83,6 +92,8 @@ export async function createDodoCheckoutSession(params: {
   slug: string;
   referenceId?: string;
 }): Promise<CreateCheckoutResponse> {
+  assertBillingCheckoutEnabled();
+
   const response = await authClient.dodopayments.checkoutSession({
     slug: params.slug,
     referenceId: params.referenceId,
@@ -92,6 +103,8 @@ export async function createDodoCheckoutSession(params: {
 }
 
 export async function createDodoCustomerPortal(): Promise<CustomerPortalResponse> {
+  assertBillingCheckoutEnabled();
+
   const response = await authClient.dodopayments.customer.portal();
   return requireAuthClientData(response, "打开订阅管理失败");
 }
@@ -101,6 +114,8 @@ export async function listDodoSubscriptions(params?: {
   limit?: number;
   status?: "pending" | "active" | "on_hold" | "cancelled" | "failed" | "expired";
 }): Promise<SubscriptionItems> {
+  assertBillingCheckoutEnabled();
+
   const response = await authClient.dodopayments.customer.subscriptions.list({
     query: {
       page: params?.page ?? 1,
@@ -128,6 +143,8 @@ export async function listDodoPayments(params?: {
     | "partially_captured"
     | "partially_captured_and_capturable";
 }): Promise<PaymentItems> {
+  assertBillingCheckoutEnabled();
+
   const response = await authClient.dodopayments.customer.payments.list({
     query: {
       page: params?.page ?? 1,
@@ -140,8 +157,12 @@ export async function listDodoPayments(params?: {
 }
 
 export const getWechatPaymentProducts = apiService.getWechatPaymentProducts.bind(apiService);
-export const createWechatCheckoutSession =
-  apiService.createWechatCheckoutSession.bind(apiService);
+export async function createWechatCheckoutSession(params: {
+  product_id: string;
+}) {
+  assertBillingCheckoutEnabled();
+  return apiService.createWechatCheckoutSession(params);
+}
 export const getWechatPaymentOrder = apiService.getWechatPaymentOrder.bind(apiService);
 export const listWechatPaymentOrders = apiService.listWechatPaymentOrders.bind(apiService);
 

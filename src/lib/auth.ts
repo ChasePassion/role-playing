@@ -11,6 +11,7 @@ import nodemailer from "nodemailer";
 import { Pool } from "pg";
 
 import { logEmailOtpEvent } from "./auth-email-otp-log";
+import { isBillingCheckoutEnabled } from "./billing-flags";
 import { DODO_CHECKOUT_PRODUCTS } from "./billing-plans";
 import {
   getDodoPaymentsClient,
@@ -217,6 +218,28 @@ function createAuth() {
   const betterAuthSecret = getBetterAuthSecret();
   const trustedOrigins = buildTrustedOrigins();
   const resolvedPool = getPool();
+  const paymentPlugins = isBillingCheckoutEnabled()
+    ? [
+        dodopayments({
+          client: getDodoPaymentsClient(),
+          createCustomerOnSignUp: true,
+          use: [
+            checkout({
+              products: DODO_CHECKOUT_PRODUCTS,
+              successUrl: "/pricing?checkout=success",
+              authenticatedUsersOnly: true,
+            }),
+            portal(),
+            webhooks({
+              webhookKey: getDodoPaymentsWebhookSecret(),
+              onPayload: async (payload) => {
+                console.log("Received Dodo Payments webhook:", payload.type);
+              },
+            }),
+          ],
+        }),
+      ]
+    : [];
 
   return betterAuth({
     appName: "parlasoul",
@@ -320,24 +343,7 @@ function createAuth() {
         },
       }),
       jwt(),
-      dodopayments({
-        client: getDodoPaymentsClient(),
-        createCustomerOnSignUp: true,
-        use: [
-          checkout({
-            products: DODO_CHECKOUT_PRODUCTS,
-            successUrl: "/pricing?checkout=success",
-            authenticatedUsersOnly: true,
-          }),
-          portal(),
-          webhooks({
-            webhookKey: getDodoPaymentsWebhookSecret(),
-            onPayload: async (payload) => {
-              console.log("Received Dodo Payments webhook:", payload.type);
-            },
-          }),
-        ],
-      }),
+      ...paymentPlugins,
       nextCookies(),
     ],
   });

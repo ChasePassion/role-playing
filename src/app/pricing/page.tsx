@@ -1,12 +1,18 @@
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { redirect } from "next/navigation";
 
 import PricingPageContent from "@/components/billing/PricingPageContent";
+import { isBillingCheckoutDisabled } from "@/lib/billing-flags";
 import { getPricingCatalog } from "@/lib/dodo-payments";
 
 export const dynamic = "force-dynamic";
 
 export default async function PricingPage() {
+  if (isBillingCheckoutDisabled()) {
+    redirect("/");
+  }
+
   try {
     const catalog = await getPricingCatalog();
     return (

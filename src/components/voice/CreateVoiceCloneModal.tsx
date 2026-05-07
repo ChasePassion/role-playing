@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createVoiceClone } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { isBillingPaywallDisabled } from "@/lib/billing-flags";
 import { getErrorMessage } from "@/lib/error-map";
 import VoiceAvatarField from "./VoiceAvatarField";
 
@@ -32,7 +33,8 @@ export default function CreateVoiceCloneModal({
 }: CreateVoiceCloneModalProps) {
   const { entitlements, isEntitlementsLoading } = useAuth();
   const router = useRouter();
-  const canUseVoiceClone = entitlements?.features.voice_clone ?? null;
+  const paywallDisabled = isBillingPaywallDisabled();
+  const canUseVoiceClone = paywallDisabled ? true : entitlements?.features.voice_clone ?? null;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [avatarImageKey, setAvatarImageKey] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export default function CreateVoiceCloneModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
   const isVoiceCloneLocked = canUseVoiceClone === false;
-  const isVoiceClonePending = isEntitlementsLoading || canUseVoiceClone !== true;
+  const isVoiceClonePending = !paywallDisabled && (isEntitlementsLoading || canUseVoiceClone !== true);
 
   const validateForm = (): string | null => {
     if (!name.trim()) {
@@ -214,7 +216,7 @@ export default function CreateVoiceCloneModal({
             </div>
           ) : null}
 
-          {isEntitlementsLoading ? (
+          {!paywallDisabled && isEntitlementsLoading ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               正在校验当前套餐权益，暂时无法提交音色克隆。
             </div>

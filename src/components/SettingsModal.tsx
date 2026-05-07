@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useUserSettings } from "@/lib/user-settings-context";
 import { useAuth } from "@/lib/auth-context";
+import { isBillingPaywallDisabled } from "@/lib/billing-flags";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
@@ -46,9 +47,10 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
     const { entitlements, isEntitlementsLoading } = useAuth();
 
     const [activeTab, setActiveTab] = useState<"preferences" | "learning">("preferences");
-    const canUseMemoryFeature = entitlements?.features.memory_feature ?? null;
+    const paywallDisabled = isBillingPaywallDisabled();
+    const canUseMemoryFeature = paywallDisabled ? true : entitlements?.features.memory_feature ?? null;
     const isMemoryLocked = canUseMemoryFeature === false;
-    const isMemoryReadonly = isEntitlementsLoading || canUseMemoryFeature !== true;
+    const isMemoryReadonly = !paywallDisabled && (isEntitlementsLoading || canUseMemoryFeature !== true);
     const displayedMemoryEnabled = canUseMemoryFeature === true ? memoryEnabled : false;
 
     const handleOpenBilling = () => {
@@ -176,7 +178,7 @@ export function SettingsModal({ open, onOpenChange }: { open: boolean, onOpenCha
                                         />
                                     </div>
 
-                                    {isEntitlementsLoading ? (
+                                    {!paywallDisabled && isEntitlementsLoading ? (
                                         <div className="mt-3">
                                             <p className="text-[12px] text-gray-400 leading-relaxed">
                                                 正在校验当前套餐权益，记忆开关暂时不可编辑。
