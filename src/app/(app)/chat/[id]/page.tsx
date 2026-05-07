@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
@@ -311,6 +311,43 @@ export default function ChatPage() {
             }
         },
     });
+
+    const displayMessages = useMemo(() => {
+      if (!realtimeSession.isConnected) return messages;
+
+      const result: Message[] = [...messages];
+      const { subtitles } = realtimeSession;
+
+      const userRaw = subtitles.userRaw.trim();
+      if (userRaw) {
+        const lastRealUser = [...messages].reverse().find(m => m.role === "user" && !m.isTemp);
+        if (!lastRealUser || lastRealUser.content !== userRaw) {
+          result.push({
+            id: "__realtime_user_subtitle__",
+            role: "user",
+            content: userRaw,
+            isTemp: true,
+          });
+        }
+      }
+
+      const assistantRaw = subtitles.assistantRaw.trim();
+      if (assistantRaw) {
+        const lastRealAssistant = [...messages].reverse().find(m => m.role === "assistant" && !m.isTemp);
+        if (!lastRealAssistant || lastRealAssistant.content !== assistantRaw) {
+          result.push({
+            id: "__realtime_assistant_subtitle__",
+            role: "assistant",
+            content: assistantRaw,
+            isTemp: true,
+            messageStreamStatus: realtimeSession.isBotSpeaking ? "streaming" : "done",
+          });
+        }
+      }
+
+      return result;
+    }, [messages, realtimeSession.isConnected, realtimeSession.subtitles.userRaw,
+        realtimeSession.subtitles.assistantRaw, realtimeSession.isBotSpeaking]);
 
     const isConversationReadOnly = character?.status === "UNPUBLISHED";
     const readOnlyNotice = isConversationReadOnly
@@ -652,7 +689,7 @@ export default function ChatPage() {
                 cancelAnimationFrame(frameId);
             }
         };
-    }, [chatId, messages, isStreaming]);
+    }, [chatId, displayMessages, isStreaming]);
 
     // Phase 2: Mic start → interrupt TTS + track recording state
     const handleMicStart = useCallback(() => {
@@ -792,7 +829,7 @@ export default function ChatPage() {
             </AlertDialog>
             <ChatThread
                 character={character}
-                messages={messages}
+                messages={displayMessages}
                 isLoading={isLoading}
                 error={error}
                 isStreaming={isStreaming}

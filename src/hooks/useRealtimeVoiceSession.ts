@@ -99,7 +99,12 @@ export function useRealtimeVoiceSession(options: {
         clearMicError();
       },
       onUserSpeakingChange: setIsUserSpeaking,
-      onBotSpeakingChange: setIsBotSpeaking,
+      onBotSpeakingChange: (speaking) => {
+        setIsBotSpeaking(speaking);
+        if (speaking) {
+          setSubtitles((prev) => ({ ...prev, assistantRaw: "", assistantTranslated: "" }));
+        }
+      },
       onSubtitleDelta: (channel, text) => {
         setSubtitles((prev) => ({
           ...prev,
